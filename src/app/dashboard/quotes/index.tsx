@@ -1,0 +1,293 @@
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabaseClient'
+import { GlassCard } from '@/components/GlassCard'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { OrderStatusBadge } from '@/components/OrderStatusBadge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useAuth } from '@/hooks/useAuth'
+import { useMutationUpdateQuoteStatus } from '@/hooks/useMutationQuote'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { Quote } from '@/types'
+import { Search, CheckCircle2, XCircle, Eye } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
+
+export function QuotesPage() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const { company } = useAuth()
+  const { toast } = useToast()
+  const updateStatusMutation = useMutationUpdateQuoteStatus()
+
+  const { data: quotes, isLoading } = useQuery({
+    queryKey: ['quotes', company?.id],
+    queryFn: async () => {
+      if (!company?.id) return []
+
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('company_id', company.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data as Quote[]
+    },
+    enabled: !!company?.id,
+  })
+
+  const filteredQuotes = quotes?.filter(
+    (quote) =>
+      quote.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      quote.customer_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      quote.id.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const handleApprove = async (quoteId: string) => {
+    try {
+      await updateStatusMutation.mutateAsync({ quoteId, status: 'approved' })
+      toast({
+        title: 'Quote approved',
+        description: 'The customer has been notified via email.',
+      })
+      setDetailsOpen(false)
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to approve quote.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleReject = async (quoteId: string) => {
+    try {
+      await updateStatusMutation.mutateAsync({
+        quoteId,
+        status: 'rejected',
+        reason: 'Quote rejected by administrator',
+      })
+      toast({
+        title: 'Quote rejected',
+        description: 'The customer has been notified via email.',
+      })
+      setDetailsOpen(false)
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reject quote.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Quotes</h1>
+          <p className="text-muted-foreground">
+            Review and manage customer quote requests
+          </p>
+        </div>
+      </div>
+
+      <GlassCard>
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search by customer name, email, or quote ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : filteredQuotes && filteredQuotes.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Quote ID</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredQuotes.map((quote) => (
+                <TableRow key={quote.id}>
+                  <TableCell>
+                    <code className="text-sm">{quote.id.slice(0, 8)}</code>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-semibold">
+                        {quote.customer_name || 'N/A'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {quote.customer_email}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>{quote.items?.length || 0} items</TableCell>
+                  <TableCell className="font-semibold">
+                    {formatCurrency(quote.total)}
+                  </TableCell>
+                  <TableCell>
+                    <OrderStatusBadge status={quote.status} />
+                  </TableCell>
+                  <TableCell>{formatDate(quote.created_at)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedQuote(quote)
+                          setDetailsOpen(true)
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      {quote.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleApprove(quote.id)}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleReject(quote.id)}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-12">
+            <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No quotes found</h3>
+            <p className="text-muted-foreground">
+              {searchQuery
+                ? 'Try adjusting your search'
+                : 'Quote requests will appear here'}
+            </p>
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Quote Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-[600px] glass">
+          <DialogHeader>
+            <DialogTitle>Quote Details</DialogTitle>
+            <DialogDescription>
+              Quote ID: {selectedQuote?.id.slice(0, 8)}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedQuote && (
+            <div className="space-y-4">
+              <div className="glass-card p-4 space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Customer</p>
+                  <p className="font-semibold">{selectedQuote.customer_name}</p>
+                  <p className="text-sm">{selectedQuote.customer_email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <OrderStatusBadge status={selectedQuote.status} />
+                </div>
+              </div>
+
+              <div className="glass-card p-4">
+                <h4 className="font-semibold mb-3">Items</h4>
+                <div className="space-y-2">
+                  {selectedQuote.items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="font-medium">{item.product_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Qty: {item.quantity} × {formatCurrency(item.unit_price)}
+                        </p>
+                      </div>
+                      <p className="font-semibold">
+                        {formatCurrency(item.total)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t mt-3 pt-3 flex justify-between">
+                  <span className="font-bold">Total</span>
+                  <span className="font-bold text-lg">
+                    {formatCurrency(selectedQuote.total)}
+                  </span>
+                </div>
+              </div>
+
+              {selectedQuote.notes && (
+                <div className="glass-card p-4">
+                  <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm">{selectedQuote.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
