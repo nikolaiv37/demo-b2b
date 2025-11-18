@@ -127,3 +127,11 @@ export interface DashboardStats {
   orders_change: number
 }
 
+// Wishlist is per-user, persisted forever, survives catalog re-uploads (uses SKU)
+export interface WishlistItem {
+  id: string
+  user_id: string
+  product_sku: string
+  created_at: string
+}
+

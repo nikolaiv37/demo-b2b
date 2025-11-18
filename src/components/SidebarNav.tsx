@@ -14,8 +14,10 @@ import {
   CreditCard,
   Palette,
   ChevronDown,
+  Heart,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useWishlist } from '@/hooks/useWishlist'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -33,11 +35,6 @@ const mainNavItems = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Catalog',
-    href: '/dashboard/products',
-    icon: Package,
-  },
-  {
     title: 'Orders',
     href: '/dashboard/orders',
     icon: FileText,
@@ -47,6 +44,20 @@ const mainNavItems = [
     title: 'Buyers',
     href: '/dashboard/customers',
     icon: Users,
+  },
+]
+
+// Catalog submenu items
+const catalogSubmenuItems = [
+  {
+    title: 'Products',
+    href: '/dashboard/products',
+    icon: Package,
+  },
+  {
+    title: 'Wishlist',
+    href: '/dashboard/wishlist',
+    icon: Heart,
   },
 ]
 
@@ -83,8 +94,10 @@ export function SidebarNav() {
   const location = useLocation()
   const navigate = useNavigate()
   const { company, signOut } = useAuth()
+  const { count: wishlistCount } = useWishlist()
   // Default to open on page load
   const [settingsOpen, setSettingsOpen] = useState<string>('settings')
+  const [catalogOpen, setCatalogOpen] = useState<string>('catalog')
 
   // Check if item is active
   const isItemActive = (href: string) => {
@@ -106,6 +119,15 @@ export function SidebarNav() {
     return location.pathname === href
   }
 
+  // Check if Catalog or any submenu is active
+  const isCatalogActive = () => {
+    return (
+      location.pathname === '/dashboard/products' ||
+      location.pathname === '/dashboard/wishlist' ||
+      catalogSubmenuItems.some((item) => isSubmenuItemActive(item.href))
+    )
+  }
+
   // Check if Settings or any submenu is active
   const isSettingsActive = () => {
     return (
@@ -113,6 +135,26 @@ export function SidebarNav() {
       settingsSubmenuItems.some((item) => isSubmenuItemActive(item.href))
     )
   }
+
+  // Auto-open Catalog submenu if on catalog page or any submenu, or use saved state
+  useEffect(() => {
+    const isActive = isCatalogActive()
+    if (isActive) {
+      setCatalogOpen('catalog')
+    } else {
+      // Check localStorage, default to open if not set
+      const savedState = localStorage.getItem('sidebar-catalog-open')
+      if (savedState === null) {
+        // First time - default to open
+        setCatalogOpen('catalog')
+        localStorage.setItem('sidebar-catalog-open', 'true')
+      } else if (savedState === 'true') {
+        setCatalogOpen('catalog')
+      } else {
+        setCatalogOpen('')
+      }
+    }
+  }, [location.pathname, location.search])
 
   // Auto-open Settings submenu if on settings page or any submenu, or use saved state
   useEffect(() => {
@@ -133,6 +175,12 @@ export function SidebarNav() {
       }
     }
   }, [location.pathname, location.search])
+
+  // Save catalog submenu state to localStorage
+  const handleCatalogToggle = (value: string) => {
+    setCatalogOpen(value)
+    localStorage.setItem('sidebar-catalog-open', value === 'catalog' ? 'true' : 'false')
+  }
 
   // Save settings submenu state to localStorage
   const handleSettingsToggle = (value: string) => {
@@ -208,6 +256,119 @@ export function SidebarNav() {
                 </Link>
               )
             })}
+
+            {/* Catalog with Submenu */}
+            <Accordion
+              type="single"
+              collapsible
+              value={catalogOpen}
+              onValueChange={handleCatalogToggle}
+              className="w-full"
+            >
+              <AccordionItem value="catalog" className="border-0">
+                <AccordionTrigger className="hidden" />
+                <div 
+                  className={cn(
+                    'flex items-center rounded-lg transition-all duration-150',
+                    isCatalogActive()
+                      ? 'bg-[#0f172a] dark:bg-[#0f172a]'
+                      : ''
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 transition-all duration-150 flex-1 cursor-pointer rounded-l-lg',
+                      isCatalogActive()
+                        ? 'text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    )}
+                    onClick={(e) => {
+                      if (location.pathname !== '/dashboard/products' && location.pathname !== '/dashboard/wishlist') {
+                        navigate('/dashboard/products')
+                      }
+                      handleCatalogToggle(catalogOpen === 'catalog' ? '' : 'catalog')
+                    }}
+                  >
+                    <Package className={cn(
+                      'w-5 h-5 flex-shrink-0',
+                      isCatalogActive() ? 'text-white' : 'text-gray-700 dark:text-gray-300'
+                    )} />
+                    <span className="font-medium flex-1">Catalog</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={cn(
+                      'p-2 rounded-r-lg transition-all duration-150 flex items-center justify-center relative z-10',
+                      isCatalogActive()
+                        ? 'hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    )}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleCatalogToggle(catalogOpen === 'catalog' ? '' : 'catalog')
+                    }}
+                    aria-label="Toggle catalog menu"
+                    style={{
+                      minWidth: '32px',
+                      minHeight: '32px'
+                    }}
+                  >
+                    <ChevronDown 
+                      className={cn(
+                        'h-4 w-4 shrink-0 transition-transform duration-200',
+                        catalogOpen === 'catalog' && 'rotate-180',
+                        isCatalogActive() ? 'text-white' : 'text-gray-800 dark:text-gray-300'
+                      )}
+                      style={{
+                        opacity: 1,
+                        visibility: 'visible',
+                        display: 'block',
+                        pointerEvents: 'none',
+                        stroke: isCatalogActive() ? '#ffffff' : '#1f2937',
+                        strokeWidth: isCatalogActive() ? 3.5 : 2.5,
+                        fill: 'none',
+                        filter: isCatalogActive() ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none'
+                      }}
+                    />
+                  </button>
+                </div>
+                <AccordionContent className="pt-1">
+                  <div className="space-y-1 pl-6">
+                    {catalogSubmenuItems.map((subItem) => {
+                      const isSubActive = isSubmenuItemActive(subItem.href)
+                      const isWishlist = subItem.href === '/dashboard/wishlist'
+                      return (
+                        <Link
+                          key={subItem.href}
+                          to={subItem.href}
+                          className={cn(
+                            'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
+                            isSubActive
+                              ? 'bg-[#0f172a]/10 dark:bg-[#0f172a]/20 text-[#0f172a] dark:text-white font-semibold'
+                              : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                          )}
+                        >
+                          <subItem.icon className={cn(
+                            'w-4 h-4',
+                            isWishlist && wishlistCount > 0 && 'text-red-500 fill-red-500'
+                          )} />
+                          <span>{subItem.title}</span>
+                          {isWishlist && wishlistCount > 0 && (
+                            <Badge
+                              variant="destructive"
+                              className="ml-auto h-5 min-w-5 flex items-center justify-center px-1.5 text-xs"
+                            >
+                              {wishlistCount > 99 ? '99+' : wishlistCount}
+                            </Badge>
+                          )}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </nav>
         </div>
 

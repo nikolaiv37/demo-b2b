@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useCartStore } from '@/stores/cartStore'
+import { useWishlist } from '@/hooks/useWishlist'
 import {
   Package,
   ChevronLeft,
@@ -18,10 +19,12 @@ import {
   Plus,
   Home,
   ChevronRight as ChevronRightIcon,
+  Heart,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn, formatPrice as formatPriceUtil } from '@/lib/utils'
 import { AddToOrderModal } from './AddToOrderModal'
+import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 
 /**
  * Product Detail Page
@@ -43,8 +46,10 @@ export function ProductDetailPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { addItem } = useCartStore()
+  const { isInWishlist, toggleWishlist } = useWishlist()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [addToOrderOpen, setAddToOrderOpen] = useState(false)
+  const [isPulsing, setIsPulsing] = useState(false)
 
   // Fetch product by SKU (not id - see comment above)
   const { data: product, isLoading, error } = useQuery({
@@ -161,6 +166,29 @@ export function ProductDetailPage() {
       })
     }
   }
+
+  // Handle wishlist toggle
+  const handleWishlistToggle = () => {
+    if (product.sku) {
+      const wasInWishlist = isInWishlist(product.sku)
+      toggleWishlist(product.sku)
+      if (!wasInWishlist) {
+        setIsPulsing(true)
+        setTimeout(() => setIsPulsing(false), 600)
+        toast({
+          title: 'Added to wishlist',
+          description: `${product.name} has been added to your wishlist`,
+        })
+      } else {
+        toast({
+          title: 'Removed from wishlist',
+          description: `${product.name} has been removed from your wishlist`,
+        })
+      }
+    }
+  }
+
+  const inWishlist = product?.sku ? isInWishlist(product.sku) : false
 
   return (
     <>
@@ -280,7 +308,34 @@ export function ProductDetailPage() {
           <div className="space-y-6">
             {/* Product Name */}
             <div>
-              <h1 className="text-4xl font-bold mb-2">{product.name}</h1>
+              <div className="flex items-start justify-between gap-4 mb-2">
+                <h1 className="text-4xl font-bold flex-1">{product.name}</h1>
+                {product.sku && (
+                  <TooltipProvider>
+                    <Tooltip content={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+                      <button
+                        onClick={handleWishlistToggle}
+                        className={cn(
+                          'p-3 rounded-full transition-all duration-200 flex-shrink-0',
+                          'hover:scale-110 active:scale-95',
+                          inWishlist
+                            ? 'bg-red-500 text-white shadow-lg hover:bg-red-600'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+                          isPulsing && 'animate-pulse'
+                        )}
+                        aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                      >
+                        <Heart
+                          className={cn(
+                            'w-6 h-6 transition-all duration-200',
+                            inWishlist && 'fill-current'
+                          )}
+                        />
+                      </button>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground font-mono">SKU: {product.sku}</p>
             </div>
 
