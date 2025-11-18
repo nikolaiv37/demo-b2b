@@ -34,8 +34,23 @@ const queryClient = new QueryClient({
 })
 
 function App() {
+  const handleError = (error: Error, errorInfo: { componentStack: string }) => {
+    // Log error to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error caught by boundary:', error)
+      console.error('Error info:', errorInfo)
+    }
+  }
+
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onError={handleError}
+      onReset={() => {
+        // Reset app state if needed
+        window.location.href = '/dashboard'
+      }}
+    >
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
