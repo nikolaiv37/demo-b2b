@@ -19,10 +19,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { Product } from '@/types'
-import { Plus, Search, Package, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Plus, Search, Package, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 24
+const INITIAL_LOAD_SIZE = 150 // Load 150 products initially for fast render
 
 export function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -34,93 +34,208 @@ export function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
 
-  const { user, profile } = useAuth()
+  const { profile } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const isAdmin = profile?.role === 'admin'
 
-  // Fetch all products
+  // Build base query with filters (for both count and data queries)
+  const buildBaseQuery = () => {
+    let query = supabase.from('products').select('*', { count: 'exact' })
+
+    // Search filter (server-side)
+    if (searchQuery) {
+      query = query.or(
+        `name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`
+      )
+    }
+
+    // Category filter
+    if (selectedCategory !== 'all') {
+      query = query.eq('category', selectedCategory)
+    }
+
+    // Manufacturer filter
+    if (selectedManufacturer !== 'all') {
+      query = query.eq('manufacturer', selectedManufacturer)
+    }
+
+    // Availability filter
+    if (selectedAvailability !== 'all') {
+      query = query.eq('availability', selectedAvailability)
+    }
+
+    // Stock filter
+    if (stockFilter === 'in-stock') {
+      query = query.gt('quantity', 0)
+    } else if (stockFilter === 'low-stock') {
+      query = query.gt('quantity', 0).lte('quantity', 10)
+    } else if (stockFilter === 'out-of-stock') {
+      query = query.eq('quantity', 0)
+    }
+
+    return query.order('created_at', { ascending: false })
+  }
+
+  // Calculate pagination range
+  const getPaginationRange = () => {
+    // For initial load (page 1), load INITIAL_LOAD_SIZE products for fast subsequent pages
+    if (currentPage === 1) {
+      return { from: 0, to: INITIAL_LOAD_SIZE - 1 }
+    }
+    // For subsequent pages, calculate the range
+    const pagesFromInitialLoad = Math.ceil(INITIAL_LOAD_SIZE / ITEMS_PER_PAGE)
+    if (currentPage <= pagesFromInitialLoad) {
+      // For pages 2-7, we can use cached data from page 1, but also fetch to be safe
+      // Actually, let's just use the cache - no need to fetch again
+      return null // Signal to use cache
+    }
+    // For pages beyond initial load, fetch the specific range
+    const from = INITIAL_LOAD_SIZE + (currentPage - pagesFromInitialLoad - 1) * ITEMS_PER_PAGE
+    const to = from + ITEMS_PER_PAGE - 1
+    return { from, to }
+  }
+
+  // Fetch paginated products with server-side filters
+  const range = getPaginationRange()
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products'],
+    queryKey: [
+      'products',
+      'paginated',
+      searchQuery,
+      selectedCategory,
+      selectedManufacturer,
+      selectedAvailability,
+      stockFilter,
+      currentPage,
+    ],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
+      if (!range) {
+        // For pages 2-7, return empty - we'll use cached page 1 data
+        return []
+      }
+      const query = buildBaseQuery().range(range.from, range.to)
+
+      const { data, error } = await query
 
       if (error) throw error
       return data as Product[]
     },
     enabled: true,
+    placeholderData: (previousData) => previousData, // Keep previous data while loading
   })
 
-  // Extract unique values for filters
-  const { categories, manufacturers, availabilityOptions } = useMemo(() => {
-    if (!products) return { categories: [], manufacturers: [], availabilityOptions: [] }
+  // Get cached data from page 1 query for pages 2-7
+  const cachedPage1Data = queryClient.getQueryData<Product[]>([
+    'products',
+    'paginated',
+    searchQuery,
+    selectedCategory,
+    selectedManufacturer,
+    selectedAvailability,
+    stockFilter,
+    1,
+  ])
 
-    const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[]
-    const mans = Array.from(new Set(products.map(p => p.manufacturer).filter(Boolean))) as string[]
-    const avails = Array.from(new Set(products.map(p => p.availability).filter(Boolean))) as string[]
+  // Fetch total count with same filters
+  const { data: totalCount } = useQuery({
+    queryKey: [
+      'products',
+      'count',
+      searchQuery,
+      selectedCategory,
+      selectedManufacturer,
+      selectedAvailability,
+      stockFilter,
+    ],
+    queryFn: async () => {
+      // Build count query - use head: true to get only count
+      let countQuery = supabase.from('products').select('*', { count: 'exact', head: true })
 
-    return {
-      categories: cats.sort(),
-      manufacturers: mans.sort(),
-      availabilityOptions: avails.sort(),
-    }
-  }, [products])
+      // Apply same filters as data query
+      if (searchQuery) {
+        countQuery = countQuery.or(
+          `name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`
+        )
+      }
+      if (selectedCategory !== 'all') {
+        countQuery = countQuery.eq('category', selectedCategory)
+      }
+      if (selectedManufacturer !== 'all') {
+        countQuery = countQuery.eq('manufacturer', selectedManufacturer)
+      }
+      if (selectedAvailability !== 'all') {
+        countQuery = countQuery.eq('availability', selectedAvailability)
+      }
+      if (stockFilter === 'in-stock') {
+        countQuery = countQuery.gt('quantity', 0)
+      } else if (stockFilter === 'low-stock') {
+        countQuery = countQuery.gt('quantity', 0).lte('quantity', 10)
+      } else if (stockFilter === 'out-of-stock') {
+        countQuery = countQuery.eq('quantity', 0)
+      }
 
-  // Filter products
-  const filteredProducts = useMemo(() => {
-    if (!products) return []
+      const { count, error } = await countQuery
 
-    return products.filter((product) => {
-      // Search filter
-      const searchLower = searchQuery.toLowerCase()
-      const matchesSearch =
-        !searchQuery ||
-        product.name?.toLowerCase().includes(searchLower) ||
-        product.sku?.toLowerCase().includes(searchLower) ||
-        product.description?.toLowerCase().includes(searchLower) ||
-        product.category?.toLowerCase().includes(searchLower)
+      if (error) throw error
+      return count ?? 0
+    },
+    enabled: true,
+  })
 
-      // Category filter
-      const matchesCategory =
-        selectedCategory === 'all' || product.category === selectedCategory
+  // Fetch filter options (categories, manufacturers, availability) - cached separately
+  const { data: filterOptions } = useQuery({
+    queryKey: ['products', 'filter-options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('category, manufacturer, availability')
+        .limit(10000) // Get enough to extract unique values
 
-      // Manufacturer filter
-      const matchesManufacturer =
-        selectedManufacturer === 'all' || product.manufacturer === selectedManufacturer
+      if (error) throw error
 
-      // Availability filter
-      const matchesAvailability =
-        selectedAvailability === 'all' || product.availability === selectedAvailability
+      const categories = Array.from(
+        new Set(data.map((p) => p.category).filter(Boolean))
+      ).sort() as string[]
+      const manufacturers = Array.from(
+        new Set(data.map((p) => p.manufacturer).filter(Boolean))
+      ).sort() as string[]
+      const availabilityOptions = Array.from(
+        new Set(data.map((p) => p.availability).filter(Boolean))
+      ).sort() as string[]
 
-      // Stock filter
-      const quantity = product.quantity ?? 0
-      const matchesStock =
-        stockFilter === 'all' ||
-        (stockFilter === 'in-stock' && quantity > 0) ||
-        (stockFilter === 'low-stock' && quantity > 0 && quantity <= 10) ||
-        (stockFilter === 'out-of-stock' && quantity === 0)
+      return { categories, manufacturers, availabilityOptions }
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  })
 
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesManufacturer &&
-        matchesAvailability &&
-        matchesStock
-      )
-    })
-  }, [products, searchQuery, selectedCategory, selectedManufacturer, selectedAvailability, stockFilter])
+  const { categories = [], manufacturers = [], availabilityOptions = [] } = filterOptions || {}
 
-  // Pagination
-  const totalPages = Math.ceil((filteredProducts?.length || 0) / ITEMS_PER_PAGE)
+  // Calculate paginated products for display
   const paginatedProducts = useMemo(() => {
-    if (!filteredProducts) return []
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    const end = start + ITEMS_PER_PAGE
-    return filteredProducts.slice(start, end)
-  }, [filteredProducts, currentPage])
+    // For pages 2-7, use cached data from page 1 if available
+    const pagesFromInitialLoad = Math.ceil(INITIAL_LOAD_SIZE / ITEMS_PER_PAGE)
+    if (currentPage > 1 && currentPage <= pagesFromInitialLoad && cachedPage1Data) {
+      const start = (currentPage - 1) * ITEMS_PER_PAGE
+      const end = start + ITEMS_PER_PAGE
+      return cachedPage1Data.slice(start, end)
+    }
+
+    // For page 1, show first ITEMS_PER_PAGE from the initial load
+    if (currentPage === 1 && products) {
+      return products.slice(0, ITEMS_PER_PAGE)
+    }
+    
+    // For later pages, use the fetched products directly
+    if (products) {
+      return products
+    }
+    
+    return []
+  }, [products, currentPage, cachedPage1Data])
+
+  // Calculate total pages based on total count
+  const totalPages = Math.ceil((totalCount || 0) / ITEMS_PER_PAGE)
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -138,6 +253,8 @@ export function ProductsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'count'] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'filter-options'] })
       toast({
         title: 'Product deleted',
         description: 'The product has been removed successfully.',
@@ -157,7 +274,7 @@ export function ProductsPage() {
     setIsQuickViewOpen(true)
   }
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = (_product: Product) => {
     // TODO: Implement edit functionality
     toast({
       title: 'Edit Product',
@@ -194,7 +311,7 @@ export function ProductsPage() {
         <div>
           <h1 className="text-3xl font-bold mb-2">Products</h1>
           <p className="text-muted-foreground">
-            {isLoading ? 'Loading...' : `${filteredProducts?.length || 0} products`}
+            {isLoading && !totalCount ? 'Loading...' : `${totalCount ?? 0} products`}
           </p>
         </div>
         <div className="flex gap-3">
@@ -420,8 +537,8 @@ export function ProductsPage() {
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
                   Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
-                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)} of{' '}
-                  {filteredProducts.length} products
+                  {Math.min(currentPage * ITEMS_PER_PAGE, totalCount || 0)} of{' '}
+                  {totalCount || 0} products
                 </div>
                 <div className="flex gap-2">
                   <Button
