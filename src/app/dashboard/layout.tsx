@@ -107,42 +107,24 @@ export function DashboardLayout() {
   return (
     <div className="min-h-screen flex">
       <SidebarNav />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col lg:ml-64">
         {/* Enhanced Top Header */}
         <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="px-6 py-4">
             {/* Main Navbar */}
             <div className="flex items-center justify-between">
-              {/* LEFT: Logo + Company Name */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  {/* Logo Placeholder */}
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-md">
-                    <span className="text-white font-bold text-lg">
-                      {company?.name?.charAt(0) || 'D'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {company?.name || 'Dev Company'}
-                    </h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Wholesale Platform
-                    </p>
-                  </div>
-                </div>
-                {/* Vertical Separator */}
-                <div className="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-2"></div>
-                {/* Breadcrumbs */}
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <span className="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer">
-                    Home
-                  </span>
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="text-gray-900 dark:text-gray-100 font-medium">
-                    {getPageTitle()}
-                  </span>
-                </div>
+              {/* LEFT: Breadcrumbs */}
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span
+                  className="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Home
+                </span>
+                <ChevronRight className="h-4 w-4" />
+                <span className="text-gray-900 dark:text-gray-100 font-medium">
+                  {getPageTitle()}
+                </span>
               </div>
 
               {/* RIGHT: Actions Group */}

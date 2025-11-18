@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuth } from '@/hooks/useAuth'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import {
   Dialog,
@@ -32,6 +32,7 @@ export function OrderRequestModal({
   const { items, getTotal, clearCart } = useCartStore()
   const { user, profile, company } = useAuth()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [notes, setNotes] = useState('')
 
   const quoteMutation = useMutation({
@@ -79,6 +80,12 @@ export function OrderRequestModal({
       return data
     },
     onSuccess: (data) => {
+      // Invalidate orders query to refresh the orders list
+      const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+      const devUserId = isDevMode ? 'dev-user-123' : null
+      const userId = user?.id || devUserId
+      queryClient.invalidateQueries({ queryKey: ['orders', userId] })
+      
       toast({
         title: 'Order submitted successfully! 🎉',
         description: `Your order #${data.order_number} has been submitted. We'll process it shortly.`,
