@@ -15,6 +15,7 @@ import { DashboardLayout } from '@/app/dashboard/layout'
 import { DashboardOverview } from '@/app/dashboard/overview'
 import { ProductsPage } from '@/app/dashboard/products'
 import { ProductDetailPage } from '@/app/dashboard/products/[sku]/page'
+import { WishlistPage } from '@/app/dashboard/wishlist'
 import { OrdersPage } from '@/app/dashboard/orders'
 import { QuotesPage } from '@/app/dashboard/quotes'
 import { CustomersPage } from '@/app/dashboard/customers'
@@ -66,6 +67,7 @@ function App() {
                 <Route index element={<DashboardOverview />} />
                 <Route path="products" element={<ProductsPage />} />
                 <Route path="products/:sku" element={<ProductDetailPage />} />
+                <Route path="wishlist" element={<WishlistPage />} />
                 <Route path="orders" element={<OrdersPage />} />
                 <Route path="quotes" element={<QuotesPage />} />
                 <Route path="customers" element={<CustomersPage />} />

@@ -284,20 +284,28 @@ export function OrdersPage() {
   const navigate = useNavigate()
 
   const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
-  const devUserId = isDevMode ? 'dev-user-123' : null
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+  const isDemoMode = supabaseUrl.includes('placeholder')
+  // Use the same dev user ID as in useAuth hook
+  const devUserId = (isDevMode || isDemoMode) ? '00000000-0000-0000-0000-000000000123' : null
   const userId = user?.id || devUserId
 
   // Fetch real orders from quotes table (Eastern Europe B2B style: quotes are orders)
   const { data: quotesData, isLoading } = useQuery({
-    queryKey: ['orders', userId],
+    queryKey: ['orders', userId, isDevMode || isDemoMode],
     queryFn: async () => {
-      if (!userId) return []
-
-      const { data, error } = await supabase
+      // In dev/demo mode, show all orders. In production, filter by user_id
+      let query = supabase
         .from('quotes')
         .select('*')
-        .eq('user_id', userId)
         .order('created_at', { ascending: false })
+
+      // Only filter by user_id in production mode
+      if (!isDevMode && !isDemoMode && userId) {
+        query = query.eq('user_id', userId)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         console.error('Error fetching orders:', error)

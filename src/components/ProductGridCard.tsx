@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
-import { Eye, Package, ShoppingCart, Plus, Minus } from 'lucide-react'
+import { useWishlist } from '@/hooks/useWishlist'
+import { Eye, Package, ShoppingCart, Plus, Minus, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 
 interface ProductGridCardProps {
   product: Product
@@ -55,14 +57,29 @@ export function ProductGridCard({
   isAdmin = false,
 }: ProductGridCardProps) {
   const [localQuantity, setLocalQuantity] = useState(1)
+  const [isPulsing, setIsPulsing] = useState(false)
   const { addItem } = useCartStore()
   const { toast } = useToast()
+  const { isInWishlist, toggleWishlist } = useWishlist()
   
   const quantity = product.quantity ?? 0
   const mainImage = product.main_image || product.images?.[0]
   const hasImages = product.images && product.images.length > 0
   const isOutOfStock = quantity === 0
   const maxQuantity = quantity
+  const inWishlist = product.sku ? isInWishlist(product.sku) : false
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (product.sku) {
+      toggleWishlist(product.sku)
+      if (!inWishlist) {
+        setIsPulsing(true)
+        setTimeout(() => setIsPulsing(false), 600)
+      }
+    }
+  }
 
   const handleAddToCart = () => {
     const qty = Math.min(Math.max(1, localQuantity), maxQuantity)
@@ -144,6 +161,35 @@ export function ProductGridCard({
             <Badge variant="secondary" className="backdrop-blur-md bg-black/20 text-white">
               {product.images.length} photos
             </Badge>
+          </div>
+        )}
+
+        {/* Wishlist heart button */}
+        {product.sku && (
+          <div className="absolute top-2 right-2 z-10">
+            <TooltipProvider>
+              <Tooltip content={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+                <button
+                  onClick={handleWishlistToggle}
+                  className={cn(
+                    'p-2 rounded-full backdrop-blur-md transition-all duration-200',
+                    'hover:scale-110 active:scale-95',
+                    inWishlist
+                      ? 'bg-red-500/90 text-white shadow-lg'
+                      : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800',
+                    isPulsing && 'animate-pulse'
+                  )}
+                  aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                >
+                  <Heart
+                    className={cn(
+                      'w-5 h-5 transition-all duration-200',
+                      inWishlist && 'fill-current'
+                    )}
+                  />
+                </button>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         )}
 

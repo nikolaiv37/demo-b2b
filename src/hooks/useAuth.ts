@@ -17,8 +17,12 @@ export function useAuth() {
     
     if (isDemoMode || isDevMode) {
       // In demo/dev mode, create a mock authenticated state
+      // Use valid UUIDs for dev mode to work with database constraints
+      const mockUserId = '00000000-0000-0000-0000-000000000123'
+      const mockCompanyId = '00000000-0000-0000-0000-000000000456'
+      
       const mockUser = {
-        id: 'dev-user-123',
+        id: mockUserId,
         email: 'dev@example.com',
         app_metadata: {},
         user_metadata: {},
@@ -27,8 +31,8 @@ export function useAuth() {
       } as any
 
       const mockProfile = {
-        id: 'dev-user-123',
-        company_id: 'dev-company-123',
+        id: mockUserId,
+        company_id: mockCompanyId,
         role: 'admin' as const,
         email: 'dev@example.com',
         full_name: 'Dev User',
@@ -38,7 +42,7 @@ export function useAuth() {
       }
 
       const mockCompany = {
-        id: 'dev-company-123',
+        id: mockCompanyId,
         name: 'Dev Company',
         slug: 'dev-company',
         logo_url: undefined,
