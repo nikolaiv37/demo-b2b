@@ -1,4 +1,5 @@
 import { Product } from '@/types'
+import { Link } from 'react-router-dom'
 import {
   Dialog,
   DialogContent,
@@ -8,9 +9,11 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Package, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Package, ChevronLeft, ChevronRight, ShoppingCart, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useCartStore } from '@/stores/cartStore'
+import { useToast } from '@/components/ui/use-toast'
 
 interface ProductQuickViewModalProps {
   product: Product | null
@@ -32,6 +35,8 @@ export function ProductQuickViewModal({
   onClose,
 }: ProductQuickViewModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const { addItem } = useCartStore()
+  const { toast } = useToast()
 
   if (!product) return null
 
@@ -42,6 +47,37 @@ export function ProductQuickViewModal({
     : []
 
   const quantity = product.quantity ?? 0
+  const isOutOfStock = quantity === 0
+  const hasSku = product.sku && product.sku.trim() !== ''
+  const detailUrl = hasSku ? `/dashboard/products/${product.sku}` : '#'
+
+  // Handle add to cart
+  const handleAddToCart = () => {
+    if (isOutOfStock) {
+      toast({
+        title: 'Out of Stock',
+        description: 'This product is currently out of stock.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const result = addItem(product, 1, 'buyer')
+    
+    if (result.success) {
+      toast({
+        title: 'Added to cart',
+        description: `1 × ${product.name} added to cart`,
+      })
+      onClose() // Close modal after adding
+    } else {
+      toast({
+        title: 'Cannot add to cart',
+        description: result.message || 'Unable to add product to cart',
+        variant: 'destructive',
+      })
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -206,9 +242,22 @@ export function ProductQuickViewModal({
 
             {/* Actions */}
             <div className="flex gap-2 pt-4 border-t">
-              <Button className="flex-1" disabled={quantity === 0}>
+              <Button 
+                className="flex-1" 
+                disabled={isOutOfStock}
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
                 Add to Cart
               </Button>
+              {hasSku && (
+                <Link to={detailUrl} onClick={onClose}>
+                  <Button variant="outline">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View Details
+                  </Button>
+                </Link>
+              )}
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>

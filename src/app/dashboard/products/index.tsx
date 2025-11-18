@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { GlassCard } from '@/components/GlassCard'
@@ -19,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { Product } from '@/types'
-import { Plus, Search, Package, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 24
 const INITIAL_LOAD_SIZE = 150 // Load 150 products initially for fast render
@@ -307,25 +306,11 @@ export function ProductsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Products</h1>
-          <p className="text-muted-foreground">
-            {isLoading && !totalCount ? 'Loading...' : `${totalCount ?? 0} products`}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Link to="/dashboard/csv-import">
-            <Button variant="outline">
-              <Package className="w-4 h-4 mr-2" />
-              Import CSV
-            </Button>
-          </Link>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Product
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold mb-2">Products</h1>
+        <p className="text-muted-foreground">
+          {isLoading && !totalCount ? 'Loading...' : `${totalCount ?? 0} products`}
+        </p>
       </div>
 
       {/* Search and Filters */}
@@ -592,27 +577,24 @@ export function ProductsPage() {
       ) : (
         <GlassCard>
           <div className="text-center py-16">
-            <Package className="w-20 h-20 mx-auto mb-4 text-muted-foreground" />
+            <div className="w-20 h-20 mx-auto mb-4 text-muted-foreground flex items-center justify-center">
+              <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
             <h3 className="text-xl font-semibold mb-2">
               {hasActiveFilters ? 'No products match your filters' : 'No products found'}
             </h3>
             <p className="text-muted-foreground mb-6">
               {hasActiveFilters
                 ? 'Try adjusting your search or filters'
-                : 'Start by importing products from a CSV file'}
+                : 'No products available at the moment'}
             </p>
-            {hasActiveFilters ? (
+            {hasActiveFilters && (
               <Button variant="outline" onClick={clearFilters}>
                 <X className="w-4 h-4 mr-2" />
                 Clear All Filters
               </Button>
-            ) : (
-              <Link to="/dashboard/csv-import">
-                <Button>
-                  <Package className="w-4 h-4 mr-2" />
-                  Import CSV
-                </Button>
-              </Link>
             )}
           </div>
         </GlassCard>

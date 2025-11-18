@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
-import { Eye, Edit, Trash2, Package, ShoppingCart, Plus, Minus, ChevronRight } from 'lucide-react'
+import { Eye, Package, ShoppingCart, Plus, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ProductGridCardProps {
@@ -110,7 +110,7 @@ export function ProductGridCard({
         <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-0 rounded-xl" />
       )}
       {/* Image Container */}
-      <div className="relative z-10 aspect-square bg-gradient-to-br from-muted/50 to-muted overflow-hidden">
+      <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted overflow-hidden">
         {mainImage ? (
           <img
             src={mainImage}
@@ -163,15 +163,19 @@ export function ProductGridCard({
         </div>
 
         {/* Quick view button overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+        <div 
+          className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none"
+        >
           <Button
             variant="secondary"
             size="sm"
             onClick={(e) => {
-              handleStopPropagation(e)
+              e.stopPropagation()
+              e.preventDefault()
               onQuickView(product)
             }}
-            className="backdrop-blur-md"
+            className="backdrop-blur-md pointer-events-auto"
+            data-no-navigate
           >
             <Eye className="w-4 h-4 mr-2" />
             Quick View
@@ -181,7 +185,7 @@ export function ProductGridCard({
       </div>
 
       {/* Content */}
-      <div className="relative z-10 p-4 flex-1 flex flex-col">
+      <div className="relative p-4 flex-1 flex flex-col">
         {/* Category Badge */}
         {product.category && (
           <Badge variant="outline" className="w-fit mb-2 text-xs">
@@ -220,7 +224,12 @@ export function ProductGridCard({
 
         {/* Quantity Input & Add to Cart */}
         {!isOutOfStock && (
-          <div className="mt-auto pt-3 border-t border-border/50 space-y-2">
+          <div 
+            className="mt-auto pt-3 border-t border-border/50 space-y-2"
+            onClick={handleStopPropagation}
+            onMouseDown={handleStopPropagation}
+            data-no-navigate
+          >
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Qty:</span>
               <div className="flex items-center gap-1 flex-1">
@@ -229,7 +238,8 @@ export function ProductGridCard({
                   size="icon"
                   className="h-8 w-8"
                   onClick={(e) => {
-                    handleStopPropagation(e)
+                    e.stopPropagation()
+                    e.preventDefault()
                     handleQuantityChange(-1)
                   }}
                   disabled={localQuantity <= 1}
@@ -242,11 +252,16 @@ export function ProductGridCard({
                   max={maxQuantity}
                   value={localQuantity}
                   onChange={(e) => {
-                    handleStopPropagation(e)
+                    e.stopPropagation()
                     const val = parseInt(e.target.value) || 1
                     setLocalQuantity(Math.max(1, Math.min(val, maxQuantity)))
                   }}
-                  onClick={handleStopPropagation}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation()
+                  }}
                   className="h-8 w-16 text-center text-sm"
                 />
                 <Button
@@ -254,7 +269,8 @@ export function ProductGridCard({
                   size="icon"
                   className="h-8 w-8"
                   onClick={(e) => {
-                    handleStopPropagation(e)
+                    e.stopPropagation()
+                    e.preventDefault()
                     handleQuantityChange(1)
                   }}
                   disabled={localQuantity >= maxQuantity}
@@ -267,7 +283,8 @@ export function ProductGridCard({
               size="sm"
               className="w-full"
               onClick={(e) => {
-                handleStopPropagation(e)
+                e.stopPropagation()
+                e.preventDefault()
                 handleAddToCart()
               }}
               disabled={isOutOfStock}
@@ -275,63 +292,6 @@ export function ProductGridCard({
               <ShoppingCart className="w-4 h-4 mr-2" />
               Add to Cart
             </Button>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className={cn(
-          "pt-3 border-t border-border/50 flex gap-2",
-          isOutOfStock && "mt-auto"
-        )}>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={(e) => {
-              handleStopPropagation(e)
-              onQuickView(product)
-            }}
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            View
-          </Button>
-          {isAdmin && (
-            <>
-              {onEdit && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    handleStopPropagation(e)
-                    onEdit(product)
-                  }}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-              )}
-              {onDelete && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    handleStopPropagation(e)
-                    onDelete(product)
-                  }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* View details hint on hover - bottom right corner */}
-        {hasSku && (
-          <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-            <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md text-white text-xs px-2 py-1 rounded">
-              <span>View details</span>
-              <ChevronRight className="w-3 h-3" />
-            </div>
           </div>
         )}
       </div>
@@ -347,14 +307,23 @@ export function ProductGridCard({
     )
   }
 
-  // Wrap with Link for navigation
+  // Wrap with Link for navigation - interactive elements will stop propagation
   return (
     <Link
       to={detailUrl}
       className="block h-full"
       onClick={(e) => {
-        // Allow navigation, but prevent if clicking on interactive elements
-        // (handled by stopPropagation on buttons)
+        // Check if click is on an interactive element
+        const target = e.target as HTMLElement
+        if (
+          target.closest('button') ||
+          target.closest('input') ||
+          target.closest('[data-no-navigate]')
+        ) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+        // Otherwise, allow navigation
       }}
     >
       {CardContent}
