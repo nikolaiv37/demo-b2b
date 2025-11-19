@@ -73,14 +73,12 @@ export function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       })
 
       if (error) {
-        console.error('Login error:', error)
-        
         // Provide more helpful error messages
         let errorMessage = error.message || 'Invalid email or password'
         
@@ -98,20 +96,16 @@ export function LoginPage() {
         return
       }
 
-      // Success!
-      console.log('Login successful:', { userId: authData.user?.id })
-      
+      // Success! Show toast
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       })
       
-      // Small delay to let the session propagate
-      setTimeout(() => {
-        navigate('/dashboard/')
-      }, 100)
+      // Use window.location for reliable redirect after login
+      // This ensures the session is properly recognized
+      window.location.href = '/dashboard/'
     } catch (error: unknown) {
-      console.error('Unexpected login error:', error)
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
       toast({
         title: 'Login failed',
