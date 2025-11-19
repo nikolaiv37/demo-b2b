@@ -2,10 +2,13 @@
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GlassCard } from '@/components/GlassCard'
+import { useAuth } from '@/hooks/useAuth'
 import { MyComplaintsTab } from './MyComplaintsTab'
 import { NewComplaintTab } from './NewComplaintTab'
+import { AdminComplaintsView } from './AdminComplaintsView'
 
 export function ComplaintsPage() {
+  const { isAdmin } = useAuth()
   const [activeTab, setActiveTab] = useState('my-complaints')
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -14,6 +17,12 @@ export function ComplaintsPage() {
     setRefreshKey((prev) => prev + 1)
   }
 
+  // Admin sees completely different view
+  if (isAdmin) {
+    return <AdminComplaintsView />
+  }
+
+  // Company users see the original tabs view
   return (
     <div className="space-y-6">
       <div>

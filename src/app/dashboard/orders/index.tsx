@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { OrderDetailsSheet } from '@/components/OrderDetailsSheet'
 import { useAuth } from '@/hooks/useAuth'
+import { AdminOrdersView } from './AdminOrdersView'
 import {
   Eye,
   MoreVertical,
@@ -274,13 +275,20 @@ function formatOrderDate(dateString: string): string {
 }
 
 export function OrdersPage() {
+  const { user, isAdmin } = useAuth()
+  
+  // Admin sees completely different view
+  if (isAdmin) {
+    return <AdminOrdersView />
+  }
+
+  // Company users see the original orders view
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
   const [quickFilter, setQuickFilter] = useState<string | null>(null)
-  const { user } = useAuth()
   const navigate = useNavigate()
 
   const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
