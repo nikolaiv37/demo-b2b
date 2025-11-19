@@ -16,9 +16,6 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowRight,
-  Plus,
-  Upload,
-  Store,
   AlertTriangle,
 } from 'lucide-react'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
@@ -672,73 +669,6 @@ export function DashboardOverview() {
         </GlassCard>
       </div>
 
-      {/* Quick Actions Bar - Mobile Floating */}
-      <div className="fixed bottom-4 left-4 right-4 md:hidden z-50">
-        <GlassCard className="p-2">
-          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="flex-shrink-0"
-              onClick={() => navigate('/dashboard/products')}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Product
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="flex-shrink-0"
-              onClick={() => navigate('/dashboard/csv-import')}
-            >
-              <Upload className="w-4 h-4 mr-1" />
-              CSV Import
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="flex-shrink-0"
-              onClick={() => navigate('/catalog')}
-            >
-              <Store className="w-4 h-4 mr-1" />
-              Catalog
-            </Button>
-          </div>
-        </GlassCard>
-      </div>
-
-      {/* Quick Actions - Desktop */}
-      <div className="hidden md:block">
-        <GlassCard>
-          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2"
-              onClick={() => navigate('/dashboard/products')}
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add Product</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2"
-              onClick={() => navigate('/dashboard/csv-import')}
-            >
-              <Upload className="w-5 h-5" />
-              <span>CSV Import</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2"
-              onClick={() => navigate('/catalog')}
-            >
-              <Store className="w-5 h-5" />
-              <span>Go to Catalog</span>
-            </Button>
-          </div>
-        </GlassCard>
-      </div>
     </div>
   )
 }
