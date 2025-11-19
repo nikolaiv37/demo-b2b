@@ -18,9 +18,11 @@ import { ProductDetailPage } from '@/app/dashboard/products/[sku]/page'
 import { WishlistPage } from '@/app/dashboard/wishlist'
 import { OrdersPage } from '@/app/dashboard/orders'
 import { QuotesPage } from '@/app/dashboard/quotes'
-import { CustomersPage } from '@/app/dashboard/customers'
+// Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 import { CSVImportPage } from '@/app/dashboard/csv-import'
 import { SettingsPage } from '@/app/dashboard/settings'
+import { AnalyticsPage } from '@/app/dashboard/analytics'
+import { ComplaintsPage } from '@/app/dashboard/complaints'
 
 // Public Pages
 import { PublicCatalog } from '@/pages/PublicCatalog'
@@ -69,10 +71,11 @@ function App() {
                 <Route path="products/:sku" element={<ProductDetailPage />} />
                 <Route path="wishlist" element={<WishlistPage />} />
                 <Route path="orders" element={<OrdersPage />} />
+                <Route path="complaints" element={<ComplaintsPage />} />
                 <Route path="quotes" element={<QuotesPage />} />
-                <Route path="customers" element={<CustomersPage />} />
                 <Route path="csv-import" element={<CSVImportPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
               </Route>
 
               {/* Public Routes */}

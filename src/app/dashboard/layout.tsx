@@ -20,7 +20,6 @@ import {
   LogOut,
   FileText,
   Package,
-  Users,
   ChevronRight,
 } from 'lucide-react'
 import {
@@ -33,15 +32,18 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useDarkMode } from '@/hooks/useDarkMode'
 
+// Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
+
 // Page title mapping for breadcrumbs
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Overview',
   '/dashboard/products': 'Products',
   '/dashboard/orders': 'Orders',
-  '/dashboard/customers': 'Customers',
+  '/dashboard/complaints': 'Complaints & Returns',
   '/dashboard/csv-import': 'CSV Import',
   '/dashboard/quotes': 'Quotes',
   '/dashboard/settings': 'Settings',
+  '/dashboard/analytics': 'Analytics',
 }
 
 export function DashboardLayout() {
@@ -162,16 +164,6 @@ export function DashboardLayout() {
                     >
                       <Package className="mr-2 h-4 w-4" />
                       Add Product
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        console.log('New Customer clicked')
-                        navigate('/dashboard/customers')
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      New Customer
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
