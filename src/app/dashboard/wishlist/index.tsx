@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
 import { ProductGridCard } from '@/components/ProductGridCard'
 import { ProductQuickViewModal } from '@/components/ProductQuickViewModal'

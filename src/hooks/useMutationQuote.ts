@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase/client'
 import { Quote, QuoteItem } from '@/types'
 import { addDays } from 'date-fns'
 import { sendEmail, EmailTemplates } from '@/lib/resendClient'

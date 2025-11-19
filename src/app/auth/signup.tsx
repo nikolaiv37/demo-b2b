@@ -3,13 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
-import { DemoModeBanner } from '@/components/DemoModeBanner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { useAuth } from '@/hooks/useAuth'
 import { Loader2, Package } from 'lucide-react'
 
 const signupSchema = z.object({
@@ -25,7 +24,6 @@ type SignupFormData = z.infer<typeof signupSchema>
 
 export function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
-  const { signUp } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -40,12 +38,23 @@ export function SignupPage() {
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true)
     try {
-      await signUp(data.email, data.password)
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      })
+
+      if (error) throw error
+
       toast({
         title: 'Account created!',
-        description: 'Please check your email to verify your account.',
+        description: 'Your account has been created successfully. Redirecting...',
       })
-      navigate('/auth/onboarding')
+      
+      // The useAuth hook will automatically create the profile with role = 'company'
+      // Wait a moment for the auth state to update, then redirect
+      setTimeout(() => {
+        navigate('/dashboard/')
+      }, 500)
     } catch (error: any) {
       toast({
         title: 'Signup failed',
@@ -60,7 +69,6 @@ export function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
-        <DemoModeBanner />
         <GlassCard>
           <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">

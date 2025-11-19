@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Toaster } from '@/components/ui/toaster'
 import { ErrorFallback } from '@/components/ErrorFallback'
+import { AuthGuard } from '@/components/AuthGuard'
 
 // Auth Pages
 import { LoginPage } from '@/app/auth/login'
@@ -64,8 +65,15 @@ function App() {
               <Route path="/auth/signup" element={<SignupPage />} />
               <Route path="/auth/onboarding" element={<OnboardingPage />} />
 
-              {/* Dashboard Routes */}
-              <Route path="/dashboard" element={<DashboardLayout />}>
+              {/* Dashboard Routes - Protected by AuthGuard */}
+              <Route
+                path="/dashboard"
+                element={
+                  <AuthGuard>
+                    <DashboardLayout />
+                  </AuthGuard>
+                }
+              >
                 <Route index element={<DashboardOverview />} />
                 <Route path="products" element={<ProductsPage />} />
                 <Route path="products/:sku" element={<ProductDetailPage />} />

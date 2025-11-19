@@ -5,7 +5,6 @@ import { CartDrawer } from '@/components/CartDrawer'
 import { OrderRequestModal } from '@/components/QuoteRequestModal'
 import { useAuth } from '@/hooks/useAuth'
 import { useCartStore } from '@/stores/cartStore'
-import { DemoModeBanner } from '@/components/DemoModeBanner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -49,16 +48,11 @@ const pageTitles: Record<string, string> = {
 export function DashboardLayout() {
   const [cartOpen, setCartOpen] = useState(false)
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
-  const { isAuthenticated, isLoading, profile, company, signOut } = useAuth()
+  const { profile, company, isAdmin, signOut } = useAuth()
   const { getItemCount } = useCartStore()
   const navigate = useNavigate()
   const location = useLocation()
   const { isDark, toggle: toggleTheme } = useDarkMode()
-  
-  // Check if we're in demo mode or dev mode (placeholder credentials)
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
-  const isDemoMode = supabaseUrl.includes('placeholder')
-  const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
 
   const cartItemCount = getItemCount()
 
@@ -93,18 +87,7 @@ export function DashboardLayout() {
   const pendingOrders = 3
   const lowStockItems = 5
 
-  if (isLoading && !isDemoMode && !isDevMode) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  // In demo/dev mode, allow access without authentication
-  if (!isAuthenticated && !isDemoMode && !isDevMode) {
-    return <Navigate to="/auth/login" replace />
-  }
+  // AuthGuard handles authentication, so we can remove the auth checks here
 
   return (
     <div className="min-h-screen flex">
@@ -266,11 +249,18 @@ export function DashboardLayout() {
                         {getUserInitials()}
                       </div>
                       <div className="hidden md:flex flex-col items-start">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {profile?.full_name || 'User'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {profile?.full_name || 'User'}
+                          </span>
+                          {isAdmin && (
+                            <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                              Admin
+                            </Badge>
+                          )}
+                        </div>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {profile?.role || 'Admin'}
+                          {profile?.email || 'user@example.com'}
                         </span>
                       </div>
                     </Button>
@@ -326,11 +316,6 @@ export function DashboardLayout() {
 
         {/* Main Content */}
         <main className="flex-1 p-6 lg:p-8 overflow-auto custom-scrollbar">
-          {(isDemoMode || isDevMode) && (
-            <div className="mb-6">
-              <DemoModeBanner />
-            </div>
-          )}
           <Outlet />
         </main>
       </div>

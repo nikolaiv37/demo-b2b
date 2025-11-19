@@ -101,7 +101,7 @@ const settingsSubmenuItems = [
 export function SidebarNav() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { company, signOut } = useAuth()
+  const { company, isAdmin, signOut } = useAuth()
   const { count: wishlistCount } = useWishlist()
   // Default to open on page load
   const [settingsOpen, setSettingsOpen] = useState<string>('settings')
@@ -473,24 +473,32 @@ export function SidebarNav() {
                 </div>
                 <AccordionContent className="pt-1">
                   <div className="space-y-1 pl-6">
-                    {settingsSubmenuItems.map((subItem) => {
-                      const isSubActive = isSubmenuItemActive(subItem.href)
-                      return (
-                        <Link
-                          key={subItem.href}
-                          to={subItem.href}
-                          className={cn(
-                            'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
-                            isSubActive
-                              ? 'bg-[#0f172a]/10 dark:bg-[#0f172a]/20 text-[#0f172a] dark:text-white font-semibold'
-                              : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                          )}
-                        >
-                          <subItem.icon className="w-4 h-4" />
-                          <span>{subItem.title}</span>
-                        </Link>
-                      )
-                    })}
+                    {settingsSubmenuItems
+                      .filter((subItem) => {
+                        // Hide CSV Import unless user is admin
+                        if (subItem.href === '/dashboard/csv-import' && !isAdmin) {
+                          return false
+                        }
+                        return true
+                      })
+                      .map((subItem) => {
+                        const isSubActive = isSubmenuItemActive(subItem.href)
+                        return (
+                          <Link
+                            key={subItem.href}
+                            to={subItem.href}
+                            className={cn(
+                              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
+                              isSubActive
+                                ? 'bg-[#0f172a]/10 dark:bg-[#0f172a]/20 text-[#0f172a] dark:text-white font-semibold'
+                                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                            )}
+                          >
+                            <subItem.icon className="w-4 h-4" />
+                            <span>{subItem.title}</span>
+                          </Link>
+                        )
+                      })}
                   </div>
                 </AccordionContent>
               </AccordionItem>

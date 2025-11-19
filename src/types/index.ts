@@ -8,17 +8,18 @@ export interface Company {
   updated_at: string
 }
 
-export type UserRole = 'admin' | 'sales' | 'buyer'
+export type UserRole = 'admin' | 'company'
 
 export interface Profile {
   id: string
-  company_id: string
   role: UserRole
-  email: string
-  full_name?: string
-  avatar_url?: string
+  company_name?: string | null
+  phone?: string | null
+  email?: string // May not exist in DB, but we use it from auth.users
+  full_name?: string // May not exist in DB, but we might use it
+  avatar_url?: string // May not exist in DB, but we might use it
   created_at: string
-  updated_at: string
+  updated_at?: string // May not exist in DB
 }
 
 export interface Product {
