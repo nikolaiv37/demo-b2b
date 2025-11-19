@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Package,
   FileText,
-  Users,
   Upload,
   Settings,
   LogOut,
@@ -15,6 +14,8 @@ import {
   Palette,
   ChevronDown,
   Heart,
+  BarChart3,
+  AlertCircle,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useWishlist } from '@/hooks/useWishlist'
@@ -26,6 +27,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+
+// Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
 // Main navigation items
 const mainNavItems = [
@@ -41,9 +44,14 @@ const mainNavItems = [
     badge: 0, // TODO: Calculate from orders with awaiting_payment status
   },
   {
-    title: 'Buyers',
-    href: '/dashboard/customers',
-    icon: Users,
+    title: 'Complaints & Returns',
+    href: '/dashboard/complaints',
+    icon: AlertCircle,
+  },
+  {
+    title: 'Analytics',
+    href: '/dashboard/analytics',
+    icon: BarChart3,
   },
 ]
 
