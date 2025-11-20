@@ -17,6 +17,8 @@ import {
   TrendingDown,
   ArrowRight,
   AlertTriangle,
+  Bell,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { useEffect, useMemo } from 'react'
@@ -64,7 +66,14 @@ interface DashboardStats {
     name: string
     stock: number
     category?: string
+    main_image?: string
+    images?: string[]
   }>
+  stockStatusCounts: {
+    inStock: number
+    lowStock: number
+    outOfStock: number
+  }
 }
 
 const COLORS = [
@@ -77,7 +86,7 @@ const COLORS = [
 ]
 
 export function DashboardOverview() {
-  const { company } = useAuth()
+  const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -85,9 +94,11 @@ export function DashboardOverview() {
   }, [])
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard-stats', company?.id],
+    queryKey: ['dashboard-stats', user?.id, isAdmin],
     queryFn: async () => {
-      if (!company?.id) return null
+      // For admin, we can proceed without user.id (they see all data)
+      // For company users, we need at least user.id (RLS will handle filtering)
+      if (!isAdmin && !user?.id) return null
 
       const now = new Date()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -119,44 +130,77 @@ export function DashboardOverview() {
         .gte('created_at', startOfLastMonth.toISOString())
         .lte('created_at', endOfLastMonth.toISOString())
 
-      // Fetch quotes for last 30 days (for daily breakdown)
-      const { data: recentOrdersData } = await supabase
+      // Fetch recent orders from quotes table (last 5, newest first)
+      // Admin sees all orders, company users see only their own (RLS handles this)
+      const { data: recentOrdersData, error: recentOrdersError } = await supabase
         .from('quotes')
-        .select('total, created_at, items, company_name, email, status, id, order_number')
-        .in('status', ['new', 'pending', 'approved'])
-        .gte('created_at', thirtyDaysAgo.toISOString())
+        .select('id, user_id, company_name, email, total, status, created_at, order_number')
         .order('created_at', { ascending: false })
         .limit(5)
+      
+      if (recentOrdersError) {
+        console.error('Error fetching recent orders:', recentOrdersError)
+      }
 
-      // Fetch products - use quantity (not stock), and weboffer_price (not wholesale_price)
-      let productsQuery = supabase
+      // Fetch products - use the EXACT same query structure as products page to ensure consistency
+      // Use select('*') to match products page, and use count queries for accurate totals
+      // RLS will handle filtering for company users automatically
+      
+      // First, get counts for each stock status using the same filters as products page
+      const lowStockCountQuery = supabase
         .from('products')
-        .select('id, sku, name, quantity, category, weboffer_price')
+        .select('*', { count: 'exact', head: true })
+        .gt('quantity', 0)
+        .lte('quantity', 10)
       
-      // Try to filter by company_id, if that fails, get all products
-      const { data: products, error: productsError } = await productsQuery
+      const outOfStockCountQuery = supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('quantity', 0)
       
-      // Filter products by company_id if column exists, otherwise show all
-      let filteredProducts = products || []
-      if (products && !productsError) {
-        // Check if products have company_id field and filter
-        if (products.length > 0 && 'company_id' in products[0]) {
-          filteredProducts = products.filter((p: any) => p.company_id === company.id)
-        } else {
-          // No company_id field, show all products (RLS will handle filtering)
-          filteredProducts = products
-        }
+      const inStockCountQuery = supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .gt('quantity', 10)
+      
+      // Execute count queries in parallel
+      const [lowStockResult, outOfStockResult, inStockResult] = await Promise.all([
+        lowStockCountQuery,
+        outOfStockCountQuery,
+        inStockCountQuery,
+      ])
+      
+      // Extract counts
+      const lowStockCount = lowStockResult.count ?? 0
+      const outOfStockCount = outOfStockResult.count ?? 0
+      const inStockCount = inStockResult.count ?? 0
+      
+      // Also fetch products for the low stock list (limit to reasonable number for display)
+      // Use the same query structure as products page
+      const { data: lowStockProductsData, error: productsError } = await supabase
+        .from('products')
+        .select('id, sku, name, quantity, category, weboffer_price, main_image, images')
+        .gt('quantity', 0)
+        .lte('quantity', 10)
+        .order('quantity', { ascending: true })
+        .limit(10) // Only need a few for display
+      
+      if (productsError) {
+        console.error('Error fetching low stock products:', productsError)
       }
       
-      // Normalize quantity field
-      filteredProducts = filteredProducts.map((p: any) => ({
+      // Normalize quantity field for display products
+      const filteredProducts = (lowStockProductsData || []).map((p: any) => ({
         ...p,
         quantity: p.quantity ?? 0,
       }))
 
       // Calculate stats
       // For revenue, only count approved quotes (treating them as paid orders)
-      const approvedOrders = allOrders?.filter((o: any) => o.status === 'approved') || []
+      // Also include 'new' and 'pending' statuses for category calculation (they represent real orders)
+      const approvedOrders = allOrders?.filter((o: any) => 
+        o.status === 'approved' || o.status === 'new' || o.status === 'pending'
+      ) || []
       const totalRevenue = approvedOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
       const thisMonthApproved = thisMonthOrders?.filter((o: any) => o.status === 'approved') || []
@@ -176,10 +220,19 @@ export function DashboardOverview() {
       )
       const activeCustomers = uniqueCustomers.size
 
-      // Products stats
-      const totalProducts = filteredProducts?.length || 0
-      const lowStockProducts = filteredProducts?.filter((p) => (p.quantity || 0) < 10) || []
-      const lowStockCount = lowStockProducts.length
+      // Products stats - use counts from database queries (matches products page exactly)
+      // These counts are calculated using the EXACT same filters as products page:
+      // - Low Stock: gt('quantity', 0).lte('quantity', 10) - quantity 1-10 inclusive
+      // - Out of Stock: eq('quantity', 0) - quantity = 0
+      // - In Stock: gt('quantity', 10) - quantity > 10
+      const totalProducts = lowStockCount + outOfStockCount + inStockCount
+      
+      const stockStatusCounts = {
+        inStock: inStockCount,
+        lowStock: lowStockCount,
+        outOfStock: outOfStockCount,
+      }
+      
 
       // Revenue by day (this month) - only count approved quotes
       const revenueByDayMap = new Map<string, number>()
@@ -212,40 +265,197 @@ export function DashboardOverview() {
           orders: item.orders,
         }))
 
-      // Categories by revenue (from order items) - only count approved quotes
-      const categoryRevenueMap = new Map<string, number>()
-      approvedOrders?.forEach((order: any) => {
-        const items = order.items as Array<{ product_id?: string; category?: string; total: number }>
+      // Categories by revenue (from order items) - count ALL quotes (new, pending, approved)
+      // This shows categories for all orders, not just approved ones
+      // First, collect all unique product_ids AND skus from all quotes (not just approved)
+      // Note: Product IDs may change after CSV re-imports, but SKUs are permanent
+      const productIds = new Set<string>()
+      const productSkus = new Set<string>()
+      const allItems: Array<{ product_id: string; sku?: string; total: number }> = []
+      
+      // Use allOrders instead of approvedOrders for category calculation
+      // This includes 'new', 'pending', and 'approved' statuses
+      allOrders?.forEach((order: any) => {
+        // Handle items - could be array or JSON string
+        let items: Array<{ product_id?: string; sku?: string; total: number }> = []
+        if (Array.isArray(order.items)) {
+          items = order.items
+        } else if (typeof order.items === 'string') {
+          try {
+            items = JSON.parse(order.items)
+          } catch (e) {
+            console.warn('Failed to parse items JSON:', e, order.items)
+          }
+        }
+        
         items?.forEach((item) => {
-          // Try to get category from product
-          const product = filteredProducts?.find((p) => p.id === item.product_id)
-          const category = product?.category || item.category || 'Uncategorized'
-          categoryRevenueMap.set(category, (categoryRevenueMap.get(category) || 0) + Number(item.total || 0))
+          const productId = item.product_id
+          const sku = item.sku
+          if (productId) {
+            // Normalize product_id to string
+            const productIdStr = String(productId)
+            productIds.add(productIdStr)
+            if (sku) {
+              productSkus.add(sku)
+            }
+            allItems.push({
+              product_id: productIdStr,
+              sku: sku,
+              total: Number(item.total || 0),
+            })
+          }
         })
       })
-      const categoriesByRevenue = Array.from(categoryRevenueMap.entries())
+
+
+      // Fetch all products that appear in approved quotes to get their categories
+      // Product IDs in quotes are stored as strings, but products table uses SERIAL (integer) IDs
+      const productsMap = new Map<string, string>() // product_id -> category
+      if (productIds.size > 0) {
+        const productIdsArray = Array.from(productIds)
+        
+        // Convert string IDs to integers for the query (products table uses SERIAL/integer IDs)
+        const productIdsInt = productIdsArray
+          .map(id => {
+            const parsed = parseInt(id, 10)
+            return isNaN(parsed) ? null : parsed
+          })
+          .filter((id): id is number => id !== null)
+        
+        
+        if (productIdsInt.length > 0) {
+          // Try multiple query strategies to find products
+          // Strategy 1: Query by integer IDs
+          let productsForCategories: any[] | null = null
+          let productsForCategoriesError: any = null
+          
+          const { data, error } = await supabase
+            .from('products')
+            .select('id, category')
+            .in('id', productIdsInt)
+          
+          productsForCategories = data
+          productsForCategoriesError = error
+          
+          if (productsForCategoriesError) {
+            console.error('Error fetching products for categories (by ID):', productsForCategoriesError)
+          }
+          
+          // Strategy 2: If no products found, try querying as strings (in case Supabase auto-converts)
+          if ((!productsForCategories || productsForCategories.length === 0) && productIdsInt.length > 0) {
+            const { data: dataStr, error: errorStr } = await supabase
+              .from('products')
+              .select('id, category')
+              .in('id', productIdsArray) // Try with original string array
+            
+            if (!errorStr && dataStr && dataStr.length > 0) {
+              productsForCategories = dataStr
+            }
+          }
+          
+          // Strategy 3: If no products found by ID, try by SKU (SKUs are permanent, IDs may change)
+          if ((!productsForCategories || productsForCategories.length === 0) && productSkus.size > 0) {
+            const skusArray = Array.from(productSkus)
+            const { data: productsBySku, error: errorBySku } = await supabase
+              .from('products')
+              .select('id, category, sku')
+              .in('sku', skusArray)
+            
+            if (!errorBySku && productsBySku && productsBySku.length > 0) {
+              productsForCategories = productsBySku
+              
+              // Create a map of SKU -> category for lookup
+              const skuToCategoryMap = new Map<string, string>()
+              productsBySku.forEach((p: any) => {
+                skuToCategoryMap.set(p.sku, p.category || 'Uncategorized')
+              })
+              
+              // Update allItems with categories from SKU lookup
+              allItems.forEach((item) => {
+                if (item.sku && skuToCategoryMap.has(item.sku)) {
+                  const category = skuToCategoryMap.get(item.sku)!
+                  // Store category by both product_id (for original lookup) and SKU
+                  productsMap.set(item.product_id, category)
+                  productsMap.set(item.sku, category)
+                }
+              })
+            }
+          }
+          
+          if (productsForCategories && productsForCategories.length > 0) {
+            productsForCategories.forEach((p: any) => {
+              // Store both string and integer versions for lookup
+              const productIdStr = String(p.id)
+              const category = p.category || 'Uncategorized'
+              productsMap.set(productIdStr, category)
+              // Also store the integer version as string
+              if (typeof p.id === 'number') {
+                productsMap.set(String(p.id), category)
+              }
+            })
+          }
+        }
+      }
+
+      // Calculate revenue by category
+      const categoryRevenueMap = new Map<string, number>()
+      allItems.forEach((item) => {
+        const productIdStr = String(item.product_id)
+        // Try to get category by product_id first, then by SKU
+        let category = productsMap.get(productIdStr)
+        if (!category && item.sku) {
+          category = productsMap.get(item.sku)
+        }
+        category = category || 'Uncategorized'
+        const currentRevenue = categoryRevenueMap.get(category) || 0
+        categoryRevenueMap.set(category, currentRevenue + item.total)
+      })
+      
+      
+      let categoriesByRevenue = Array.from(categoryRevenueMap.entries())
         .map(([name, revenue]) => ({ name, value: revenue, revenue }))
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5)
+      
+      // If we couldn't find any products (productsMap is empty) but have "Uncategorized",
+      // it means products weren't matched - hide the chart
+      if (productsMap.size === 0 && categoriesByRevenue.length === 1 && categoriesByRevenue[0].name === 'Uncategorized') {
+        categoriesByRevenue = []
+      }
 
       // Recent orders (from quotes table)
-      const recentOrders = (recentOrdersData || []).map((order: any) => ({
-        id: order.id,
-        order_number: order.order_number || order.id.slice(0, 8).toUpperCase(),
-        customer_name: order.company_name || 'Unknown',
-        customer_email: order.email || '',
-        total: Number(order.total || 0),
-        status: order.status,
-        created_at: order.created_at,
-      }))
+      const recentOrders = (recentOrdersData || []).map((order: any) => {
+        let orderNumber: number | string | undefined = order.order_number
+        
+        // Fallback to using first 8 chars of order id if no order_number
+        if (!orderNumber) {
+          orderNumber = typeof order.id === 'string' 
+            ? order.id.slice(0, 8).toUpperCase() 
+            : typeof order.id === 'number'
+            ? order.id
+            : String(order.id).slice(0, 8).toUpperCase()
+        }
+        
+        return {
+          id: String(order.id),
+          order_number: orderNumber,
+          customer_name: order.company_name || 'Unknown',
+          customer_email: order.email || '',
+          total: Number(order.total || 0),
+          status: order.status,
+          created_at: order.created_at,
+        }
+      })
 
-      // Low stock products
-      const lowStock = lowStockProducts.map((p) => ({
+      // Low stock products (for display - already fetched above)
+      const lowStock = filteredProducts.map((p) => ({
         id: p.id,
         sku: p.sku,
         name: p.name,
         stock: p.quantity || 0,
         category: p.category,
+        main_image: p.main_image,
+        images: p.images || [],
       }))
 
       return {
@@ -257,15 +467,16 @@ export function DashboardOverview() {
         lastMonthOrders: lastMonthOrdersCount,
         activeCustomers,
         totalProducts,
-        lowStockCount,
+        lowStockCount: lowStockCount,
         revenueByDay,
         ordersByDay,
         categoriesByRevenue,
         recentOrders,
         lowStockProducts: lowStock,
+        stockStatusCounts,
       } as DashboardStats
     },
-    enabled: !!company?.id,
+    enabled: isAdmin || !!user?.id,
   })
 
   const revenueChange = useMemo(() => {
@@ -563,107 +774,178 @@ export function DashboardOverview() {
       {/* Recent Orders & Low Stock */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Orders */}
-        <GlassCard>
-          <div className="flex items-center justify-between mb-4">
+        <GlassCard className="border border-white/10 dark:border-white/5">
+          <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/10 dark:border-white/5">
             <h2 className="text-xl font-semibold">Recent Orders</h2>
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => navigate('/dashboard/orders')}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/5 dark:hover:bg-black/5"
             >
               View all
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
+              <ArrowRight className="w-3 h-3" />
+            </button>
           </div>
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
               ))}
             </div>
           ) : stats?.recentOrders && stats.recentOrders.length > 0 ? (
-            <div className="space-y-3">
-              {stats.recentOrders.map((order) => (
+            <div className="space-y-2.5">
+              {stats.recentOrders.map((order, index) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-colors"
+                  className="flex items-center justify-between p-3.5 rounded-lg bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-200 border border-white/10 dark:border-white/5 hover:border-white/20 dark:hover:border-white/10 shadow-sm hover:shadow-md"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono font-semibold text-sm">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="flex-shrink-0">
+                      <span className="font-mono font-semibold text-sm text-foreground">
                         #{order.order_number || order.id.slice(0, 8)}
                       </span>
-                      <OrderStatusBadge status={order.status as any} />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {order.customer_name || order.customer_email}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(order.total, 'EUR')}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <div className="flex-shrink-0 text-xs text-muted-foreground font-medium">
                       {new Date(order.created_at).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                       })}
-                    </p>
+                    </div>
+                    <div className="flex-1 min-w-0 truncate">
+                      <p className="text-sm font-medium truncate text-foreground">
+                        {order.customer_name || order.customer_email}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <OrderStatusBadge status={order.status as any} />
+                    </div>
+                  </div>
+                  <div className="text-right ml-4 flex-shrink-0">
+                    <p className="font-semibold text-sm text-foreground">{formatCurrency(order.total, 'EUR')}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No recent orders
+            <div className="text-center py-12 text-muted-foreground border border-dashed border-white/10 dark:border-white/5 rounded-lg">
+              <p className="text-sm">No recent orders</p>
             </div>
           )}
         </GlassCard>
 
         {/* Low Stock Alert */}
-        <GlassCard className={stats && stats.lowStockCount > 0 ? 'border-red-500/30' : ''}>
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle
-              className={`w-5 h-5 ${
-                stats && stats.lowStockCount > 0 ? 'text-red-500' : 'text-muted-foreground'
-              }`}
-            />
-            <h2 className="text-xl font-semibold">Low Stock Alert</h2>
+        <GlassCard className="border border-white/10 dark:border-white/5">
+          <div className="mb-5 pb-4 border-b border-white/10 dark:border-white/5">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="relative">
+                <Bell className="w-5 h-5 text-muted-foreground" />
+                {stats && stats.lowStockCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full border border-white/20"></span>
+                )}
+              </div>
+              <h2 className="text-xl font-semibold">Low Stock Alert</h2>
+            </div>
+            
+            {/* Stock Status Bubbles - Real Data */}
+            {stats && !isLoading && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* In Stock - Green (quantity >= 10) */}
+                {stats.stockStatusCounts.inStock > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 shadow-sm hover:bg-green-500/15 transition-colors">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm"></div>
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+                      In Stock: {stats.stockStatusCounts.inStock}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Low Stock - Orange (1-9) */}
+                {stats.stockStatusCounts.lowStock > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 shadow-sm hover:bg-orange-500/15 transition-colors">
+                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm"></div>
+                    <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
+                      Low Stock: {stats.stockStatusCounts.lowStock}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Out of Stock - Red (0) */}
+                {stats.stockStatusCounts.outOfStock > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-sm hover:bg-red-500/15 transition-colors">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></div>
+                    <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+                      Out of Stock: {stats.stockStatusCounts.outOfStock}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
               ))}
             </div>
-          ) : stats && stats.lowStockProducts.length > 0 ? (
-            <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
-              {stats.lowStockProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20"
+          ) : stats && stats.lowStockCount > 0 ? (
+            <>
+              <p className="text-base font-semibold text-foreground mb-5 px-1">
+                {stats.lowStockCount} products low on stock
+              </p>
+              <div className="space-y-2.5 mb-5">
+                {stats.lowStockProducts
+                  .sort((a, b) => a.stock - b.stock)
+                  .slice(0, 5)
+                  .map((product) => {
+                    const imageUrl = product.main_image || (product.images && product.images.length > 0 ? product.images[0] : null)
+                    return (
+                      <div
+                        key={product.id}
+                        className="flex items-center gap-3.5 p-3.5 rounded-lg bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-200 border border-white/10 dark:border-white/5 hover:border-white/20 dark:hover:border-white/10 shadow-sm hover:shadow-md"
+                      >
+                        <div className="flex-shrink-0 w-11 h-11 rounded-md bg-muted/50 flex items-center justify-center overflow-hidden border border-white/10 dark:border-white/5 shadow-sm">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                              }}
+                            />
+                          ) : null}
+                          <ImageIcon className={`w-5 h-5 text-muted-foreground ${imageUrl ? 'hidden' : ''}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate text-foreground mb-0.5">{product.name}</p>
+                          <p className="text-xs text-muted-foreground font-medium">SKU: {product.sku}</p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <Badge 
+                            variant="outline" 
+                            className="bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30 text-xs font-medium shadow-sm"
+                          >
+                            Only {product.stock} left
+                          </Badge>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+              <div className="flex justify-end pt-3 border-t border-white/10 dark:border-white/5">
+                <button
+                  onClick={() => navigate('/dashboard/products?filter=low-stock')}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/5 dark:hover:bg-black/5"
                 >
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/50">
-                      {product.stock} left
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => navigate('/dashboard/products')}
-                    >
-                      Restock
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  View all
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>All products have sufficient stock</p>
+            <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground border border-dashed border-white/10 dark:border-white/5 rounded-lg bg-white/5 dark:bg-black/5">
+              <Package className="w-4 h-4" />
+              <p className="text-sm font-medium">All products have sufficient stock</p>
             </div>
           )}
         </GlassCard>
