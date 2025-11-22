@@ -220,11 +220,8 @@ export function SidebarNav() {
           </div>
           <div className="flex flex-col min-w-0">
             <h2 className="font-bold text-base text-gray-900 dark:text-white truncate">
-              {company?.name || 'Dev Company'}
+              {company?.name || 'FurniTrade'}
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Wholesale Platform
-            </p>
           </div>
         </Link>
       </div>

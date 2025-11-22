@@ -8,17 +8,12 @@ import { useCartStore } from '@/stores/cartStore'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  Loader2,
   ShoppingCart,
-  Bell,
-  Plus,
   Sun,
   Moon,
   Settings,
   Building2,
   LogOut,
-  FileText,
-  Package,
   ChevronRight,
 } from 'lucide-react'
 import {
@@ -30,6 +25,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase/client'
 
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
@@ -48,13 +45,45 @@ const pageTitles: Record<string, string> = {
 export function DashboardLayout() {
   const [cartOpen, setCartOpen] = useState(false)
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
-  const { profile, company, isAdmin, signOut } = useAuth()
+  const { user, profile, company, isAdmin, signOut } = useAuth()
+  
+  // Fetch real status data for badges
+  const { data: statusData } = useQuery({
+    queryKey: ['status-badges', user?.id, isAdmin],
+    queryFn: async () => {
+      if (!isAdmin && !user?.id) return null
+
+      // Fetch pending orders (status: 'new' or 'pending')
+      const { count: pendingCount } = await supabase
+        .from('quotes')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['new', 'pending'])
+
+      // Fetch low stock products (quantity 1-10)
+      const { count: lowStockCount } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .gt('quantity', 0)
+        .lte('quantity', 10)
+
+      return {
+        pendingOrders: pendingCount || 0,
+        lowStockItems: lowStockCount || 0,
+      }
+    },
+    enabled: isAdmin || !!user?.id,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  })
+
   const { getItemCount } = useCartStore()
   const navigate = useNavigate()
   const location = useLocation()
   const { isDark, toggle: toggleTheme } = useDarkMode()
 
   const cartItemCount = getItemCount()
+
+  const pendingOrders = statusData?.pendingOrders || 0
+  const lowStockItems = statusData?.lowStockItems || 0
 
   // Get current page title for breadcrumbs
   const getPageTitle = () => {
@@ -82,13 +111,6 @@ export function DashboardLayout() {
     return 'JD'
   }
 
-  // Hardcoded notification count (as requested)
-  const notificationCount = 3
-  const pendingOrders = 3
-  const lowStockItems = 5
-
-  // AuthGuard handles authentication, so we can remove the auth checks here
-
   return (
     <div className="min-h-screen flex">
       <SidebarNav />
@@ -114,46 +136,6 @@ export function DashboardLayout() {
 
               {/* RIGHT: Actions Group */}
               <div className="flex items-center gap-4">
-                {/* Quick Actions Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        console.log('Create Order clicked')
-                        navigate('/dashboard/orders')
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Create Order
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        console.log('Add Product clicked')
-                        navigate('/dashboard/products')
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <Package className="mr-2 h-4 w-4" />
-                      Add Product
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Vertical Divider */}
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
-
                 {/* Theme Toggle */}
                 <Button
                   variant="ghost"
@@ -165,29 +147,6 @@ export function DashboardLayout() {
                     <Sun className="h-5 w-5 transition-all" />
                   ) : (
                     <Moon className="h-5 w-5 transition-all" />
-                  )}
-                </Button>
-
-                {/* Vertical Divider */}
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
-
-                {/* Notifications Bell */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative h-9 w-9 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={() => {
-                    console.log('Notifications clicked')
-                  }}
-                >
-                  <Bell className="h-5 w-5" />
-                  {notificationCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-0.5 -right-0.5 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 hover:bg-red-600"
-                    >
-                      {notificationCount > 99 ? '99+' : notificationCount}
-                    </Badge>
                   )}
                 </Button>
 
