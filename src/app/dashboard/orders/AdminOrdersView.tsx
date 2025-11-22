@@ -28,8 +28,10 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Eye, Search } from 'lucide-react'
+import { Eye, Search, FileText, Download } from 'lucide-react'
 import { formatPrice, formatDateTime, cn } from '@/lib/utils'
+import { ProformaInvoicePDF } from '@/components/ProformaInvoicePDF'
+import { pdf } from '@react-pdf/renderer'
 
 interface OrderItem {
   product_id?: string
@@ -327,12 +329,6 @@ export function AdminOrdersView() {
       filtered = filtered.filter((order) => isToday(order.created_at))
     } else if (quickFilter === 'this_week') {
       filtered = filtered.filter((order) => isThisWeek(order.created_at))
-    } else if (quickFilter === 'awaiting_payment') {
-      filtered = filtered.filter((order) => order.status === 'awaiting_payment')
-    } else if (quickFilter === 'low_stock') {
-      // TODO: Implement low stock logic based on inventory
-      // For now, filter orders with items that might be low stock
-      filtered = filtered.filter((order) => order.items.length > 0)
     }
 
     return filtered
@@ -423,31 +419,84 @@ export function AdminOrdersView() {
             >
               This Week
             </Button>
+            
+            {/* Status Filter Buttons */}
             <Button
-              variant={quickFilter === 'awaiting_payment' ? 'default' : 'outline'}
+              variant={statusFilter === 'draft' ? 'default' : 'outline'}
               size="sm"
-              onClick={() =>
-                setQuickFilter(quickFilter === 'awaiting_payment' ? null : 'awaiting_payment')
-              }
+              onClick={() => setStatusFilter(statusFilter === 'draft' ? 'all' : 'draft')}
               className={cn(
-                quickFilter === 'awaiting_payment' &&
+                statusFilter === 'draft' &&
+                  'bg-gray-500 text-white hover:bg-gray-600'
+              )}
+            >
+              Draft
+            </Button>
+            <Button
+              variant={statusFilter === 'awaiting_payment' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(statusFilter === 'awaiting_payment' ? 'all' : 'awaiting_payment')}
+              className={cn(
+                statusFilter === 'awaiting_payment' &&
                   'bg-orange-500 text-white hover:bg-orange-600'
               )}
             >
               Awaiting Payment
             </Button>
             <Button
-              variant={quickFilter === 'low_stock' ? 'default' : 'outline'}
+              variant={statusFilter === 'paid' ? 'default' : 'outline'}
               size="sm"
-              onClick={() =>
-                setQuickFilter(quickFilter === 'low_stock' ? null : 'low_stock')
-              }
+              onClick={() => setStatusFilter(statusFilter === 'paid' ? 'all' : 'paid')}
               className={cn(
-                quickFilter === 'low_stock' &&
-                  'bg-red-500 text-white hover:bg-red-600'
+                statusFilter === 'paid' &&
+                  'bg-green-500 text-white hover:bg-green-600'
               )}
             >
-              Low Stock Items
+              Paid
+            </Button>
+            <Button
+              variant={statusFilter === 'processing' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(statusFilter === 'processing' ? 'all' : 'processing')}
+              className={cn(
+                statusFilter === 'processing' &&
+                  'bg-blue-500 text-white hover:bg-blue-600'
+              )}
+            >
+              Processing
+            </Button>
+            <Button
+              variant={statusFilter === 'shipped' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(statusFilter === 'shipped' ? 'all' : 'shipped')}
+              className={cn(
+                statusFilter === 'shipped' &&
+                  'bg-purple-500 text-white hover:bg-purple-600'
+              )}
+            >
+              Shipped
+            </Button>
+            <Button
+              variant={statusFilter === 'delivered' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(statusFilter === 'delivered' ? 'all' : 'delivered')}
+              className={cn(
+                statusFilter === 'delivered' &&
+                  'bg-teal-500 text-white hover:bg-teal-600'
+              )}
+            >
+              Delivered
+            </Button>
+            <Button
+              variant={statusFilter === 'completed' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
+              className={cn(
+                statusFilter === 'completed' &&
+                  'bg-green-500 text-white hover:bg-green-600'
+              )}
+            >
+              Completed
             </Button>
           </div>
         </div>
@@ -701,6 +750,75 @@ export function AdminOrdersView() {
                   <p className="text-xs text-muted-foreground mt-1">
                     These notes are only visible to admins and will not be shown to the customer.
                   </p>
+                </div>
+
+                {/* PDF Generation Buttons */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const blob = await pdf(
+                          <ProformaInvoicePDF order={selectedOrder} />
+                        ).toBlob()
+                        const url = URL.createObjectURL(blob)
+                        const link = document.createElement('a')
+                        link.href = url
+                        link.download = `Proforma_Order_${selectedOrder.order_number}.pdf`
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                        URL.revokeObjectURL(url)
+                        toast({
+                          title: 'Proforma Invoice Generated',
+                          description: 'The proforma invoice has been downloaded successfully.',
+                        })
+                      } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Failed to generate proforma invoice.'
+                        toast({
+                          title: 'Error',
+                          description: errorMessage,
+                          variant: 'destructive',
+                        })
+                      }
+                    }}
+                    className="flex-1"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Generate Proforma Invoice
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const blob = await pdf(
+                          <ProformaInvoicePDF order={selectedOrder} />
+                        ).toBlob()
+                        const url = URL.createObjectURL(blob)
+                        const link = document.createElement('a')
+                        link.href = url
+                        link.download = `Order_${selectedOrder.order_number}_Summary.pdf`
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                        URL.revokeObjectURL(url)
+                        toast({
+                          title: 'Order Summary Downloaded',
+                          description: 'The order summary PDF has been downloaded successfully.',
+                        })
+                      } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Failed to generate order summary.'
+                        toast({
+                          title: 'Error',
+                          description: errorMessage,
+                          variant: 'destructive',
+                        })
+                      }
+                    }}
+                    className="flex-1"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download as PDF
+                  </Button>
                 </div>
               </div>
             </>
