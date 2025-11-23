@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
-import { Profile, UserRole } from '@/types'
+import { Profile, UserRole, Company } from '@/types'
 import { identifyUser } from '@/lib/analytics'
 
 /**
@@ -153,6 +153,30 @@ export function useAuth() {
   }, [setUser, setProfile, setLoading, clear])
 
   /**
+   * Loads company data from the database.
+   */
+  const loadCompany = async (companyId: string) => {
+    try {
+      const { data: company, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', companyId)
+        .single()
+
+      if (error) {
+        console.error('Error loading company:', error)
+        return
+      }
+
+      if (company) {
+        useAuthStore.getState().setCompany(company as Company)
+      }
+    } catch (error) {
+      console.error('Unexpected error loading company:', error)
+    }
+  }
+
+  /**
    * Loads the user's profile from the database.
    * If the profile doesn't exist, creates it automatically with role = 'company'.
    * Bulletproof error handling - RLS errors or other issues won't hang the app.
@@ -190,6 +214,11 @@ export function useAuth() {
         } as Profile
         
         setProfile(profileWithEmail)
+        
+        // Load company if profile has company_id
+        if (existingProfile.company_id) {
+          await loadCompany(existingProfile.company_id)
+        }
         
         identifyUser(user.id, {
           email: user.email || '',
@@ -233,6 +262,11 @@ export function useAuth() {
       
       setProfile(profileWithEmail)
       
+      // Load company if profile has company_id
+      if (createdProfile.company_id) {
+        await loadCompany(createdProfile.company_id)
+      }
+      
       // Track new user
       identifyUser(user.id, {
         email: user.email || '',
@@ -269,11 +303,13 @@ export function useAuth() {
   const isAuthenticated = !!user
   const isAdmin = profile?.role === 'admin'
   const isLoading = useAuthStore((state) => state.isLoading)
+  const company = useAuthStore((state) => state.company)
 
   return {
     // Auth state
     user,
     profile,
+    company,
     isLoading,
     isAuthenticated,
     isAdmin,

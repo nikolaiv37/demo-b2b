@@ -4,6 +4,12 @@ export interface Company {
   slug: string
   logo_url?: string
   stripe_id?: string
+  eik_bulstat?: string
+  vat_number?: string
+  phone?: string
+  address?: string
+  website?: string
+  onboarding_completed?: boolean
   created_at: string
   updated_at: string
 }

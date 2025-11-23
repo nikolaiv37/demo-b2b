@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { GlassCard } from '@/components/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,11 +7,69 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/hooks/useAuth'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { useToast } from '@/components/ui/use-toast'
+import { CompanyForm, CompanyFormData } from '@/components/CompanyForm'
+import { supabase } from '@/lib/supabase/client'
+import { slugify } from '@/lib/utils'
 import { Building2, User, CreditCard, Moon } from 'lucide-react'
+import { useAuthStore } from '@/stores/authStore'
 
 export function SettingsPage() {
-  const { company, profile } = useAuth()
+  const { company, profile, user } = useAuth()
   const { isDark, toggle } = useDarkMode()
+  const { toast } = useToast()
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleCompanySubmit = async (data: CompanyFormData, logoUrl: string | null) => {
+    if (!user || !company) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in and have a company',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const slug = slugify(data.companyName)
+
+      const { data: updatedCompany, error } = await supabase
+        .from('companies')
+        .update({
+          name: data.companyName,
+          slug,
+          logo_url: logoUrl,
+          eik_bulstat: data.eikBulstat,
+          vat_number: data.vatNumber,
+          phone: data.phone,
+          address: data.address,
+          website: data.website || null,
+        })
+        .eq('id', company.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Update company in store
+      useAuthStore.getState().setCompany(updatedCompany)
+
+      toast({
+        title: 'Success',
+        description: 'Company information updated successfully',
+      })
+    } catch (error: any) {
+      console.error('Error updating company:', error)
+      toast({
+        title: 'Update failed',
+        description: error.message || 'Failed to update company information',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -42,47 +101,15 @@ export function SettingsPage() {
         </TabsList>
 
         <TabsContent value="company">
-          <GlassCard>
-            <h2 className="text-xl font-semibold mb-4">Company Information</h2>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
-                <Input
-                  id="companyName"
-                  defaultValue={company?.name}
-                  placeholder="Your Company Name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="companySlug">Public Catalog URL</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    furnitrade.com/catalog/
-                  </span>
-                  <Input
-                    id="companySlug"
-                    defaultValue={company?.slug}
-                    placeholder="your-company"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="logo">Company Logo</Label>
-                {company?.logo_url && (
-                  <img
-                    src={company.logo_url}
-                    alt="Company logo"
-                    className="w-32 h-32 object-contain rounded-lg mb-2"
-                  />
-                )}
-                <Input id="logo" type="file" accept="image/*" />
-              </div>
-
-              <Button>Save Changes</Button>
-            </div>
+          <GlassCard className="p-6">
+            <h2 className="text-xl font-semibold mb-6">Company Information</h2>
+            <CompanyForm
+              company={company}
+              onSubmit={handleCompanySubmit}
+              isLoading={isSaving}
+              showLogoUpload={true}
+              mode="edit"
+            />
           </GlassCard>
         </TabsContent>
 

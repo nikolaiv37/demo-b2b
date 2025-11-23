@@ -1,65 +1,72 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { GlassCard } from '@/components/GlassCard'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { slugify } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { Loader2, Building2, Upload } from 'lucide-react'
+import { CompanyForm, CompanyFormData } from '@/components/CompanyForm'
+import {
+  Building2,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  FileText,
+  Sparkles,
+  Loader2,
+  Globe,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-const onboardingSchema = z.object({
-  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
-  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-})
-
-type OnboardingFormData = z.infer<typeof onboardingSchema>
+const TOTAL_STEPS = 2
 
 export function OnboardingPage() {
   const [step, setStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string>('')
-  
-  const { user } = useAuth()
+  const [formData, setFormData] = useState<CompanyFormData | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+
+  const { user, profile, isLoading: authLoading } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    watch,
-  } = useForm<OnboardingFormData>({
-    resolver: zodResolver(onboardingSchema),
-  })
-
-  const companyName = watch('companyName')
-  const slug = companyName ? slugify(companyName) : ''
-
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setLogoFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth/login', { replace: true })
     }
+  }, [user, authLoading, navigate])
+
+  // Show loading while checking auth
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
-  const onSubmit = async (data: OnboardingFormData) => {
-    if (!user) {
+  const nextStep = () => {
+    setStep((prev) => Math.min(prev + 1, TOTAL_STEPS))
+  }
+
+  const prevStep = () => {
+    setStep((prev) => Math.max(prev - 1, 1))
+  }
+
+  const handleStep1Submit = async (data: CompanyFormData, uploadedLogoUrl: string | null) => {
+    setFormData(data)
+    setLogoUrl(uploadedLogoUrl)
+    nextStep()
+  }
+
+  const handleFinalSubmit = async () => {
+    if (!formData || !user) {
       toast({
         title: 'Error',
-        description: 'You must be logged in to complete onboarding',
+        description: 'Please complete all required fields',
         variant: 'destructive',
       })
       return
@@ -67,60 +74,116 @@ export function OnboardingPage() {
 
     setIsLoading(true)
     try {
-      let logoUrl = null
+      const slug = slugify(formData.companyName)
 
-      // Upload logo if provided
-      if (logoFile) {
-        const fileExt = logoFile.name.split('.').pop()
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`
-        const { error: uploadError } = await supabase.storage
-          .from('logos')
-          .upload(fileName, logoFile)
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('logos')
-          .getPublicUrl(fileName)
-
-        logoUrl = publicUrl
+      // Create or update company
+      const companyData = {
+        name: formData.companyName,
+        slug,
+        logo_url: logoUrl,
+        eik_bulstat: formData.eikBulstat,
+        vat_number: formData.vatNumber,
+        phone: formData.phone,
+        address: formData.address,
+        website: formData.website || null,
+        onboarding_completed: true,
       }
 
-      // Create company
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: data.companyName,
-          slug,
-          logo_url: logoUrl,
-        })
-        .select()
-        .single()
+      // Check if company already exists (for editing scenario)
+      let company
+      
+      if (profile?.company_id) {
+        // User already has a company_id - always try to UPDATE, never create new
+        // First verify the company exists
+        const { data: existingCompany, error: checkError } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('id', profile.company_id)
+          .single()
 
-      if (companyError) throw companyError
+        if (checkError || !existingCompany) {
+          // Company doesn't exist or can't be accessed - clear the company_id and create new
+          console.warn('Company not found or inaccessible, clearing company_id and creating new company')
+          await supabase
+            .from('profiles')
+            .update({ company_id: null })
+            .eq('id', user.id)
+          
+          // Fall through to create new company
+          // (company will be null, so we'll create new below)
+        } else {
+          // Company exists - try to update
+          const { data: updatedCompany, error: updateError } = await supabase
+            .from('companies')
+            .update(companyData)
+            .eq('id', profile.company_id)
+            .select()
+            .single()
 
-      // Update profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
+          if (updateError) {
+            // If update fails due to RLS, try to understand why
+            console.error('Update error details:', updateError)
+            throw new Error(
+              `Failed to update company: ${updateError.message}. ` +
+              `Please ensure you have permission to update your company. ` +
+              `If this persists, contact support.`
+            )
+          }
+          
+          if (!updatedCompany) {
+            throw new Error('Update succeeded but no company data returned. This may be an RLS policy issue.')
+          }
+          
+          company = updatedCompany
+        }
+      }
+
+      // Create new company if we don't have one yet
+      if (!company) {
+        // User doesn't have a company_id - create new company
+        const { data: newCompany, error: companyError } = await supabase
+          .from('companies')
+          .insert(companyData)
+          .select()
+          .single()
+
+        if (companyError) throw companyError
+        company = newCompany
+
+        // Update profile to link to company
+        // Only update role if it's null/undefined (first user becomes admin/owner)
+        // If role is already set (e.g., 'company'), preserve it
+        const profileUpdate: { company_id: string; role?: string } = {
           company_id: company.id,
-          full_name: data.fullName,
-          role: 'admin',
-        })
-        .eq('id', user.id)
+        }
 
-      if (profileError) throw profileError
+        // Only set role to 'admin' if it's null/undefined (this is the owner)
+        // If role is already 'company' or 'admin', don't change it
+        if (!profile?.role || profile.role === null) {
+          profileUpdate.role = 'admin'
+        }
+        // Otherwise, keep the existing role (e.g., 'company')
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update(profileUpdate)
+          .eq('id', user.id)
+
+        if (profileError) throw profileError
+      }
 
       toast({
-        title: 'Welcome to FurniTrade!',
-        description: 'Your account has been set up successfully.',
+        title: 'Welcome to FurniTrade! 🎉',
+        description: 'Your company has been set up successfully.',
       })
 
-      navigate('/dashboard/')
+      // Refresh auth state to get updated company
+      window.location.href = '/dashboard'
     } catch (error: any) {
+      console.error('Onboarding error:', error)
       toast({
         title: 'Onboarding failed',
-        description: error.message || 'Failed to complete onboarding',
+        description: error.message || 'Failed to complete onboarding. Please try again.',
         variant: 'destructive',
       })
     } finally {
@@ -128,212 +191,178 @@ export function OnboardingPage() {
     }
   }
 
-  const progress = (step / 3) * 100
+  const progress = (step / TOTAL_STEPS) * 100
+  const slug = formData?.companyName ? slugify(formData.companyName) : ''
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <GlassCard className="w-full max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Setup</h1>
-          <p className="text-muted-foreground mb-4">
-            Step {step} of 3: Let's set up your company
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="w-full max-w-3xl">
+        {/* Header with progress */}
+        <div className="mb-8 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full glass-card mb-4">
+            <Sparkles className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Complete Your Setup
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            Step {step} of {TOTAL_STEPS}: Let's set up your company profile
           </p>
-          <Progress value={progress} />
+          <div className="max-w-md mx-auto">
+            <Progress value={progress} className="h-2" />
+            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+              <span className={cn(step >= 1 && 'text-primary font-medium')}>
+                Company Info
+              </span>
+              <span className={cn(step >= 2 && 'text-primary font-medium')}>
+                Review
+              </span>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <GlassCard className="p-8 md:p-12">
+          {/* Step 1: Company Information */}
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <Building2 className="w-8 h-8 text-primary" />
+                <div className="p-2 rounded-lg glass bg-primary/10">
+                  <Building2 className="w-6 h-6 text-primary" />
+                </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Company Information</h2>
+                  <h2 className="text-2xl font-semibold">Company Information</h2>
                   <p className="text-sm text-muted-foreground">
                     Tell us about your business
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name *</Label>
-                <Input
-                  id="companyName"
-                  placeholder="Acme Furniture Co."
-                  {...register('companyName')}
-                />
-                {errors.companyName && (
-                  <p className="text-sm text-destructive">
-                    {errors.companyName.message}
-                  </p>
-                )}
-              </div>
-
-              {slug && (
-                <div className="p-3 glass-card">
-                  <p className="text-sm text-muted-foreground">
-                    Your catalog URL will be:
-                  </p>
-                  <p className="font-mono text-primary font-semibold">
-                    furnitrade.com/catalog/{slug}
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Your Full Name *</Label>
-                <Input
-                  id="fullName"
-                  placeholder="John Doe"
-                  {...register('fullName')}
-                />
-                {errors.fullName && (
-                  <p className="text-sm text-destructive">
-                    {errors.fullName.message}
-                  </p>
-                )}
-              </div>
-
-              <Button
-                type="button"
-                onClick={() => setStep(2)}
-                className="w-full"
-              >
-                Continue
-              </Button>
+              <CompanyForm
+                company={null}
+                onSubmit={handleStep1Submit}
+                isLoading={false}
+                showLogoUpload={true}
+                mode="onboarding"
+              />
             </div>
           )}
 
-          {step === 2 && (
-            <div className="space-y-4">
+          {/* Step 2: Review & Confirm */}
+          {step === 2 && formData && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <Upload className="w-8 h-8 text-primary" />
+                <div className="p-2 rounded-lg glass bg-primary/10">
+                  <CheckCircle2 className="w-6 h-6 text-primary" />
+                </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Company Logo</h2>
+                  <h2 className="text-2xl font-semibold">Review & Confirm</h2>
                   <p className="text-sm text-muted-foreground">
-                    Upload your logo (optional)
+                    Please review your information before completing setup
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg">
-                {logoPreview ? (
-                  <div className="space-y-4">
+              <div className="glass-card p-6 space-y-6">
+                {logoUrl && (
+                  <div className="flex justify-center pb-4 border-b">
                     <img
-                      src={logoPreview}
-                      alt="Logo preview"
+                      src={logoUrl}
+                      alt="Company logo"
                       className="w-32 h-32 object-contain rounded-lg"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setLogoFile(null)
-                        setLogoPreview('')
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer text-center">
-                    <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-sm font-semibold mb-2">
-                      Click to upload logo
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PNG, JPG up to 5MB
-                    </p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="flex-1"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold mb-2">Review & Confirm</h2>
-                <p className="text-sm text-muted-foreground">
-                  Please review your information
-                </p>
-              </div>
-
-              <div className="glass-card p-6 space-y-4">
-                {logoPreview && (
-                  <div className="flex justify-center">
-                    <img
-                      src={logoPreview}
-                      alt="Company logo"
-                      className="w-24 h-24 object-contain rounded-lg"
-                    />
                   </div>
                 )}
-                <div>
-                  <p className="text-sm text-muted-foreground">Company Name</p>
-                  <p className="font-semibold">{companyName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Catalog URL</p>
-                  <p className="font-mono text-sm">
-                    furnitrade.com/catalog/{slug}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Your Name</p>
-                  <p className="font-semibold">{watch('fullName')}</p>
-                </div>
-              </div>
 
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(2)}
-                  className="flex-1"
-                  disabled={isLoading}
-                >
-                  Back
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={isLoading}
-                >
-                  {isLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <div className="grid gap-4">
+                  <div className="flex items-start gap-3">
+                    <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground mb-1">Company Name</p>
+                      <p className="font-semibold">{formData.companyName}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Globe className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground mb-1">Catalog URL</p>
+                      <p className="font-mono text-sm text-primary">/catalog/{slug}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">ЕИК / BULSTAT</p>
+                      <p className="font-semibold">{formData.eikBulstat}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">VAT Number</p>
+                      <p className="font-semibold">{formData.vatNumber}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                    <p className="font-semibold">{formData.phone}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Address</p>
+                    <p className="font-semibold whitespace-pre-line">{formData.address}</p>
+                  </div>
+
+                  {formData.website && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Website</p>
+                      <a
+                        href={formData.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {formData.website}
+                      </a>
+                    </div>
                   )}
-                  Complete Setup
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={prevStep}
+                  size="lg"
+                  className="flex-1"
+                  disabled={isLoading}
+                >
+                  <ArrowLeft className="mr-2 w-4 h-4" />
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleFinalSubmit}
+                  size="lg"
+                  className="flex-1"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Setting up...
+                    </>
+                  ) : (
+                    <>
+                      Complete Setup
+                      <CheckCircle2 className="ml-2 w-4 h-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
           )}
-        </form>
-      </GlassCard>
+        </GlassCard>
+      </div>
     </div>
   )
 }
-

@@ -15,11 +15,12 @@ import { Loader2 } from 'lucide-react'
  * - Renders children if user exists
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user } = useAuth()
+  const { isAuthenticated, isLoading, user, profile, company } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const { toast } = useToast()
   const [hasCheckedHash, setHasCheckedHash] = useState(false)
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false)
   const loadingStartTime = useRef<number | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -97,6 +98,54 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [location.pathname, navigate, hasCheckedHash])
 
+  // Check onboarding status once profile and company are loaded
+  // IMPORTANT: This hook must be before any early returns to follow Rules of Hooks
+  useEffect(() => {
+    if (
+      hasCheckedOnboarding ||
+      isLoading ||
+      !isAuthenticated ||
+      !user ||
+      !hasCheckedHash
+    ) {
+      return
+    }
+
+    // If we're already on the onboarding page, don't redirect
+    if (location.pathname === '/auth/onboarding') {
+      setHasCheckedOnboarding(true)
+      return
+    }
+
+    // Check if user needs to complete onboarding
+    // User needs onboarding if:
+    // 1. They don't have a company_id in their profile, OR
+    // 2. They have a company_id but the company doesn't exist, OR
+    // 3. They have a company but onboarding_completed is false
+    const needsOnboarding =
+      !profile?.company_id ||
+      (profile.company_id && !company) ||
+      (company && company.onboarding_completed === false)
+
+    if (needsOnboarding && location.pathname.startsWith('/dashboard')) {
+      setHasCheckedOnboarding(true)
+      navigate('/auth/onboarding', { replace: true })
+      return
+    }
+
+    setHasCheckedOnboarding(true)
+  }, [
+    isAuthenticated,
+    user,
+    profile,
+    company,
+    isLoading,
+    hasCheckedHash,
+    hasCheckedOnboarding,
+    location.pathname,
+    navigate,
+  ])
+
   // Show spinner while loading (but only after we've checked for confirmation hash)
   if (isLoading && hasCheckedHash) {
     return (
@@ -121,6 +170,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // User is authenticated, allow access even if profile is still loading
     // This prevents timeout redirects when profile fetch is slow
     return <>{children}</>
+  }
+
+  // If we're checking onboarding, show loading
+  if (isAuthenticated && !hasCheckedOnboarding && hasCheckedHash) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   // Redirect to login if not authenticated, preserving the location they tried to access
