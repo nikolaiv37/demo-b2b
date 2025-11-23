@@ -76,7 +76,8 @@ export function PublicCatalog() {
         .from('products')
         .select('*')
         .eq('company_id', company.id)
-        .gt('stock', 0)
+        // Filter products with stock > 0 (handle both stock and quantity fields)
+        .or('stock.gt.0,quantity.gt.0')
 
       if (categoryFilter !== 'all') {
         query = query.eq('category', categoryFilter)
@@ -101,7 +102,7 @@ export function PublicCatalog() {
   )
 
   const handleAddToCart = (product: Product) => {
-    const result = addItem(product, product.moq, 'buyer')
+    const result = addItem(product, product.moq ?? 1, 'company')
     if (result.success) {
       toast({
         title: 'Added to cart',
@@ -238,8 +239,8 @@ export function PublicCatalog() {
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                    <SelectItem key={category || 'uncategorized'} value={category || 'uncategorized'}>
+                      {category || 'Uncategorized'}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -260,7 +261,7 @@ export function PublicCatalog() {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  userRole="buyer"
+                  userRole="company"
                   onViewDetails={handleViewDetails}
                   onAddToCart={handleAddToCart}
                 />
@@ -299,7 +300,7 @@ export function PublicCatalog() {
                     <p className="text-muted-foreground mb-2">Description</p>
                     <p>{selectedProduct.description || 'No description available'}</p>
                   </div>
-                  <TieredPriceTable product={selectedProduct} userRole="buyer" />
+                  <TieredPriceTable product={selectedProduct} userRole="company" />
                   <Button
                     onClick={() => {
                       handleAddToCart(selectedProduct)

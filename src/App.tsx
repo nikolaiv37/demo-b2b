@@ -39,7 +39,7 @@ const queryClient = new QueryClient({
 })
 
 function App() {
-  const handleError = (error: Error, errorInfo: { componentStack: string }) => {
+  const handleError = (error: Error, errorInfo: { componentStack?: string | null }) => {
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
       console.error('Error caught by boundary:', error)

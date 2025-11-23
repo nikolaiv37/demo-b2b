@@ -6,9 +6,13 @@ import { Product, PriceTier } from '@/types'
 export function calculateTieredPrice(
   product: Product,
   quantity: number,
-  userRole?: 'admin' | 'sales' | 'buyer'
+  userRole?: 'admin' | 'sales' | 'buyer' | 'company'
 ): number {
-  const basePrice = userRole === 'buyer' ? product.wholesale_price : product.retail_price
+  const basePrice = (userRole === 'buyer' || userRole === 'company') 
+    ? (product.wholesale_price ?? product.retail_price ?? 0)
+    : (product.retail_price ?? 0)
+
+  if (basePrice === 0) return 0
 
   // Tiered pricing logic
   if (quantity >= 51) {
@@ -23,8 +27,16 @@ export function calculateTieredPrice(
 /**
  * Get tiered pricing breakdown for a product
  */
-export function getTieredPricing(product: Product, userRole?: 'admin' | 'sales' | 'buyer'): PriceTier[] {
-  const basePrice = userRole === 'buyer' ? product.wholesale_price : product.retail_price
+export function getTieredPricing(product: Product, userRole?: 'admin' | 'sales' | 'buyer' | 'company'): PriceTier[] {
+  const basePrice = (userRole === 'buyer' || userRole === 'company')
+    ? (product.wholesale_price ?? product.retail_price ?? 0)
+    : (product.retail_price ?? 0)
+
+  if (basePrice === 0) {
+    return [
+      { min_quantity: 1, price: 0, discount_percentage: 0 },
+    ]
+  }
 
   return [
     {
@@ -53,7 +65,7 @@ export function getTieredPricing(product: Product, userRole?: 'admin' | 'sales' 
 export function calculateLineTotal(
   product: Product,
   quantity: number,
-  userRole?: 'admin' | 'sales' | 'buyer'
+  userRole?: 'admin' | 'sales' | 'buyer' | 'company'
 ): number {
   const unitPrice = calculateTieredPrice(product, quantity, userRole)
   return unitPrice * quantity
@@ -66,10 +78,11 @@ export function validateMOQ(product: Product, quantity: number): {
   valid: boolean
   message?: string
 } {
-  if (quantity < product.moq) {
+  const moq = product.moq ?? 1
+  if (quantity < moq) {
     return {
       valid: false,
-      message: `Minimum order quantity is ${product.moq} units`,
+      message: `Minimum order quantity is ${moq} units`,
     }
   }
   return { valid: true }
@@ -82,10 +95,11 @@ export function validateStock(product: Product, quantity: number): {
   valid: boolean
   message?: string
 } {
-  if (quantity > product.stock) {
+  const stock = product.stock ?? product.quantity ?? 0
+  if (quantity > stock) {
     return {
       valid: false,
-      message: `Only ${product.stock} units available in stock`,
+      message: `Only ${stock} units available in stock`,
     }
   }
   return { valid: true }
@@ -96,7 +110,7 @@ export function validateStock(product: Product, quantity: number): {
  */
 export function calculateSubtotal(
   items: Array<{ product: Product; quantity: number }>,
-  userRole?: 'admin' | 'sales' | 'buyer'
+  userRole?: 'admin' | 'sales' | 'buyer' | 'company'
 ): number {
   return items.reduce((total, item) => {
     return total + calculateLineTotal(item.product, item.quantity, userRole)

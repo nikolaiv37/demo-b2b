@@ -19,6 +19,7 @@ export type UserRole = 'admin' | 'company'
 export interface Profile {
   id: string
   role: UserRole
+  company_id?: string | null
   company_name?: string | null
   phone?: string | null
   email?: string // May not exist in DB, but we use it from auth.users

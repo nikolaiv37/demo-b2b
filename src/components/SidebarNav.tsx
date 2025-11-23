@@ -287,7 +287,7 @@ export function SidebarNav() {
                         ? 'text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
                         : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                     )}
-                    onClick={(e) => {
+                    onClick={() => {
                       if (location.pathname !== '/dashboard/products' && location.pathname !== '/dashboard/wishlist') {
                         navigate('/dashboard/products')
                       }
@@ -413,7 +413,7 @@ export function SidebarNav() {
                         ? 'text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
                         : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                     )}
-                    onClick={(e) => {
+                    onClick={() => {
                       // Navigate to settings if not already there
                       if (location.pathname !== '/dashboard/settings') {
                         navigate('/dashboard/settings')

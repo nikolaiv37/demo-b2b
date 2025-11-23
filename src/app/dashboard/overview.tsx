@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { OrderStatusBadge } from '@/components/OrderStatusBadge'
-import { formatCurrency, formatPrice, calculatePercentageChange } from '@/lib/utils'
+import { formatCurrency, calculatePercentageChange } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import {
   DollarSign,
@@ -16,7 +15,6 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowRight,
-  AlertTriangle,
   Bell,
   Image as ImageIcon,
 } from 'lucide-react'
@@ -35,7 +33,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts'
 
 interface DashboardStats {
@@ -737,7 +734,7 @@ export function DashboardOverview() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {stats.categoriesByRevenue.map((entry, index) => (
+                    {stats.categoriesByRevenue.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -793,7 +790,7 @@ export function DashboardOverview() {
             </div>
           ) : stats?.recentOrders && stats.recentOrders.length > 0 ? (
             <div className="space-y-2.5">
-              {stats.recentOrders.map((order, index) => (
+              {stats.recentOrders.map((order) => (
                 <div
                   key={order.id}
                   className="flex items-center justify-between p-3.5 rounded-lg bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-200 border border-white/10 dark:border-white/5 hover:border-white/20 dark:hover:border-white/10 shadow-sm hover:shadow-md"

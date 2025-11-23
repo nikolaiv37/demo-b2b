@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { SidebarNav } from '@/components/SidebarNav'
 import { CartDrawer } from '@/components/CartDrawer'
 import { OrderRequestModal } from '@/components/QuoteRequestModal'
@@ -45,7 +45,7 @@ const pageTitles: Record<string, string> = {
 export function DashboardLayout() {
   const [cartOpen, setCartOpen] = useState(false)
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
-  const { user, profile, company, isAdmin, signOut } = useAuth()
+  const { user, profile, isAdmin, signOut } = useAuth()
   
   // Fetch real status data for badges
   const { data: statusData } = useQuery({

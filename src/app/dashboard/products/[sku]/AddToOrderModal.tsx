@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ShoppingCart, Plus, Minus, Loader2 } from 'lucide-react'
-import { cn, formatPrice as formatPriceUtil } from '@/lib/utils'
+import { formatPrice as formatPriceUtil } from '@/lib/utils'
 
 interface AddToOrderModalProps {
   product: Product

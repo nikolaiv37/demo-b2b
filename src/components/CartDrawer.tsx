@@ -9,8 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Minus, Plus, Trash2, ShoppingCart, FileText } from 'lucide-react'
-import { Product } from '@/types'
-import { cn, formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils'
 
 interface CartDrawerProps {
   open: boolean

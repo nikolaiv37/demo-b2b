@@ -8,20 +8,17 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabase/client'
-import { slugify } from '@/lib/utils'
+import { slugify, cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Company } from '@/types'
 import {
-  Building2,
   Upload,
   Phone,
   MapPin,
   Globe,
-  FileText,
   Loader2,
   ArrowRight,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 const companyFormSchema = z.object({
   companyName: z.string().min(2, 'Company name must be at least 2 characters'),

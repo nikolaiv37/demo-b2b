@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/useAuth'
 import { Eye, AlertCircle, Image as ImageIcon } from 'lucide-react'

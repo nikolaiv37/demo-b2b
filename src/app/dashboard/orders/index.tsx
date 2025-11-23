@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,7 +39,6 @@ import {
   Mail,
   CheckCircle,
   Copy,
-  Printer,
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -83,7 +81,8 @@ interface Order {
 
 // Dummy orders for demonstration (remove when you have real data)
 // TODO: Remove DUMMY_ORDERS once you have enough real orders
-const DUMMY_ORDERS: Order[] = [
+/*
+const _DUMMY_ORDERS: any[] = [
   {
     id: 1,
     order_number: 1003,
@@ -231,6 +230,7 @@ const DUMMY_ORDERS: Order[] = [
     updated_at: '2025-11-18T08:00:00Z',
   },
 ]
+*/
 
 function getStatusBadge(status: OrderStatus) {
   const configs = {
@@ -289,7 +289,6 @@ export function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
   const [quickFilter, setQuickFilter] = useState<string | null>(null)
-  const navigate = useNavigate()
 
   const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''

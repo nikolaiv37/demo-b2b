@@ -11,7 +11,6 @@ import { CompanyForm, CompanyFormData } from '@/components/CompanyForm'
 import {
   Building2,
   CheckCircle2,
-  ArrowRight,
   ArrowLeft,
   FileText,
   Sparkles,

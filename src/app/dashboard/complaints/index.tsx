@@ -1,7 +1,6 @@
 // This page saves hours of WhatsApp chaos every week
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { GlassCard } from '@/components/GlassCard'
 import { useAuth } from '@/hooks/useAuth'
 import { MyComplaintsTab } from './MyComplaintsTab'
 import { NewComplaintTab } from './NewComplaintTab'

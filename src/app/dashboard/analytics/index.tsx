@@ -202,7 +202,6 @@ export function AnalyticsPage() {
       // Fetch from quotes table (this is the primary source - orders table doesn't exist)
       // Skip orders table query since it doesn't exist in this database
       const ordersTableData: any[] = []
-      const ordersError = null
       
       console.log('Skipping orders table (does not exist), using quotes only')
       
@@ -314,14 +313,12 @@ export function AnalyticsPage() {
 
       // Log errors for debugging (but don't fail the whole query)
       // These are expected - orders table doesn't exist, products might not have stock column
-      if (ordersError) {
-        console.warn('Orders table not found (expected):', ordersError.message)
-      }
+      // ordersError is always null (orders table doesn't exist), so skip this check
       if (quotesError) {
         console.warn('Error fetching quotes:', quotesError)
       }
       if (productsError) {
-        console.warn('Error fetching products (might be column name issue):', productsError.message)
+        console.warn('Error fetching products (might be column name issue):', productsError?.message || String(productsError))
       }
 
       // Calculate metrics
@@ -720,13 +717,13 @@ export function AnalyticsPage() {
             <p className="text-sm text-muted-foreground">Total Revenue</p>
             <p className="text-2xl font-bold">{formatCurrency(displayData.totalRevenue)}</p>
             <div className="flex items-center gap-1 text-xs">
-              {analytics.totalRevenueMoM >= 0 ? (
+              {displayData.totalRevenueMoM >= 0 ? (
                 <TrendingUp className="w-3 h-3 text-green-500" />
               ) : (
                 <TrendingDown className="w-3 h-3 text-red-500" />
               )}
               <span
-                className={analytics.totalRevenueMoM >= 0 ? 'text-green-500' : 'text-red-500'}
+                className={displayData.totalRevenueMoM >= 0 ? 'text-green-500' : 'text-red-500'}
               >
                 {Math.abs(displayData.totalRevenueMoM).toFixed(1)}% MoM
               </span>
@@ -877,7 +874,7 @@ export function AnalyticsPage() {
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                 }}
-                formatter={(value: number, name: string, props: any) => [
+                formatter={(value: number, _name: string, props: any) => [
                   `${formatCurrency(value)} (${props.payload.quantity} sold)`,
                   'Revenue',
                 ]}
@@ -909,9 +906,9 @@ export function AnalyticsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayData.topCustomers.map((customer, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-semibold">#{index + 1}</TableCell>
+                  {displayData.topCustomers.map((customer, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-semibold">#{idx + 1}</TableCell>
                       <TableCell className="font-medium">{customer.companyName}</TableCell>
                       <TableCell className="text-right font-semibold">
                         {formatCurrency(customer.totalSpent)}

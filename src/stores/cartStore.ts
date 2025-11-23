@@ -4,12 +4,12 @@ import { Product, CartItem } from '@/types'
 
 interface CartState {
   items: CartItem[]
-  addItem: (product: Product, quantity: number, userRole?: 'admin' | 'sales' | 'buyer') => {
+  addItem: (product: Product, quantity: number, userRole?: 'admin' | 'sales' | 'buyer' | 'company') => {
     success: boolean
     message?: string
   }
   removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number, userRole?: 'admin' | 'sales' | 'buyer') => {
+  updateQuantity: (productId: string, quantity: number, userRole?: 'admin' | 'sales' | 'buyer' | 'company') => {
     success: boolean
     message?: string
   }
@@ -23,7 +23,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
 
-      addItem: (product, quantity, userRole) => {
+      addItem: (product, quantity, _userRole) => {
         // Validate stock (use quantity field)
         const stock = product.quantity ?? 0
         if (quantity > stock) {
@@ -88,7 +88,7 @@ export const useCartStore = create<CartState>()(
         }))
       },
 
-      updateQuantity: (productId, quantity, userRole) => {
+      updateQuantity: (productId, quantity, _userRole) => {
         const items = get().items
         const itemIndex = items.findIndex((item) => item.product.id === productId)
 

@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import { ShoppingCart, Eye } from 'lucide-react'
-import { useState } from 'react'
 
 interface ProductCardProps {
   product: Product
@@ -20,8 +19,11 @@ export function ProductCard({
   onViewDetails,
   onAddToCart,
 }: ProductCardProps) {
-  const price = userRole === 'buyer' ? product.wholesale_price : product.retail_price
-  const isLowStock = product.stock < 10
+  const price = (userRole === 'company')
+    ? (product.wholesale_price ?? product.retail_price ?? 0)
+    : (product.retail_price ?? 0)
+  const stock = product.stock ?? product.quantity ?? 0
+  const isLowStock = stock < 10
 
   return (
     <GlassCard hover className="overflow-hidden group">
@@ -41,7 +43,7 @@ export function ProductCard({
         
         {/* Badges overlay */}
         <div className="absolute top-2 right-2 flex flex-col gap-2">
-          <MOQBadge moq={product.moq} />
+          <MOQBadge moq={product.moq ?? 1} />
           {isLowStock && (
             <Badge variant="destructive" className="backdrop-blur-md">
               Low Stock
@@ -76,7 +78,10 @@ export function ProductCard({
             <div className="text-2xl font-bold text-primary">
               {formatCurrency(price)}
             </div>
-            {userRole === 'buyer' && product.retail_price > product.wholesale_price && (
+            {userRole === 'company' && 
+             product.retail_price && 
+             product.wholesale_price && 
+             product.retail_price > product.wholesale_price && (
               <div className="text-xs text-muted-foreground line-through">
                 {formatCurrency(product.retail_price)}
               </div>
@@ -84,7 +89,7 @@ export function ProductCard({
           </div>
           <div className="text-sm text-muted-foreground">
             <span className={isLowStock ? 'text-destructive font-semibold' : ''}>
-              {product.stock} in stock
+              {stock} in stock
             </span>
           </div>
         </div>
@@ -104,7 +109,7 @@ export function ProductCard({
             size="sm"
             className="flex-1"
             onClick={() => onAddToCart(product)}
-            disabled={product.stock === 0}
+            disabled={stock === 0}
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
             Add to Cart

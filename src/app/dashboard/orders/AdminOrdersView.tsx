@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -94,45 +93,7 @@ function mapStatusToDb(status: Order['status']): string {
   return statusMap[status]
 }
 
-function getStatusBadge(status: Order['status']) {
-  const configs = {
-    draft: {
-      label: 'Draft',
-      className: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
-    },
-    awaiting_payment: {
-      label: 'Awaiting Payment',
-      className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-    },
-    paid: {
-      label: 'Paid',
-      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    },
-    processing: {
-      label: 'Processing',
-      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    },
-    shipped: {
-      label: 'Shipped',
-      className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-    },
-    delivered: {
-      label: 'Delivered',
-      className: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
-    },
-    completed: {
-      label: 'Completed',
-      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    },
-  }
-
-  const config = configs[status]
-  return (
-    <Badge variant="outline" className={cn('font-medium', config.className)}>
-      {config.label}
-    </Badge>
-  )
-}
+// Status badge function removed - using OrderStatusBadge component instead
 
 function formatOrderDate(dateString: string): string {
   const date = new Date(dateString)

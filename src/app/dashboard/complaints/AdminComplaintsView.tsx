@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Eye, Image as ImageIcon, Search } from 'lucide-react'
-import { formatDateTime, cn } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
 
 interface ComplaintItem {
   sku: string
@@ -75,33 +75,7 @@ function mapStatusToDb(status: Complaint['status']): string {
   return statusMap[status]
 }
 
-function getStatusBadge(status: Complaint['status']) {
-  const configs = {
-    'new': {
-      label: 'New',
-      className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    },
-    'in-progress': {
-      label: 'In Progress',
-      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    },
-    'resolved': {
-      label: 'Resolved',
-      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    },
-    'closed': {
-      label: 'Closed',
-      className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
-    },
-  }
-
-  const config = configs[status]
-  return (
-    <Badge variant="outline" className={cn('font-medium', config.className)}>
-      {config.label}
-    </Badge>
-  )
-}
+// Status badge function removed - using OrderStatusBadge component instead
 
 function getReasonLabel(reason: string) {
   const labels: Record<string, string> = {

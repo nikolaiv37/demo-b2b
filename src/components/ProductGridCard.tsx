@@ -39,22 +39,10 @@ function getStockVariant(quantity: number | undefined): 'default' | 'secondary' 
   return 'default'
 }
 
-/**
- * Get stock badge text color
- */
-function getStockColor(quantity: number | undefined): string {
-  if (!quantity && quantity !== 0) return 'text-muted-foreground'
-  if (quantity === 0) return 'text-red-600 dark:text-red-400'
-  if (quantity <= 10) return 'text-yellow-600 dark:text-yellow-400'
-  return 'text-green-600 dark:text-green-400'
-}
 
 export function ProductGridCard({
   product,
   onQuickView,
-  onEdit,
-  onDelete,
-  isAdmin = false,
 }: ProductGridCardProps) {
   const [localQuantity, setLocalQuantity] = useState(1)
   const [isPulsing, setIsPulsing] = useState(false)
