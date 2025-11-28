@@ -178,7 +178,7 @@ export function QuotesPage() {
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
-                      {quote.status === 'pending' && (
+                      {quote.status === 'awaiting_payment' && (
                         <>
                           <Button
                             size="sm"

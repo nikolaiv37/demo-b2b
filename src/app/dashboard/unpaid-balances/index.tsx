@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import {
-  Building2,
   AlertTriangle,
   CreditCard,
   ArrowLeft,

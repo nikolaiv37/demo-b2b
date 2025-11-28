@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils'
 import {
   FileText,
   Mail,
-  CheckCircle,
   Copy,
   Printer,
   Building2,

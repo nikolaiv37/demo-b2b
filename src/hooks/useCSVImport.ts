@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
-import { parseCSV, csvRowToProduct, CSVRow, cleanProductForDatabase } from '@/lib/csv/parser'
+import { parseCSV, csvRowToProduct, cleanProductForDatabase } from '@/lib/csv/parser'
 import { validateTransformedProducts, TransformedProductData } from '@/lib/csv/validator'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { toast } from '@/components/ui/use-toast'
