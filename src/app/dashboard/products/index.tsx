@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
 import { ProductGridCard } from '@/components/ProductGridCard'
 import { ProductQuickViewModal } from '@/components/ProductQuickViewModal'
-import { CategoryBubbles } from '@/components/CategoryBubbles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -308,20 +307,11 @@ export function ProductsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">Products</h1>
+        <h1 className="text-3xl font-bold mb-2">All Products</h1>
         <p className="text-muted-foreground">
           {isLoading && !totalCount ? 'Loading...' : `${totalCount ?? 0} products`}
         </p>
       </div>
-
-      {/* Category Bubbles Navigation */}
-      <CategoryBubbles
-        selectedCategory={selectedCategory !== 'all' ? selectedCategory : undefined}
-        onCategorySelect={(category) => {
-          setSelectedCategory(category || 'all')
-          setCurrentPage(1)
-        }}
-      />
 
       {/* Search and Filters */}
       <GlassCard>

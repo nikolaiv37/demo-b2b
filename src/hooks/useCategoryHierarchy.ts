@@ -49,33 +49,59 @@ export function useCategoryHierarchy(companyId?: string) {
   return useQuery({
     queryKey: ['category-hierarchy', companyId],
     queryFn: async (): Promise<CategoryHierarchy> => {
-      // Build query - don't filter by stock initially, we want all categories
-      let query = supabase
+      // First, get total count to know how many products we need to fetch
+      let countQuery = supabase
         .from('products')
-        .select('category, main_image, images, quantity, supplier_id')
+        .select('*', { count: 'exact', head: true })
         .not('category', 'is', null)
         .neq('category', '')
 
-      // Filter by company if provided
-      // Note: products table uses supplier_id (TEXT), not company_id
       if (companyId) {
-        // Try both company_id and supplier_id to handle different schemas
-        query = query.or(`supplier_id.eq.${companyId},company_id.eq.${companyId}`)
+        countQuery = countQuery.or(`supplier_id.eq.${companyId},company_id.eq.${companyId}`)
       }
 
-      // Don't filter by stock - we want to show all categories even if some products are out of stock
-      // This allows users to see all available categories
+      const { count: totalCount, error: countError } = await countQuery
 
-      const { data, error } = await query
-
-      if (error) {
-        console.error('useCategoryHierarchy query error:', error)
-        throw error
+      if (countError) {
+        console.error('useCategoryHierarchy count error:', countError)
+        throw countError
       }
 
-      console.log('useCategoryHierarchy: Fetched products:', data?.length || 0)
+      const total = totalCount || 0
+      console.log('useCategoryHierarchy: Total products to fetch:', total)
 
-      const products = (data || []) as Pick<Product, 'category' | 'main_image' | 'images' | 'quantity'>[]
+      // Fetch all products in batches (Supabase default limit is 1000)
+      const BATCH_SIZE = 1000
+      const allProducts: Pick<Product, 'category' | 'main_image' | 'images' | 'quantity'>[] = []
+
+      for (let offset = 0; offset < total; offset += BATCH_SIZE) {
+        let query = supabase
+          .from('products')
+          .select('category, main_image, images, quantity, supplier_id')
+          .not('category', 'is', null)
+          .neq('category', '')
+          .range(offset, offset + BATCH_SIZE - 1)
+
+        // Filter by company if provided
+        if (companyId) {
+          query = query.or(`supplier_id.eq.${companyId},company_id.eq.${companyId}`)
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error('useCategoryHierarchy query error:', error)
+          throw error
+        }
+
+        if (data) {
+          allProducts.push(...(data as Pick<Product, 'category' | 'main_image' | 'images' | 'quantity'>[]))
+        }
+      }
+
+      console.log('useCategoryHierarchy: Fetched products:', allProducts.length)
+
+      const products = allProducts
 
       // Build hierarchy
       const mainCategories = new Map<string, {

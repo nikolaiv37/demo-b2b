@@ -16,6 +16,7 @@ import {
   Heart,
   BarChart3,
   AlertCircle,
+  Grid3X3,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useWishlist } from '@/hooks/useWishlist'
@@ -58,7 +59,12 @@ const mainNavItems = [
 // Catalog submenu items
 const catalogSubmenuItems = [
   {
-    title: 'Products',
+    title: 'Categories',
+    href: '/dashboard/categories',
+    icon: Grid3X3,
+  },
+  {
+    title: 'All Products',
     href: '/dashboard/products',
     icon: Package,
   },
