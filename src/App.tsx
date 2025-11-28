@@ -25,6 +25,7 @@ import { SettingsPage } from '@/app/dashboard/settings'
 import { AnalyticsPage } from '@/app/dashboard/analytics'
 import { ComplaintsPage } from '@/app/dashboard/complaints'
 import { UnpaidBalancesPage } from '@/app/dashboard/unpaid-balances'
+import { CategoriesPage } from '@/app/dashboard/categories'
 
 // Public Pages
 import { PublicCatalog } from '@/pages/PublicCatalog'
@@ -76,6 +77,9 @@ function App() {
                 }
               >
                 <Route index element={<DashboardOverview />} />
+                <Route path="categories" element={<CategoriesPage />} />
+                <Route path="categories/:mainCategory" element={<CategoriesPage />} />
+                <Route path="categories/:mainCategory/:subCategory" element={<CategoriesPage />} />
                 <Route path="products" element={<ProductsPage />} />
                 <Route path="products/:sku" element={<ProductDetailPage />} />
                 <Route path="wishlist" element={<WishlistPage />} />
