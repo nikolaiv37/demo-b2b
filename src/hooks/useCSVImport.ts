@@ -1,23 +1,26 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
-import { parseCSV, csvRowToProduct, CSVRow } from '@/lib/csv/parser'
+import { parseCSV, csvRowToProduct, CSVRow, cleanProductForDatabase } from '@/lib/csv/parser'
+import { validateTransformedProducts, TransformedProductData } from '@/lib/csv/validator'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { toast } from '@/components/ui/use-toast'
 
 export function useCSVImport() {
   const [progress, setProgress] = useState(0)
   const [statusText, setStatusText] = useState('')
-  const [previewData, setPreviewData] = useState<CSVRow[]>([])
+  const [previewData, setPreviewData] = useState<TransformedProductData[]>([])
+  const [validationResult, setValidationResult] = useState<ReturnType<typeof validateTransformedProducts> | null>(null)
   const queryClient = useQueryClient()
 
   const previewMutation = useMutation({
     mutationFn: async (file: File) => {
       setProgress(0)
       setPreviewData([])
+      setValidationResult(null)
 
       try {
-        // Parse CSV with semicolon delimiter
+        // Step 1: Parse CSV (auto-detects delimiter: semicolon or comma)
         const parseResult = await parseCSV(file, ';')
 
         console.log('CSV Parse Result:', {
@@ -38,12 +41,62 @@ export function useCSVImport() {
           throw new Error('No valid data found in CSV file. Please check the file format.')
         }
 
-        // Store preview data (first 10 rows)
-        setPreviewData(parseResult.data.slice(0, 10))
+        // Step 2: Get supplier ID for transformation
+        const { data: { user } } = await supabase.auth.getUser()
+        const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+        const devUserId = isDevMode ? 'dev-user-123' : null
+        const supplierId = user?.id || devUserId
+
+        if (!supplierId) {
+          throw new Error('User not authenticated')
+        }
+
+        // Step 3: Transform CSV rows to Product objects
+        const transformedProducts: Record<string, unknown>[] = []
+        const transformErrors: Array<{ row: number; error: string }> = []
+
+        parseResult.data.forEach((row, index) => {
+          try {
+            const product = csvRowToProduct(row, supplierId)
+            transformedProducts.push(product)
+          } catch (error) {
+            const rowNumber = index + 2
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            transformErrors.push({
+              row: rowNumber,
+              error: errorMessage,
+            })
+            console.warn(`Transform error at row ${rowNumber}:`, errorMessage)
+          }
+        })
+
+        if (transformedProducts.length === 0) {
+          throw new Error('No valid products could be transformed from CSV. Please check your file format.')
+        }
+
+        // Step 4: Validate transformed products
+        const validation = validateTransformedProducts(transformedProducts, 2)
+
+        console.log('Validation Result:', {
+          totalRows: validation.totalRows,
+          validRows: validation.validRows,
+          invalidRows: validation.invalidRows,
+          errors: validation.errors.slice(0, 5), // Log first 5 errors
+        })
+
+        // Store validation result
+        setValidationResult(validation)
+
+        // Store preview data (first 10 rows of transformed products)
+        setPreviewData(validation.validData.slice(0, 10) as TransformedProductData[])
 
         return {
           totalRows: parseResult.data.length,
-          data: parseResult.data,
+          transformedRows: transformedProducts.length,
+          validRows: validation.validRows,
+          invalidRows: validation.invalidRows,
+          data: transformedProducts, // Return transformed products for import
+          validation,
         }
       } catch (error) {
         console.error('Preview error:', error)
@@ -61,7 +114,7 @@ export function useCSVImport() {
   })
 
   const importMutation = useMutation({
-    mutationFn: async ({ file, data }: { file: File; data: CSVRow[] }) => {
+    mutationFn: async ({ file, data }: { file: File; data: Record<string, unknown>[] }) => {
       setProgress(0)
       setStatusText('Starting import...')
 
@@ -71,44 +124,9 @@ export function useCSVImport() {
         totalRows: data.length,
       })
 
-      // Get current user (handle dev mode)
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      // Use dev mode user ID if in dev mode, otherwise require authentication
-      const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
-      
-      // For dev mode, use a simple text ID (not UUID) to avoid foreign key constraint issues
-      // If your database has a foreign key constraint, you'll need to run the fix-supplier-id-constraint.sql migration
-      const devUserId = isDevMode ? 'dev-user-123' : null
-      const supplierId = user?.id || devUserId
-      
-      if (!supplierId) {
-        throw new Error('User not authenticated')
-      }
-
-      console.log('Using supplier_id:', supplierId, { isDevMode, hasUser: !!user, userId: user?.id })
-
-      setStatusText('Preparing products...')
-      
-      // Convert rows to products with error handling for malformed rows
-      const products: Record<string, unknown>[] = []
-      const skippedRows: Array<{ row: number; error: string }> = []
-      
-      data.forEach((row, index) => {
-        try {
-          const product = csvRowToProduct(row, supplierId)
-          products.push(product)
-        } catch (error) {
-          // Skip malformed rows instead of crashing
-          const rowNumber = index + 2 // +2 because of 0-index and header row
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          skippedRows.push({
-            row: rowNumber,
-            error: errorMessage,
-          })
-          console.warn(`Skipping row ${rowNumber}:`, errorMessage)
-        }
-      })
+      // Data is already transformed and validated, but we need to clean it for database
+      // Remove compatibility fields (moq, wholesale_price, stock) that don't exist in DB
+      const products = data.map(cleanProductForDatabase)
 
       if (products.length === 0) {
         throw new Error('No valid products to import. Please check your CSV file.')
@@ -175,17 +193,17 @@ export function useCSVImport() {
         productsImported: importedCount,
         totalRows: products.length,
         failedRows: failedRows.length,
-        skippedRows: skippedRows.length,
+        skippedRows: 0,
       })
 
       return {
         success: true,
         imported: importedCount,
-        total: data.length, // Total rows in CSV
+        total: data.length, // Total transformed products
         valid: products.length, // Valid products processed
         failed: failedRows.length,
-        skipped: skippedRows.length,
-        errors: [...failedRows, ...skippedRows],
+        skipped: 0, // No skipped rows since we already validated
+        errors: failedRows,
       }
     },
     onSuccess: (result) => {
@@ -194,9 +212,6 @@ export function useCSVImport() {
       
       // Show success toast with detailed stats
       const messages = []
-      if (result.skipped > 0) {
-        messages.push(`${result.skipped} rows skipped`)
-      }
       if (result.failed > 0) {
         messages.push(`${result.failed} rows failed`)
       }
@@ -230,6 +245,7 @@ export function useCSVImport() {
     previewData,
     previewResult: previewMutation.data,
     previewError: previewMutation.error,
+    validationResult,
     importCSV: importMutation.mutate,
     isImporting: importMutation.isPending,
     progress,

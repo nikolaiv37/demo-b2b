@@ -38,58 +38,114 @@ export interface ParseResult {
 }
 
 /**
- * Parse CSV file with proper UTF-8 handling for Greek characters
- * Uses semicolon delimiter and quoteChar for proper escaping
- * Handles field mismatches gracefully (trailing empty fields)
+ * Parse CSV file with proper UTF-8 handling for Greek/Bulgarian characters
+ * Auto-detects delimiter (semicolon or comma) and uses quoteChar for proper escaping
+ * Handles field mismatches gracefully (trailing empty fields are OK)
  */
-export function parseCSV(file: File, delimiter: string = ';'): Promise<ParseResult> {
+export function parseCSV(file: File, preferredDelimiter: string = ';'): Promise<ParseResult> {
   return new Promise((resolve, reject) => {
-    Papa.parse(file, {
-      header: true,
-      delimiter: delimiter,
-      quoteChar: '"',
-      escapeChar: '"',
-      skipEmptyLines: 'greedy', // More aggressive empty line skipping
-      encoding: 'UTF-8',
-      // Don't throw errors on field mismatches (trailing empty fields are OK)
-      transformHeader: (header: string) => {
-        // Normalize header names: trim, lowercase, replace spaces with underscores
-        return header.trim().toLowerCase().replace(/\s+/g, '_')
-      },
-      transform: (value: string) => {
-        // Preserve UTF-8 encoding for Greek characters
-        return value
-      },
-      complete: (results) => {
-        // Filter out field mismatch errors (they're just warnings about trailing empty fields)
-        const nonFatalErrors = results.errors.filter(
-          (error) => error.type !== 'FieldMismatch' || error.code !== 'TooFewFields'
-        )
+    // Read the file first to detect delimiter
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      const firstLine = text.split('\n')[0] || ''
+      
+      // Count occurrences of common delimiters
+      const semicolonCount = (firstLine.match(/;/g) || []).length
+      const commaCount = (firstLine.match(/,/g) || []).length
+      
+      // Use the delimiter with more occurrences, or preferred delimiter if equal
+      let delimiter = preferredDelimiter
+      if (commaCount > semicolonCount) {
+        delimiter = ','
+      } else if (semicolonCount > commaCount) {
+        delimiter = ';'
+      }
+      
+      console.log('CSV Delimiter detection:', {
+        firstLine: firstLine.substring(0, 100),
+        semicolonCount,
+        commaCount,
+        detectedDelimiter: delimiter,
+        preferredDelimiter,
+      })
 
-        // Filter out completely empty rows and rows without SKU
-        const validData = (results.data as CSVRow[]).filter((row) => {
-          return row && row.sku && typeof row.sku === 'string' && row.sku.trim().length > 0
-        })
+      // Now parse the full text with the detected delimiter
+      Papa.parse(text, {
+        header: true,
+        delimiter: delimiter,
+        quoteChar: '"',
+        escapeChar: '"',
+        skipEmptyLines: 'greedy', // More aggressive empty line skipping
+        encoding: 'UTF-8',
+        // Don't throw errors on field mismatches (trailing empty fields are OK)
+        transformHeader: (header: string) => {
+          // Normalize header names: trim, lowercase, replace spaces with underscores
+          return header.trim().toLowerCase().replace(/\s+/g, '_')
+        },
+        transform: (value: string) => {
+          // Preserve UTF-8 encoding for Greek/Bulgarian characters
+          return value
+        },
+        complete: (results) => {
+          // Filter out field mismatch errors (they're just warnings about trailing empty fields)
+          const nonFatalErrors = results.errors.filter(
+            (error) => error.type !== 'FieldMismatch' || error.code !== 'TooFewFields'
+          )
 
-        console.log('Parsed CSV:', {
-          totalRows: results.data.length,
-          validRows: validData.length,
-          fieldMismatchWarnings: results.errors.filter(
-            (e) => e.type === 'FieldMismatch'
-          ).length,
-          otherErrors: nonFatalErrors.length,
-        })
+          // Log first row for debugging
+          if (results.data.length > 0) {
+            console.log('First parsed row (sample):', {
+              keys: Object.keys(results.data[0] as object),
+              sample: results.data[0],
+            })
+          }
 
-        resolve({
-          data: validData,
-          errors: nonFatalErrors, // Only return non-field-mismatch errors
-          meta: results.meta,
-        })
-      },
-      error: (error) => {
-        reject(error)
-      },
-    })
+          // Filter out completely empty rows and rows without SKU
+          const validData = (results.data as CSVRow[]).filter((row) => {
+            if (!row) return false
+            
+            // Check for SKU field (case-insensitive, handle various field name variations)
+            const rowObj = row as Record<string, unknown>
+            const skuValue = row.sku || rowObj['sku'] || rowObj['SKU'] || rowObj['Sku']
+            
+            return skuValue && typeof skuValue === 'string' && skuValue.trim().length > 0
+          })
+
+          console.log('Parsed CSV:', {
+            totalRows: results.data.length,
+            validRows: validData.length,
+            delimiter: delimiter,
+            fieldMismatchWarnings: results.errors.filter(
+              (e) => e.type === 'FieldMismatch'
+            ).length,
+            otherErrors: nonFatalErrors.length,
+            firstRowKeys: results.data.length > 0 ? Object.keys(results.data[0] as object) : [],
+          })
+
+          if (validData.length === 0 && results.data.length > 0) {
+            console.warn('No valid rows found. Sample row:', results.data[0])
+            console.warn('Available fields in first row:', Object.keys(results.data[0] as object))
+          }
+
+          resolve({
+            data: validData,
+            errors: nonFatalErrors, // Only return non-field-mismatch errors
+            meta: results.meta,
+          })
+        },
+        error: (error: Error) => {
+          reject(error)
+        },
+      })
+    }
+    
+    reader.onerror = () => {
+      reject(new Error('Failed to read CSV file'))
+    }
+    
+    // Read the full file
+    reader.readAsText(file, 'UTF-8')
   })
 }
 
@@ -177,18 +233,25 @@ export function csvRowToProduct(row: CSVRow, supplierId: string): Record<string,
   }
 
   // Parse all fields according to exact requirements
+  const webofferPrice = parseNumber(row.weboffer_price) ?? 0
+  const quantity = parseInteger(row.quantity)
+  
   return {
     supplier_id: supplierId,
     model: row.model ? row.model.toString().trim() : null,
     sku: sku,
     retail_price: parseNumber(row.retail_price),
-    weboffer_price: parseNumber(row.weboffer_price) ?? 0, // Required, default to 0
+    weboffer_price: webofferPrice,
+    // Compatibility fields for validator and legacy code
+    wholesale_price: webofferPrice, // Map weboffer_price → wholesale_price
+    stock: quantity, // Map quantity → stock
+    moq: 1, // Default MOQ to 1 if missing
     name: row.name ? row.name.toString().trim() : '',
     category: row.category ? row.category.toString().trim() : null,
     manufacturer: row.manufacturer ? row.manufacturer.toString().trim() : null,
     description: row.description ? row.description.toString().trim() : null,
     availability: row.availability ? row.availability.toString().trim() : 'In Stock',
-    quantity: parseInteger(row.quantity),
+    quantity: quantity,
     weight: parseNumber(row.weight),
     transportational_weight: parseNumber(row.transportational_weight),
     date_expected: row.date_expected ? row.date_expected.toString().trim() : null,
@@ -196,6 +259,44 @@ export function csvRowToProduct(row: CSVRow, supplierId: string): Record<string,
     images: imageUrls, // Already filtered to valid URLs only
     is_visible: true,
   }
+}
+
+/**
+ * Clean product object for database insertion
+ * Removes compatibility fields that don't exist in the database schema
+ * (moq, wholesale_price, stock are only for validation, not in DB)
+ */
+export function cleanProductForDatabase(product: Record<string, unknown>): Record<string, unknown> {
+  const cleanedProduct: Record<string, unknown> = {}
+  
+  // Only include fields that exist in the database schema
+  const dbFields = [
+    'supplier_id',
+    'model',
+    'sku',
+    'retail_price',
+    'weboffer_price',
+    'name',
+    'category',
+    'manufacturer',
+    'description',
+    'availability',
+    'quantity',
+    'weight',
+    'transportational_weight',
+    'date_expected',
+    'main_image',
+    'images',
+    'is_visible',
+  ]
+  
+  for (const field of dbFields) {
+    if (field in product) {
+      cleanedProduct[field] = product[field]
+    }
+  }
+  
+  return cleanedProduct
 }
 
 export function exportToCSV(products: Product[]): string {

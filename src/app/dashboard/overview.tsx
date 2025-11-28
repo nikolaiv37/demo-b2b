@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { OrderStatusBadge } from '@/components/OrderStatusBadge'
 import { formatCurrency, calculatePercentageChange } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+import { useUnpaidBalance } from '@/hooks/useUnpaidBalance'
+import { useCompanyUnpaidBalances } from '@/hooks/useCompanyUnpaidBalances'
 import {
   DollarSign,
   ShoppingCart,
@@ -17,6 +19,9 @@ import {
   ArrowRight,
   Bell,
   Image as ImageIcon,
+  CreditCard,
+  Building2,
+  AlertTriangle,
 } from 'lucide-react'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { useEffect, useMemo } from 'react'
@@ -85,6 +90,12 @@ const COLORS = [
 export function DashboardOverview() {
   const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
+  
+  // Fetch unpaid balance for non-admin users
+  const { data: unpaidData, isLoading: unpaidLoading } = useUnpaidBalance()
+  
+  // Fetch company unpaid balances for admin users (top 10)
+  const { data: companyUnpaidData, isLoading: companyUnpaidLoading } = useCompanyUnpaidBalances(10)
 
   useEffect(() => {
     trackEvent(AnalyticsEvents.DASHBOARD_VIEWED)
@@ -105,25 +116,24 @@ export function DashboardOverview() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
       // Fetch all quotes (treating them as orders since orders table doesn't exist)
-      // Show all statuses: 'new', 'pending', 'approved' - treating approved as paid, others as pending
-      // Using the actual quotes schema: user_id, company_name, email, status
+      // Status workflow: 'new' (Processing), 'pending' (Awaiting Payment), 'shipped', 'approved' (Completed & Sent)
       const { data: allOrders } = await supabase
         .from('quotes')
         .select('total, created_at, user_id, items, status, id, order_number, company_name, email')
-        .in('status', ['new', 'pending', 'approved'])
+        .in('status', ['new', 'pending', 'shipped', 'approved'])
 
       // Fetch this month's quotes
       const { data: thisMonthOrders } = await supabase
         .from('quotes')
         .select('total, created_at, items, status')
-        .in('status', ['new', 'pending', 'approved'])
+        .in('status', ['new', 'pending', 'shipped', 'approved'])
         .gte('created_at', startOfMonth.toISOString())
 
       // Fetch last month's quotes
       const { data: lastMonthOrders } = await supabase
         .from('quotes')
         .select('total, created_at, status')
-        .in('status', ['new', 'pending', 'approved'])
+        .in('status', ['new', 'pending', 'shipped', 'approved'])
         .gte('created_at', startOfLastMonth.toISOString())
         .lte('created_at', endOfLastMonth.toISOString())
 
@@ -193,20 +203,21 @@ export function DashboardOverview() {
       }))
 
       // Calculate stats
-      // For revenue, only count approved quotes (treating them as paid orders)
-      // Also include 'new' and 'pending' statuses for category calculation (they represent real orders)
+      // Revenue includes all orders (Processing, Awaiting Payment, Shipped, Completed)
+      // 'approved' = Completed & Sent (paid), others are in progress
       const approvedOrders = allOrders?.filter((o: any) => 
-        o.status === 'approved' || o.status === 'new' || o.status === 'pending'
+        o.status === 'approved' || o.status === 'shipped' || o.status === 'new' || o.status === 'pending'
       ) || []
       const totalRevenue = approvedOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
-      const thisMonthApproved = thisMonthOrders?.filter((o: any) => o.status === 'approved') || []
-      const thisMonthRevenue = thisMonthApproved.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      // For revenue trend, count completed orders ('approved' = Completed & Sent)
+      const thisMonthCompleted = thisMonthOrders?.filter((o: any) => o.status === 'approved') || []
+      const thisMonthRevenue = thisMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
-      const lastMonthApproved = lastMonthOrders?.filter((o: any) => o.status === 'approved') || []
-      const lastMonthRevenue = lastMonthApproved.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const lastMonthCompleted = lastMonthOrders?.filter((o: any) => o.status === 'approved') || []
+      const lastMonthRevenue = lastMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
-      // For order counts, show all quotes (new, pending, approved)
+      // For order counts, show all orders
       const totalOrders = allOrders?.length || 0
       const thisMonthOrdersCount = thisMonthOrders?.length || 0
       const lastMonthOrdersCount = lastMonthOrders?.length || 0
@@ -231,9 +242,9 @@ export function DashboardOverview() {
       }
       
 
-      // Revenue by day (this month) - only count approved quotes
+      // Revenue by day (this month) - only count completed orders
       const revenueByDayMap = new Map<string, number>()
-      thisMonthApproved?.forEach((order) => {
+      thisMonthCompleted?.forEach((order) => {
         const date = new Date(order.created_at).toISOString().split('T')[0]
         revenueByDayMap.set(date, (revenueByDayMap.get(date) || 0) + Number(order.total || 0))
       })
@@ -604,13 +615,50 @@ export function DashboardOverview() {
           color="text-blue-500"
           change={ordersChange}
         />
-        <StatCard
-          title="Active Customers"
-          value={stats?.activeCustomers.toString() || '—'}
-          subtitle="Placed orders"
-          icon={Users}
-          color="text-purple-500"
-        />
+        
+        {/* Role-based card: Admin sees Active Customers, Company users see Unpaid Balance */}
+        {isAdmin ? (
+          <StatCard
+            title="Active Customers"
+            value={stats?.activeCustomers.toString() || '—'}
+            subtitle="Placed orders"
+            icon={Users}
+            color="text-purple-500"
+          />
+        ) : (
+          <GlassCard hover className="relative overflow-hidden">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground mb-1">Unpaid Balance</p>
+                {isLoading || unpaidLoading ? (
+                  <Skeleton className="h-10 w-32 mb-2" />
+                ) : (
+                  <p className="text-3xl font-bold mb-1">
+                    {unpaidData ? formatCurrency(unpaidData.unpaidBalance, 'EUR') : '€0.00'}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mb-2">
+                  {unpaidData?.unpaidOrdersCount === 1
+                    ? '1 order awaiting payment'
+                    : `${unpaidData?.unpaidOrdersCount || 0} orders awaiting payment`}
+                </p>
+                {unpaidData && unpaidData.unpaidOrdersCount > 0 && (
+                  <button
+                    onClick={() => navigate('/dashboard/orders?filter=pending')}
+                    className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
+                  >
+                    View pending orders
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <div className="p-3 rounded-lg bg-white/10 dark:bg-black/10">
+                <CreditCard className={`w-6 h-6 ${unpaidData && unpaidData.unpaidBalance > 0 ? 'text-amber-500' : 'text-green-500'}`} />
+              </div>
+            </div>
+          </GlassCard>
+        )}
+        
         <StatCard
           title="Products in Catalog"
           value={stats?.totalProducts.toString() || '—'}
@@ -623,6 +671,168 @@ export function DashboardOverview() {
           color={stats && stats.lowStockCount > 0 ? 'text-red-500' : 'text-amber-500'}
         />
       </div>
+
+      {/* Admin Only: Unpaid Balances by Company */}
+      {isAdmin && (
+        <GlassCard className="border border-white/10 dark:border-white/5">
+          <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/10 dark:border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <Building2 className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Unpaid Balances by Company</h2>
+                {companyUnpaidData && !companyUnpaidLoading && (
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Total unpaid: <span className="font-semibold text-amber-500">{formatCurrency(companyUnpaidData.totalUnpaidAmount, 'EUR')}</span>
+                    <span className="mx-2">•</span>
+                    {companyUnpaidData.totalOrdersCount} {companyUnpaidData.totalOrdersCount === 1 ? 'order' : 'orders'}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/dashboard/unpaid-balances')}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white/5 dark:hover:bg-black/5 border border-white/10 dark:border-white/5"
+            >
+              View All
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+          
+          {companyUnpaidLoading ? (
+            <div className="space-y-2.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : companyUnpaidData && companyUnpaidData.companies.length > 0 ? (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider">
+                      <th className="pb-3 font-medium">Company</th>
+                      <th className="pb-3 font-medium text-right">Unpaid Amount</th>
+                      <th className="pb-3 font-medium text-center">Orders</th>
+                      <th className="pb-3 font-medium text-right">Last Order</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 dark:divide-white/5">
+                    {companyUnpaidData.companies.map((company, index) => {
+                      const isHighAmount = company.unpaidAmount >= 5000
+                      const isMediumAmount = company.unpaidAmount >= 1000 && company.unpaidAmount < 5000
+                      
+                      return (
+                        <tr
+                          key={company.email || company.companyName || index}
+                          onClick={() => navigate(`/dashboard/orders?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`)}
+                          className="hover:bg-white/5 dark:hover:bg-black/5 cursor-pointer transition-colors"
+                        >
+                          <td className="py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                                {(company.companyName || company.email || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm">{company.companyName || 'Unknown Company'}</p>
+                                {company.email && (
+                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">{company.email}</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {isHighAmount && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                              <span className={`font-semibold ${isHighAmount ? 'text-red-500' : isMediumAmount ? 'text-amber-500' : 'text-foreground'}`}>
+                                {formatCurrency(company.unpaidAmount, 'EUR')}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 text-center">
+                            <Badge variant="outline" className="bg-white/5 dark:bg-black/5">
+                              {company.orderCount}
+                            </Badge>
+                          </td>
+                          <td className="py-3.5 text-right text-sm text-muted-foreground">
+                            {new Date(company.lastOrderDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {companyUnpaidData.companies.map((company, index) => {
+                  const isHighAmount = company.unpaidAmount >= 5000
+                  const isMediumAmount = company.unpaidAmount >= 1000 && company.unpaidAmount < 5000
+                  
+                  return (
+                    <div
+                      key={company.email || company.companyName || index}
+                      onClick={() => navigate(`/dashboard/orders?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`)}
+                      className="p-4 rounded-lg bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-200 border border-white/10 dark:border-white/5 cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                            {(company.companyName || company.email || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{company.companyName || 'Unknown Company'}</p>
+                            {company.email && (
+                              <p className="text-xs text-muted-foreground truncate max-w-[180px]">{company.email}</p>
+                            )}
+                          </div>
+                        </div>
+                        {isHighAmount && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <span className="text-muted-foreground text-xs">Unpaid</span>
+                            <p className={`font-semibold ${isHighAmount ? 'text-red-500' : isMediumAmount ? 'text-amber-500' : 'text-foreground'}`}>
+                              {formatCurrency(company.unpaidAmount, 'EUR')}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground text-xs">Orders</span>
+                            <p className="font-medium">{company.orderCount}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-muted-foreground text-xs">Last Order</span>
+                          <p className="text-sm">
+                            {new Date(company.lastOrderDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border border-dashed border-white/10 dark:border-white/5 rounded-lg bg-white/5 dark:bg-black/5">
+              <CreditCard className="w-8 h-8 mb-3 text-green-500" />
+              <p className="text-sm font-medium">No unpaid orders</p>
+              <p className="text-xs mt-1">All companies are up to date with payments</p>
+            </div>
+          )}
+        </GlassCard>
+      )}
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

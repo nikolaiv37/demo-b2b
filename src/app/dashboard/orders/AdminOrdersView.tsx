@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -27,7 +28,9 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Eye, Search, FileText, Download } from 'lucide-react'
+import { Eye, Search, FileText, Download, Building2, X, Warehouse, Truck, Package, Store } from 'lucide-react'
+import { ShippingMethod, SHIPPING_METHOD_CONFIG } from '@/types'
+import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 import { formatPrice, formatDateTime, cn } from '@/lib/utils'
 import { ProformaInvoicePDF } from '@/components/ProformaInvoicePDF'
 import { pdf } from '@react-pdf/renderer'
@@ -54,41 +57,43 @@ interface Order {
   internal_notes?: string
   items: OrderItem[]
   total: number
-  deposit_amount: number | null
-  deposit_paid: boolean
-  status: 'draft' | 'awaiting_payment' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'completed'
+  shipping_method: 'warehouse_pickup' | 'transport_company' | 'dropshipping' | 'shop_delivery'
+  status: 'processing' | 'awaiting_payment' | 'shipped' | 'completed'
   created_at: string
   updated_at: string
 }
 
-// Map old status values to new admin statuses
+// Map old database status values to new UI statuses
 function mapStatus(status: string): Order['status'] {
   const statusMap: Record<string, Order['status']> = {
-    new: 'draft',
+    // Legacy DB values
+    new: 'processing',
+    draft: 'processing',
     pending: 'awaiting_payment',
-    approved: 'paid',
+    approved: 'completed',
+    paid: 'completed',
+    delivered: 'completed',
+    // Current UI statuses
+    processing: 'processing',
+    awaiting_payment: 'awaiting_payment',
+    shipped: 'shipped',
+    completed: 'completed',
+    // Edge cases
     rejected: 'awaiting_payment',
     expired: 'awaiting_payment',
-    // Also handle the current UI statuses
-    awaiting_payment: 'awaiting_payment',
     partially_paid: 'awaiting_payment',
-    paid: 'paid',
-    ready_to_ship: 'processing',
-    shipped: 'shipped',
+    ready_to_ship: 'shipped',
   }
-  return statusMap[status] || 'draft'
+  return statusMap[status] || 'processing'
 }
 
-// Map new admin statuses back to database values
+// Map new UI statuses to database values
 function mapStatusToDb(status: Order['status']): string {
   const statusMap: Record<Order['status'], string> = {
-    draft: 'new',
+    processing: 'new',
     awaiting_payment: 'pending',
-    paid: 'approved',
-    processing: 'approved', // Processing maps to approved in DB
-    shipped: 'approved', // Shipped maps to approved in DB
-    delivered: 'approved', // Delivered maps to approved in DB
-    completed: 'approved', // Completed maps to approved in DB
+    shipped: 'shipped',
+    completed: 'approved',
   }
   return statusMap[status]
 }
@@ -124,13 +129,31 @@ function isThisWeek(dateString: string): boolean {
 }
 
 export function AdminOrdersView() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [companyFilter, setCompanyFilter] = useState<string>('all')
   const [quickFilter, setQuickFilter] = useState<string | null>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
+
+  // Handle URL query parameters for filtering
+  useEffect(() => {
+    const companyParam = searchParams.get('company')
+    const filterParam = searchParams.get('filter')
+    
+    if (companyParam) {
+      setCompanyFilter(companyParam)
+    }
+    if (filterParam === 'pending') {
+      // Show both processing and awaiting_payment for "pending" filter
+      setStatusFilter('awaiting_payment')
+    } else if (filterParam === 'processing') {
+      setStatusFilter('processing')
+    }
+  }, [searchParams])
 
   // Fetch all orders (admin sees all via RLS)
   const { data: orders, isLoading } = useQuery({
@@ -176,8 +199,7 @@ export function AdminOrdersView() {
             internal_notes: quote.internal_notes || '',
             items: Array.isArray(quote.items) ? quote.items : [],
             total: parseFloat(quote.total) || 0,
-            deposit_amount: null,
-            deposit_paid: false,
+            shipping_method: quote.shipping_method || 'shop_delivery',
             status: mapStatus(quote.status),
             created_at: quote.created_at,
             updated_at: quote.updated_at || quote.created_at,
@@ -265,6 +287,18 @@ export function AdminOrdersView() {
     },
   })
 
+  // Extract unique company names for filter dropdown
+  const uniqueCompanies = useMemo(() => {
+    if (!orders) return []
+    const companies = new Set<string>()
+    orders.forEach((order) => {
+      if (order.company_name && order.company_name !== 'Unknown Company') {
+        companies.add(order.company_name)
+      }
+    })
+    return Array.from(companies).sort((a, b) => a.localeCompare(b))
+  }, [orders])
+
   // Filter orders
   const filteredOrders = useMemo(() => {
     let filtered = orders || []
@@ -285,6 +319,15 @@ export function AdminOrdersView() {
       filtered = filtered.filter((order) => order.status === statusFilter)
     }
 
+    // Company filter
+    if (companyFilter !== 'all') {
+      filtered = filtered.filter(
+        (order) => 
+          order.company_name === companyFilter || 
+          order.email === companyFilter
+      )
+    }
+
     // Quick filters
     if (quickFilter === 'today') {
       filtered = filtered.filter((order) => isToday(order.created_at))
@@ -293,7 +336,7 @@ export function AdminOrdersView() {
     }
 
     return filtered
-  }, [orders, searchQuery, statusFilter, quickFilter])
+  }, [orders, searchQuery, statusFilter, companyFilter, quickFilter])
 
   const handleViewDetails = (order: Order) => {
     setSelectedOrder(order)
@@ -334,6 +377,48 @@ export function AdminOrdersView() {
               />
             </div>
 
+            {/* Company Filter */}
+            <div className="relative">
+              <Select 
+                value={companyFilter} 
+                onValueChange={(value) => {
+                  setCompanyFilter(value)
+                  // Clear URL params when manually changing filter
+                  if (searchParams.has('company')) {
+                    searchParams.delete('company')
+                    setSearchParams(searchParams)
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="All Companies" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Companies</SelectItem>
+                  {uniqueCompanies.map((company) => (
+                    <SelectItem key={company} value={company}>
+                      {company}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {companyFilter !== 'all' && (
+                <button
+                  onClick={() => {
+                    setCompanyFilter('all')
+                    if (searchParams.has('company')) {
+                      searchParams.delete('company')
+                      setSearchParams(searchParams)
+                    }
+                  }}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
+                >
+                  <X className="w-3 h-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
@@ -341,13 +426,10 @@ export function AdminOrdersView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
                 <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
                 <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="completed">Completed & Sent</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -362,7 +444,7 @@ export function AdminOrdersView() {
               }
               className={cn(
                 quickFilter === 'today' &&
-                  'bg-blue-500 text-white hover:bg-blue-600'
+                  'bg-gray-700 text-white hover:bg-gray-800'
               )}
             >
               Today
@@ -375,23 +457,23 @@ export function AdminOrdersView() {
               }
               className={cn(
                 quickFilter === 'this_week' &&
-                  'bg-blue-500 text-white hover:bg-blue-600'
+                  'bg-gray-700 text-white hover:bg-gray-800'
               )}
             >
               This Week
             </Button>
             
-            {/* Status Filter Buttons */}
+            {/* Status Filter Buttons - New Workflow */}
             <Button
-              variant={statusFilter === 'draft' ? 'default' : 'outline'}
+              variant={statusFilter === 'processing' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'draft' ? 'all' : 'draft')}
+              onClick={() => setStatusFilter(statusFilter === 'processing' ? 'all' : 'processing')}
               className={cn(
-                statusFilter === 'draft' &&
-                  'bg-gray-500 text-white hover:bg-gray-600'
+                statusFilter === 'processing' &&
+                  'bg-blue-500 text-white hover:bg-blue-600'
               )}
             >
-              Draft
+              Processing
             </Button>
             <Button
               variant={statusFilter === 'awaiting_payment' ? 'default' : 'outline'}
@@ -405,28 +487,6 @@ export function AdminOrdersView() {
               Awaiting Payment
             </Button>
             <Button
-              variant={statusFilter === 'paid' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'paid' ? 'all' : 'paid')}
-              className={cn(
-                statusFilter === 'paid' &&
-                  'bg-green-500 text-white hover:bg-green-600'
-              )}
-            >
-              Paid
-            </Button>
-            <Button
-              variant={statusFilter === 'processing' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'processing' ? 'all' : 'processing')}
-              className={cn(
-                statusFilter === 'processing' &&
-                  'bg-blue-500 text-white hover:bg-blue-600'
-              )}
-            >
-              Processing
-            </Button>
-            <Button
               variant={statusFilter === 'shipped' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter(statusFilter === 'shipped' ? 'all' : 'shipped')}
@@ -438,17 +498,6 @@ export function AdminOrdersView() {
               Shipped
             </Button>
             <Button
-              variant={statusFilter === 'delivered' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'delivered' ? 'all' : 'delivered')}
-              className={cn(
-                statusFilter === 'delivered' &&
-                  'bg-teal-500 text-white hover:bg-teal-600'
-              )}
-            >
-              Delivered
-            </Button>
-            <Button
               variant={statusFilter === 'completed' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
@@ -457,7 +506,7 @@ export function AdminOrdersView() {
                   'bg-green-500 text-white hover:bg-green-600'
               )}
             >
-              Completed
+              Completed & Sent
             </Button>
           </div>
         </div>
@@ -472,7 +521,7 @@ export function AdminOrdersView() {
                 <TableHead>Company Name</TableHead>
                 <TableHead>Items</TableHead>
                 <TableHead>Total</TableHead>
-                <TableHead>Deposit Paid</TableHead>
+                <TableHead>Shipping</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -489,14 +538,21 @@ export function AdminOrdersView() {
                   <TableCell colSpan={8} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-muted-foreground">No orders found</p>
-                      {searchQuery || statusFilter !== 'all' || quickFilter ? (
+                      {searchQuery || statusFilter !== 'all' || companyFilter !== 'all' || quickFilter ? (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
                             setSearchQuery('')
                             setStatusFilter('all')
+                            setCompanyFilter('all')
                             setQuickFilter(null)
+                            // Clear URL params
+                            if (searchParams.has('company') || searchParams.has('filter')) {
+                              searchParams.delete('company')
+                              searchParams.delete('filter')
+                              setSearchParams(searchParams)
+                            }
                           }}
                         >
                           Clear filters
@@ -528,15 +584,7 @@ export function AdminOrdersView() {
                       <span className="font-bold">{formatPrice(order.total)}</span>
                     </TableCell>
                     <TableCell>
-                      {order.deposit_paid && order.deposit_amount ? (
-                        <span className="text-green-600 dark:text-green-400 font-medium">
-                          Yes {formatPrice(order.deposit_amount)}
-                        </span>
-                      ) : (
-                        <span className="text-orange-600 dark:text-orange-400 font-medium">
-                          No
-                        </span>
-                      )}
+                      <ShippingMethodBadge method={order.shipping_method} size="sm" />
                     </TableCell>
                     <TableCell>
                       <Select
@@ -546,17 +594,14 @@ export function AdminOrdersView() {
                         }
                         disabled={updateStatusMutation.isPending}
                       >
-                        <SelectTrigger className="w-[160px]">
+                        <SelectTrigger className="w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
                           <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
                           <SelectItem value="shipped">Shipped</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="completed">Completed & Sent</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -607,13 +652,10 @@ export function AdminOrdersView() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
                         <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="completed">Completed & Sent</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -630,6 +672,17 @@ export function AdminOrdersView() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Created</p>
                     <p className="text-sm">{formatDateTime(selectedOrder.created_at)}</p>
+                  </div>
+                </div>
+
+                {/* Shipping Method */}
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <p className="text-sm text-muted-foreground mb-2">Shipping Method</p>
+                  <div className="flex items-center gap-3">
+                    <ShippingMethodBadge method={selectedOrder.shipping_method} size="md" />
+                    <span className="text-sm text-muted-foreground">
+                      {SHIPPING_METHOD_CONFIG[selectedOrder.shipping_method || 'shop_delivery']?.label}
+                    </span>
                   </div>
                 </div>
 

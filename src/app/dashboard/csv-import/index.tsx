@@ -23,6 +23,7 @@ export function CSVImportPage() {
     previewData,
     previewResult,
     previewError,
+    validationResult,
     importCSV,
     isImporting,
     progress,
@@ -47,16 +48,27 @@ export function CSVImportPage() {
   }
 
   const handleConfirmImport = () => {
-    console.log('Confirm import clicked', { selectedFile, previewResult })
-    if (selectedFile && previewResult && previewResult.data) {
+    console.log('Confirm import clicked', { selectedFile, previewResult, validationResult })
+    if (selectedFile && previewResult && previewResult.data && validationResult) {
+      // Only allow import if there are valid rows
+      if (validationResult.validRows === 0) {
+        toast({
+          title: 'No Valid Products',
+          description: 'There are no valid products to import. Please fix the errors in your CSV file.',
+          variant: 'destructive',
+        })
+        return
+      }
+      
       setShowSuccess(false) // Reset success state
-      console.log('Starting import with', previewResult.data.length, 'rows')
-      importCSV({ file: selectedFile, data: previewResult.data })
+      console.log('Starting import with', validationResult.validRows, 'valid products')
+      // Import only valid products
+      importCSV({ file: selectedFile, data: validationResult.validData as Record<string, unknown>[] })
     } else {
-      console.error('Cannot import:', { selectedFile, previewResult })
+      console.error('Cannot import:', { selectedFile, previewResult, validationResult })
       toast({
         title: 'Import Error',
-        description: 'Please wait for the file preview to complete before importing.',
+        description: 'Please wait for the file preview and validation to complete before importing.',
         variant: 'destructive',
       })
     }
@@ -158,49 +170,120 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;CT-100;499.99;34
       )}
 
       {/* Preview Data */}
-      {previewResult && previewData.length > 0 && !result && (
+      {previewResult && validationResult && !result && (
         <GlassCard>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-xl font-semibold flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5" />
-                Preview
+                Preview & Validation
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Showing first 10 rows of {previewResult.totalRows} total rows
+                Showing first 10 valid rows of {validationResult.validRows} valid out of {validationResult.totalRows} total rows
               </p>
             </div>
-            <Badge variant="secondary" className="text-lg px-4 py-2">
-              {previewResult.totalRows} products ready
-            </Badge>
+            <div className="flex gap-2">
+              <Badge variant="default" className="text-lg px-4 py-2 bg-green-600">
+                {validationResult.validRows} valid
+              </Badge>
+              {validationResult.invalidRows > 0 && (
+                <Badge variant="destructive" className="text-lg px-4 py-2">
+                  {validationResult.invalidRows} invalid
+                </Badge>
+              )}
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left p-2 font-semibold">SKU</th>
-                  <th className="text-left p-2 font-semibold">Name</th>
-                  <th className="text-left p-2 font-semibold">Category</th>
-                  <th className="text-right p-2 font-semibold">Price</th>
-                  <th className="text-right p-2 font-semibold">Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewData.map((row, index) => (
-                  <tr key={index} className="border-b border-border/50">
-                    <td className="p-2 font-mono text-xs">{row.sku}</td>
-                    <td className="p-2">{row.name}</td>
-                    <td className="p-2">{row.category || '-'}</td>
-                    <td className="p-2 text-right">
-                      ${row.weboffer_price || row.wholesale_price || '0'}
-                    </td>
-                    <td className="p-2 text-right">{row.quantity || row.stock || '0'}</td>
+          {/* Validation Summary */}
+          {validationResult.invalidRows > 0 && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-semibold mb-1">
+                  {validationResult.invalidRows} row(s) have validation errors
+                </p>
+                <p className="text-sm">
+                  Only valid rows will be imported. Please review the errors below.
+                </p>
+                {validationResult.errors.length > 0 && (
+                  <div className="mt-2 max-h-32 overflow-y-auto">
+                    <ul className="text-xs list-disc list-inside space-y-1">
+                      {validationResult.errors.slice(0, 5).map((error, idx) => (
+                        <li key={idx}>
+                          Row {error.row}: {error.field ? `${error.field}: ` : ''}{error.message}
+                        </li>
+                      ))}
+                      {validationResult.errors.length > 5 && (
+                        <li className="text-muted-foreground">
+                          ... and {validationResult.errors.length - 5} more errors
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Preview Table */}
+          {previewData.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left p-2 font-semibold">Image</th>
+                    <th className="text-left p-2 font-semibold">SKU</th>
+                    <th className="text-left p-2 font-semibold">Name</th>
+                    <th className="text-left p-2 font-semibold">Category</th>
+                    <th className="text-right p-2 font-semibold">Wholesale Price</th>
+                    <th className="text-right p-2 font-semibold">Stock</th>
+                    <th className="text-center p-2 font-semibold">Images</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {previewData.map((product, index) => (
+                    <tr 
+                      key={index} 
+                      className="border-b border-border/50 hover:bg-muted/50"
+                    >
+                      <td className="p-2">
+                        {product.main_image && (
+                          <img 
+                            src={product.main_image as string} 
+                            alt={product.name as string}
+                            className="w-12 h-12 object-cover rounded border"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none'
+                            }}
+                          />
+                        )}
+                      </td>
+                      <td className="p-2 font-mono text-xs">
+                        {product.sku}
+                      </td>
+                      <td className="p-2">
+                        {product.name}
+                      </td>
+                      <td className="p-2">{product.category || '-'}</td>
+                      <td className="p-2 text-right font-medium">
+                        {product.wholesale_price !== undefined && product.wholesale_price !== null
+                          ? `€${Number(product.wholesale_price).toFixed(2)}`
+                          : '€0.00'}
+                      </td>
+                      <td className="p-2 text-right">
+                        {product.stock !== undefined ? Number(product.stock) : 0}
+                      </td>
+                      <td className="p-2 text-center">
+                        <Badge variant="secondary">
+                          {(product.images as string[])?.length || 0}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </GlassCard>
       )}
 
@@ -297,7 +380,7 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;CT-100;499.99;34
       )}
 
       {/* Confirm Import Button */}
-      {previewResult && previewResult.data && previewResult.data.length > 0 && !result && !isImporting && !showSuccess && (
+      {previewResult && validationResult && validationResult.validRows > 0 && !result && !isImporting && !showSuccess && (
         <Button
           onClick={handleConfirmImport}
           disabled={isImporting || isPreviewing}
@@ -308,7 +391,7 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;CT-100;499.99;34
             ? 'Loading preview...'
             : isImporting 
             ? `Importing... ${progress}%` 
-            : `Confirm Import (${previewResult.totalRows} products)`
+            : `Confirm Import (${validationResult.validRows} valid product${validationResult.validRows !== 1 ? 's' : ''})`
           }
         </Button>
       )}

@@ -67,7 +67,11 @@ export interface QuoteItem {
   total: number
 }
 
-export type QuoteStatus = 'pending' | 'approved' | 'rejected' | 'expired'
+// New order workflow statuses
+export type QuoteStatus = 'processing' | 'awaiting_payment' | 'shipped' | 'completed'
+
+// Legacy status mapping for database compatibility
+// DB values: 'new' -> 'processing', 'pending' -> 'awaiting_payment', 'approved' -> 'completed', 'shipped' -> 'shipped'
 
 export interface Quote {
   id: string
@@ -87,7 +91,43 @@ export interface Quote {
   updated_at: string
 }
 
-export type OrderStatus = 'pending' | 'approved' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+// New simplified order statuses workflow
+export type OrderStatus = 'processing' | 'awaiting_payment' | 'shipped' | 'completed'
+
+// Shipping method options
+export type ShippingMethod = 
+  | 'warehouse_pickup'    // Pick up from our Warehouse
+  | 'transport_company'   // Delivery to a transportation company of your choice
+  | 'dropshipping'        // Delivery to your Customer (Dropshipping)
+  | 'shop_delivery'       // Delivery to your Shop (DEFAULT)
+
+// Shipping method display labels and icons
+export const SHIPPING_METHOD_CONFIG: Record<ShippingMethod, { label: string; shortLabel: string; icon: string; color: string }> = {
+  warehouse_pickup: {
+    label: 'Pick up from our Warehouse',
+    shortLabel: 'Warehouse',
+    icon: '🏭',
+    color: 'blue',
+  },
+  transport_company: {
+    label: 'Delivery to transportation company',
+    shortLabel: 'Transport',
+    icon: '🚛',
+    color: 'amber',
+  },
+  dropshipping: {
+    label: 'Delivery to your Customer',
+    shortLabel: 'Dropship',
+    icon: '📦',
+    color: 'purple',
+  },
+  shop_delivery: {
+    label: 'Delivery to your Shop',
+    shortLabel: 'Shop',
+    icon: '🏪',
+    color: 'green',
+  },
+}
 
 export interface Order {
   id: string
@@ -102,6 +142,7 @@ export interface Order {
   shipping?: number
   total: number
   status: OrderStatus
+  shipping_method?: ShippingMethod
   payment_id?: string
   payment_status?: 'pending' | 'paid' | 'failed' | 'refunded'
   tracking_number?: string
