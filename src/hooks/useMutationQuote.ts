@@ -24,6 +24,7 @@ export function useMutationCreateQuote() {
     mutationFn: async (data: CreateQuoteData) => {
       const expiresAt = addDays(new Date(), 30).toISOString()
 
+      // New orders auto-create as 'new' (Processing status)
       const { data: quote, error } = await supabase
         .from('quotes')
         .insert({
@@ -36,7 +37,7 @@ export function useMutationCreateQuote() {
           tax: data.tax,
           shipping: data.shipping,
           total: data.total,
-          status: 'pending',
+          status: 'new', // Processing status - auto-set when company user creates order
           expires_at: expiresAt,
           notes: data.notes,
         })

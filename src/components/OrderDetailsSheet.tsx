@@ -26,15 +26,19 @@ import {
   Building2,
   Phone,
   MapPin,
+  Warehouse,
+  Truck,
+  Package,
+  Store,
 } from 'lucide-react'
+import { SHIPPING_METHOD_CONFIG } from '@/types'
 
-// Order status types
+// Order status types - new simplified workflow
 type OrderStatus =
+  | 'processing'
   | 'awaiting_payment'
-  | 'partially_paid'
-  | 'paid'
-  | 'ready_to_ship'
   | 'shipped'
+  | 'completed'
 
 interface OrderItem {
   product_id: string
@@ -57,8 +61,7 @@ interface Order {
   notes: string | null
   items: OrderItem[]
   total: number
-  deposit_amount: number | null
-  deposit_paid: boolean
+  shipping_method?: 'warehouse_pickup' | 'transport_company' | 'dropshipping' | 'shop_delivery'
   status: OrderStatus
   created_at: string
   updated_at: string
@@ -80,31 +83,44 @@ function formatOrderDate(dateString: string): string {
   return `${day} ${month} ${year}, ${hours}:${minutes}`
 }
 
-function getStatusBadge(status: OrderStatus) {
-  const configs = {
+function getStatusBadge(status: OrderStatus | string) {
+  const configs: Record<string, { label: string; className: string }> = {
+    processing: {
+      label: 'Processing',
+      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    },
     awaiting_payment: {
       label: 'Awaiting Payment',
       className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     },
-    partially_paid: {
-      label: 'Partially Paid',
-      className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    },
-    paid: {
-      label: 'Paid',
-      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    },
-    ready_to_ship: {
-      label: 'Ready to Ship',
-      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    },
     shipped: {
       label: 'Shipped',
-      className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
+      className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    },
+    completed: {
+      label: 'Completed & Sent',
+      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    },
+    // Legacy status fallbacks (for backwards compatibility)
+    new: {
+      label: 'Processing',
+      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    },
+    pending: {
+      label: 'Awaiting Payment',
+      className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    },
+    approved: {
+      label: 'Completed & Sent',
+      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
   }
 
-  const config = configs[status]
+  const config = configs[status] || {
+    label: status || 'Unknown',
+    className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
+  }
+  
   return (
     <Badge variant="outline" className={cn('font-medium text-base px-3 py-1', config.className)}>
       {config.label}
@@ -117,17 +133,12 @@ export function OrderDetailsSheet({
   open,
   onOpenChange,
 }: OrderDetailsSheetProps) {
-  const amountDue = order.total - (order.deposit_amount || 0)
-
   const handleAction = (action: string) => {
     console.log(`Order action: ${action}`, order)
     // TODO: Implement actions
     switch (action) {
       case 'proforma':
         // TODO: Generate proforma invoice PDF
-        break
-      case 'mark_paid':
-        // TODO: Mark order as paid
         break
       case 'duplicate':
         // TODO: Duplicate order
@@ -192,34 +203,38 @@ export function OrderDetailsSheet({
             </div>
           </div>
 
-          {/* Deposit Status */}
+          {/* Shipping Method */}
           <div className="bg-card border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Deposit Status</h3>
-            {order.deposit_paid && order.deposit_amount ? (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30">
-                  <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+            <h3 className="text-lg font-semibold mb-4">Shipping Method</h3>
+            {(() => {
+              const method = order.shipping_method || 'shop_delivery'
+              const config = SHIPPING_METHOD_CONFIG[method] || SHIPPING_METHOD_CONFIG.shop_delivery
+              const IconComponent = method === 'warehouse_pickup' ? Warehouse 
+                : method === 'transport_company' ? Truck 
+                : method === 'dropshipping' ? Package 
+                : Store
+              const colorClasses = {
+                blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+                amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+                purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+                green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+              }
+              const colorClass = colorClasses[config.color as keyof typeof colorClasses] || colorClasses.green
+              
+              return (
+                <div className="flex items-center gap-4">
+                  <div className={`flex items-center justify-center w-16 h-16 rounded-full ${colorClass.split(' ').slice(0, 2).join(' ')}`}>
+                    <IconComponent className={`h-8 w-8 ${colorClass.split(' ').slice(2).join(' ')}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">{config.shortLabel}</p>
+                    <p className={`text-lg font-bold ${colorClass.split(' ').slice(2).join(' ')}`}>
+                      {config.label}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Deposit Paid</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {formatPrice(order.deposit_amount)}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30">
-                  <span className="text-2xl">✕</span>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">No Deposit Paid</p>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                    {formatPrice(0)}
-                  </p>
-                </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
 
           {/* Order Items Table */}
@@ -279,26 +294,12 @@ export function OrderDetailsSheet({
 
           {/* Totals Section */}
           <div className="bg-card border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Order Totals</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-base">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">{formatPrice(order.total)}</span>
-              </div>
-              {order.deposit_paid && order.deposit_amount && (
-                <div className="flex items-center justify-between text-base">
-                  <span className="text-muted-foreground">Deposit Paid</span>
-                  <span className="font-medium text-green-600 dark:text-green-400">
-                    -{formatPrice(order.deposit_amount)}
-                  </span>
-                </div>
-              )}
-              <div className="border-t pt-3 flex items-center justify-between">
-                <span className="text-lg font-bold">Amount Due</span>
-                <span className="text-2xl font-bold text-primary">
-                  {formatPrice(amountDue)}
-                </span>
-              </div>
+            <h3 className="text-lg font-semibold mb-4">Order Total</h3>
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-bold">Total Amount</span>
+              <span className="text-2xl font-bold text-primary">
+                {formatPrice(order.total)}
+              </span>
             </div>
           </div>
 
@@ -321,14 +322,6 @@ export function OrderDetailsSheet({
             >
               <FileText className="w-4 h-4 mr-2" />
               Generate Proforma Invoice
-            </Button>
-            <Button
-              variant="default"
-              className="w-full"
-              onClick={() => handleAction('mark_paid')}
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Mark as Paid
             </Button>
             <Button
               variant="outline"

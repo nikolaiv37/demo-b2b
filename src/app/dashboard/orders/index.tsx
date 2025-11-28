@@ -37,19 +37,18 @@ import {
   Search,
   FileText,
   Mail,
-  CheckCircle,
   Copy,
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 
-// Order status types matching Eastern Europe B2B style
+// Order status types - new simplified workflow
 type OrderStatus =
+  | 'processing'
   | 'awaiting_payment'
-  | 'partially_paid'
-  | 'paid'
-  | 'ready_to_ship'
   | 'shipped'
+  | 'completed'
 
 interface OrderItem {
   product_id: string
@@ -72,8 +71,7 @@ interface Order {
   notes: string | null
   items: OrderItem[]
   total: number
-  deposit_amount: number | null
-  deposit_paid: boolean
+  shipping_method: 'warehouse_pickup' | 'transport_company' | 'dropshipping' | 'shop_delivery'
   status: OrderStatus
   created_at: string
   updated_at: string
@@ -234,25 +232,21 @@ const _DUMMY_ORDERS: any[] = [
 
 function getStatusBadge(status: OrderStatus) {
   const configs = {
+    processing: {
+      label: 'Processing',
+      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    },
     awaiting_payment: {
       label: 'Awaiting Payment',
       className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     },
-    partially_paid: {
-      label: 'Partially Paid',
-      className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    },
-    paid: {
-      label: 'Paid',
-      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    },
-    ready_to_ship: {
-      label: 'Ready to Ship',
-      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    },
     shipped: {
       label: 'Shipped',
-      className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
+      className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    },
+    completed: {
+      label: 'Completed & Sent',
+      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
   }
 
@@ -321,17 +315,22 @@ export function OrdersPage() {
 
       // Map quotes to orders format
       return (data || []).map((quote: any) => {
-        // Map old status values to new status system
+        // Map database status values to new UI status system
         const statusMap: Record<string, OrderStatus> = {
-          new: 'awaiting_payment',
-          pending: 'awaiting_payment',
-          approved: 'paid',
+          new: 'processing',           // Processing
+          draft: 'processing',         // Processing
+          pending: 'awaiting_payment', // Awaiting Payment
+          shipped: 'shipped',          // Shipped
+          approved: 'completed',       // Completed & Sent
+          paid: 'completed',           // Completed & Sent
+          delivered: 'completed',      // Completed & Sent
+          completed: 'completed',      // Completed & Sent
           rejected: 'awaiting_payment', // Treat rejected as awaiting payment
-          expired: 'awaiting_payment',
+          expired: 'awaiting_payment',  // Treat expired as awaiting payment
         }
 
         // Default status if not in map
-        const mappedStatus = statusMap[quote.status] || 'awaiting_payment'
+        const mappedStatus = statusMap[quote.status] || 'processing'
 
         return {
           id: typeof quote.id === 'number' ? quote.id : parseInt(quote.id) || 0,
@@ -344,8 +343,7 @@ export function OrdersPage() {
           notes: quote.notes || null,
           items: Array.isArray(quote.items) ? quote.items : [],
           total: parseFloat(quote.total) || 0,
-          deposit_amount: null, // Deposit not stored yet - can be added later
-          deposit_paid: false, // Default to false
+          shipping_method: quote.shipping_method || 'shop_delivery',
           status: mappedStatus,
           created_at: quote.created_at,
           updated_at: quote.updated_at || quote.created_at,
@@ -398,10 +396,10 @@ export function OrdersPage() {
     }
 
     // Quick filters
-    if (quickFilter === 'no_deposit') {
-      filtered = filtered.filter((order) => !order.deposit_paid)
+    if (quickFilter === 'dropshipping') {
+      filtered = filtered.filter((order) => order.shipping_method === 'dropshipping')
     } else if (quickFilter === 'ready_today') {
-      filtered = filtered.filter((order) => order.status === 'ready_to_ship')
+      filtered = filtered.filter((order) => order.status === 'shipped')
     } else if (quickFilter === 'low_stock') {
       // TODO: Implement low stock logic based on inventory
       filtered = filtered.filter((order) => order.id === 3) // Dummy filter
@@ -444,9 +442,6 @@ export function OrdersPage() {
       case 'proforma':
         // TODO: Generate proforma invoice
         break
-      case 'mark_paid':
-        // TODO: Mark as paid
-        break
       case 'send_email':
         // TODO: Send email
         break
@@ -484,10 +479,10 @@ export function OrdersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
               <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-              <SelectItem value="partially_paid">Partially Paid</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="ready_to_ship">Ready to Ship</SelectItem>
+              <SelectItem value="shipped">Shipped</SelectItem>
+              <SelectItem value="completed">Completed & Sent</SelectItem>
               <SelectItem value="shipped">Shipped</SelectItem>
             </SelectContent>
           </Select>
@@ -496,17 +491,17 @@ export function OrdersPage() {
         {/* Quick Filter Chips */}
         <div className="flex flex-wrap gap-2">
           <Button
-            variant={quickFilter === 'no_deposit' ? 'default' : 'outline'}
+            variant={quickFilter === 'dropshipping' ? 'default' : 'outline'}
             size="sm"
             onClick={() =>
-              setQuickFilter(quickFilter === 'no_deposit' ? null : 'no_deposit')
+              setQuickFilter(quickFilter === 'dropshipping' ? null : 'dropshipping')
             }
             className={cn(
-              quickFilter === 'no_deposit' &&
-                'bg-orange-500 text-white hover:bg-orange-600'
+              quickFilter === 'dropshipping' &&
+                'bg-purple-500 text-white hover:bg-purple-600'
             )}
           >
-            No Deposit
+            Dropshipping
           </Button>
           <Button
             variant={quickFilter === 'ready_today' ? 'default' : 'outline'}
@@ -550,14 +545,6 @@ export function OrdersPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleBulkAction('mark_paid')}
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Mark as Paid
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={() => handleBulkAction('proforma')}
             >
               <FileText className="w-4 h-4 mr-2" />
@@ -594,7 +581,7 @@ export function OrdersPage() {
               <TableHead>Buyer</TableHead>
               <TableHead>Items</TableHead>
               <TableHead>Total</TableHead>
-              <TableHead>Deposit</TableHead>
+              <TableHead>Shipping</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -665,15 +652,7 @@ export function OrdersPage() {
                     <span className="font-bold">{formatPrice(order.total)}</span>
                   </TableCell>
                   <TableCell>
-                    {order.deposit_paid && order.deposit_amount ? (
-                      <span className="text-green-600 dark:text-green-400 font-medium">
-                        Yes {formatPrice(order.deposit_amount)}
-                      </span>
-                    ) : (
-                      <span className="text-orange-600 dark:text-orange-400 font-medium">
-                        No
-                      </span>
-                    )}
+                    <ShippingMethodBadge method={order.shipping_method} size="sm" />
                   </TableCell>
                   <TableCell>{getStatusBadge(order.status)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -711,12 +690,6 @@ export function OrdersPage() {
                           >
                             <FileText className="w-4 h-4 mr-2" />
                             Generate Proforma Invoice
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleOrderAction(order, 'mark_paid')}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Mark as Paid
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

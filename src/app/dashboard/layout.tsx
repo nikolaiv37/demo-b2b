@@ -40,6 +40,7 @@ const pageTitles: Record<string, string> = {
   '/dashboard/quotes': 'Quotes',
   '/dashboard/settings': 'Settings',
   '/dashboard/analytics': 'Analytics',
+  '/dashboard/unpaid-balances': 'Unpaid Balances',
 }
 
 export function DashboardLayout() {
@@ -53,7 +54,8 @@ export function DashboardLayout() {
     queryFn: async () => {
       if (!isAdmin && !user?.id) return null
 
-      // Fetch pending orders (status: 'new' or 'pending')
+      // Fetch pending orders: Processing ('new') + Awaiting Payment ('pending')
+      // These are orders that need attention
       const { count: pendingCount } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })

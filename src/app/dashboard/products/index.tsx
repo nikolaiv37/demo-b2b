@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
 import { ProductGridCard } from '@/components/ProductGridCard'
 import { ProductQuickViewModal } from '@/components/ProductQuickViewModal'
+import { CategoryBubbles } from '@/components/CategoryBubbles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -312,6 +313,15 @@ export function ProductsPage() {
           {isLoading && !totalCount ? 'Loading...' : `${totalCount ?? 0} products`}
         </p>
       </div>
+
+      {/* Category Bubbles Navigation */}
+      <CategoryBubbles
+        selectedCategory={selectedCategory !== 'all' ? selectedCategory : undefined}
+        onCategorySelect={(category) => {
+          setSelectedCategory(category || 'all')
+          setCurrentPage(1)
+        }}
+      />
 
       {/* Search and Filters */}
       <GlassCard>

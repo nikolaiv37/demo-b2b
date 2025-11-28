@@ -24,6 +24,7 @@ import { CSVImportPage } from '@/app/dashboard/csv-import'
 import { SettingsPage } from '@/app/dashboard/settings'
 import { AnalyticsPage } from '@/app/dashboard/analytics'
 import { ComplaintsPage } from '@/app/dashboard/complaints'
+import { UnpaidBalancesPage } from '@/app/dashboard/unpaid-balances'
 
 // Public Pages
 import { PublicCatalog } from '@/pages/PublicCatalog'
@@ -84,6 +85,7 @@ function App() {
                 <Route path="csv-import" element={<CSVImportPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
               </Route>
 
               {/* Public Routes */}
