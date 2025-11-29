@@ -37,6 +37,31 @@ export interface ParseResult {
   meta: Papa.ParseMeta
 }
 
+// Alternative SKU field names used by different distributors
+const SKU_FIELD_NAMES = [
+  'sku', 'SKU', 'Sku',
+  'itemcode', 'ItemCode', 'item_code', 'ITEMCODE',
+  'productcode', 'ProductCode', 'product_code', 'PRODUCTCODE',
+  'artikelnummer', 'Artikelnummer', 'ARTIKELNUMMER',
+  'artnr', 'ArtNr', 'art_nr',
+  'code', 'Code', 'CODE',
+  'barcode', 'Barcode', 'BARCODE',
+  'barcodemain', 'BarcodeMain',
+]
+
+/**
+ * Find the SKU value from a row by checking multiple possible field names
+ */
+function findSkuValue(row: Record<string, unknown>): string | null {
+  for (const fieldName of SKU_FIELD_NAMES) {
+    const value = row[fieldName] || row[fieldName.toLowerCase()]
+    if (value && typeof value === 'string' && value.trim().length > 0) {
+      return value.trim()
+    }
+  }
+  return null
+}
+
 /**
  * Parse CSV file with proper UTF-8 handling for Greek/Bulgarian characters
  * Auto-detects delimiter (semicolon or comma) and uses quoteChar for proper escaping
@@ -101,15 +126,22 @@ export function parseCSV(file: File, preferredDelimiter: string = ';'): Promise<
             })
           }
 
-          // Filter out completely empty rows and rows without SKU
+          // Filter out completely empty rows and rows without any identifier
+          // Support multiple SKU field names: sku, itemcode, productcode, artikelnummer, etc.
           const validData = (results.data as CSVRow[]).filter((row) => {
             if (!row) return false
             
-            // Check for SKU field (case-insensitive, handle various field name variations)
             const rowObj = row as Record<string, unknown>
-            const skuValue = row.sku || rowObj['sku'] || rowObj['SKU'] || rowObj['Sku']
             
-            return skuValue && typeof skuValue === 'string' && skuValue.trim().length > 0
+            // Check for any SKU-like field
+            const skuValue = findSkuValue(rowObj)
+            if (skuValue) return true
+            
+            // Also accept rows that have a name field (for very flexible parsing)
+            const nameValue = rowObj['name'] || rowObj['Name'] || rowObj['NAME'] || 
+                             rowObj['productname'] || rowObj['ProductName'] ||
+                             rowObj['title'] || rowObj['Title']
+            return nameValue && typeof nameValue === 'string' && nameValue.trim().length > 0
           })
 
           console.log('Parsed CSV:', {
@@ -145,6 +177,97 @@ export function parseCSV(file: File, preferredDelimiter: string = ';'): Promise<
     }
     
     // Read the full file
+    reader.readAsText(file, 'UTF-8')
+  })
+}
+
+/**
+ * Flexible CSV parser for the Import Wizard
+ * Accepts ANY CSV structure without requiring specific fields
+ * Returns all non-empty rows for the wizard to process
+ */
+export function parseCSVFlexible(file: File): Promise<{
+  data: Record<string, unknown>[]
+  headers: string[]
+  errors: Papa.ParseError[]
+  meta: Papa.ParseMeta
+}> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      const firstLine = text.split('\n')[0] || ''
+      
+      // Count occurrences of common delimiters
+      const semicolonCount = (firstLine.match(/;/g) || []).length
+      const commaCount = (firstLine.match(/,/g) || []).length
+      
+      // Use the delimiter with more occurrences
+      let delimiter = ','
+      if (semicolonCount > commaCount) {
+        delimiter = ';'
+      }
+      
+      console.log('CSV Flexible Parser - Delimiter detection:', {
+        semicolonCount,
+        commaCount,
+        detectedDelimiter: delimiter,
+      })
+
+      Papa.parse(text, {
+        header: true,
+        delimiter: delimiter,
+        quoteChar: '"',
+        escapeChar: '"',
+        skipEmptyLines: 'greedy',
+        encoding: 'UTF-8',
+        transformHeader: (header: string) => {
+          // Normalize header names: trim, lowercase, replace spaces with underscores
+          return header.trim().toLowerCase().replace(/\s+/g, '_')
+        },
+        complete: (results) => {
+          const nonFatalErrors = results.errors.filter(
+            (error) => error.type !== 'FieldMismatch' || error.code !== 'TooFewFields'
+          )
+
+          // Get headers from first row
+          const headers = results.data.length > 0 
+            ? Object.keys(results.data[0] as object)
+            : []
+
+          // Filter out completely empty rows (all values are empty/undefined)
+          const validData = (results.data as Record<string, unknown>[]).filter((row) => {
+            if (!row) return false
+            // Check if at least one field has a non-empty value
+            return Object.values(row).some(
+              value => value !== undefined && value !== null && value !== ''
+            )
+          })
+
+          console.log('CSV Flexible Parser result:', {
+            totalRows: results.data.length,
+            validRows: validData.length,
+            headers: headers.slice(0, 10), // Log first 10 headers
+            delimiter,
+          })
+
+          resolve({
+            data: validData,
+            headers,
+            errors: nonFatalErrors,
+            meta: results.meta,
+          })
+        },
+        error: (error: Error) => {
+          reject(error)
+        },
+      })
+    }
+    
+    reader.onerror = () => {
+      reject(new Error('Failed to read CSV file'))
+    }
+    
     reader.readAsText(file, 'UTF-8')
   })
 }
