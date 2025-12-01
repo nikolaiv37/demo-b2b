@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GlassCard } from '@/components/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import { Building2, User, CreditCard, Moon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const { company, profile, user } = useAuth()
   const { isDark, toggle } = useDarkMode()
   const { toast } = useToast()
@@ -23,8 +25,8 @@ export function SettingsPage() {
   const handleCompanySubmit = async (data: CompanyFormData, logoUrl: string | null) => {
     if (!user || !company) {
       toast({
-        title: 'Error',
-        description: 'You must be logged in and have a company',
+        title: t('settings.error'),
+        description: t('settings.mustBeLoggedIn'),
         variant: 'destructive',
       })
       return
@@ -56,14 +58,14 @@ export function SettingsPage() {
       useAuthStore.getState().setCompany(updatedCompany)
 
       toast({
-        title: 'Success',
-        description: 'Company information updated successfully',
+        title: t('settings.success'),
+        description: t('settings.companyUpdated'),
       })
     } catch (error: any) {
       console.error('Error updating company:', error)
       toast({
-        title: 'Update failed',
-        description: error.message || 'Failed to update company information',
+        title: t('settings.updateFailed'),
+        description: error.message || t('settings.failedToUpdate'),
         variant: 'destructive',
       })
     } finally {
@@ -74,9 +76,9 @@ export function SettingsPage() {
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Settings</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('settings.title')}</h1>
         <p className="text-muted-foreground">
-          Manage your account and company settings
+          {t('settings.subtitle')}
         </p>
       </div>
 
@@ -84,25 +86,25 @@ export function SettingsPage() {
         <TabsList className="glass">
           <TabsTrigger value="company">
             <Building2 className="w-4 h-4 mr-2" />
-            Company
+            {t('nav.company')}
           </TabsTrigger>
           <TabsTrigger value="profile">
             <User className="w-4 h-4 mr-2" />
-            Profile
+            {t('nav.profile')}
           </TabsTrigger>
           <TabsTrigger value="billing">
             <CreditCard className="w-4 h-4 mr-2" />
-            Billing
+            {t('nav.billing')}
           </TabsTrigger>
           <TabsTrigger value="appearance">
             <Moon className="w-4 h-4 mr-2" />
-            Appearance
+            {t('nav.appearance')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="company">
           <GlassCard className="p-6">
-            <h2 className="text-xl font-semibold mb-6">Company Information</h2>
+            <h2 className="text-xl font-semibold mb-6">{t('settings.companyInformation')}</h2>
             <CompanyForm
               company={company}
               onSubmit={handleCompanySubmit}
@@ -115,19 +117,19 @@ export function SettingsPage() {
 
         <TabsContent value="profile">
           <GlassCard>
-            <h2 className="text-xl font-semibold mb-4">Profile Settings</h2>
+            <h2 className="text-xl font-semibold mb-4">{t('settings.profileSettings')}</h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName">{t('settings.fullName')}</Label>
                 <Input
                   id="fullName"
                   defaultValue={profile?.full_name || ''}
-                  placeholder="John Doe"
+                  placeholder={t('settings.fullNamePlaceholder')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -136,32 +138,32 @@ export function SettingsPage() {
                   disabled
                 />
                 <p className="text-xs text-muted-foreground">
-                  Email cannot be changed
+                  {t('settings.emailCannotBeChanged')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role">{t('settings.role')}</Label>
                 <Input id="role" value={profile?.role} disabled />
               </div>
 
-              <Button>Update Profile</Button>
+              <Button>{t('settings.updateProfile')}</Button>
             </div>
           </GlassCard>
         </TabsContent>
 
         <TabsContent value="billing">
           <GlassCard>
-            <h2 className="text-xl font-semibold mb-4">Billing & Payments</h2>
+            <h2 className="text-xl font-semibold mb-4">{t('settings.billingPayments')}</h2>
             <div className="space-y-4">
               <div className="glass-card p-4">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Stripe Account
+                  {t('settings.stripeAccount')}
                 </p>
                 {company?.stripe_id ? (
                   <div>
                     <p className="font-semibold text-green-600 dark:text-green-400">
-                      Connected
+                      {t('settings.connected')}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       ID: {company.stripe_id}
@@ -170,17 +172,17 @@ export function SettingsPage() {
                 ) : (
                   <div>
                     <p className="text-sm mb-2">
-                      Connect your Stripe account to accept payments
+                      {t('settings.connectStripeAccount')}
                     </p>
-                    <Button>Connect Stripe</Button>
+                    <Button>{t('settings.connectStripe')}</Button>
                   </div>
                 )}
               </div>
 
               <div className="glass-card p-4">
-                <h3 className="font-semibold mb-2">Payment Methods</h3>
+                <h3 className="font-semibold mb-2">{t('settings.paymentMethods')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  No payment methods on file
+                  {t('settings.noPaymentMethods')}
                 </p>
               </div>
             </div>
@@ -189,20 +191,20 @@ export function SettingsPage() {
 
         <TabsContent value="appearance">
           <GlassCard>
-            <h2 className="text-xl font-semibold mb-4">Appearance</h2>
+            <h2 className="text-xl font-semibold mb-4">{t('settings.appearance')}</h2>
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Dark Mode</Label>
+                  <Label>{t('settings.darkMode')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Toggle between light and dark theme
+                    {t('settings.toggleTheme')}
                   </p>
                 </div>
                 <Switch checked={isDark} onCheckedChange={toggle} />
               </div>
 
               <div className="glass-card p-6">
-                <p className="text-sm font-medium mb-3">Theme Preview</p>
+                <p className="text-sm font-medium mb-3">{t('settings.themePreview')}</p>
                 <div className="space-y-2">
                   <div className="h-8 bg-primary rounded" />
                   <div className="h-8 bg-secondary rounded" />

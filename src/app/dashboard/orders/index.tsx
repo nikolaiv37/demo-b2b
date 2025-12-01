@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -230,22 +231,22 @@ const _DUMMY_ORDERS: any[] = [
 ]
 */
 
-function getStatusBadge(status: OrderStatus) {
+function getStatusBadge(status: OrderStatus, t: (key: string) => string) {
   const configs = {
     processing: {
-      label: 'Processing',
+      label: t('orders.processing'),
       className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     },
     awaiting_payment: {
-      label: 'Awaiting Payment',
+      label: t('orders.awaitingPayment'),
       className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     },
     shipped: {
-      label: 'Shipped',
+      label: t('orders.shipped'),
       className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
     },
     completed: {
-      label: 'Completed & Sent',
+      label: t('orders.completedSent'),
       className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
   }
@@ -269,6 +270,7 @@ function formatOrderDate(dateString: string): string {
 }
 
 export function OrdersPage() {
+  const { t } = useTranslation()
   const { user, isAdmin } = useAuth()
   
   // Admin sees completely different view
@@ -452,9 +454,9 @@ export function OrdersPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold">Orders</h1>
+        <h1 className="text-3xl font-bold">{t('orders.title')}</h1>
         <p className="text-muted-foreground mt-1">
-          View and manage all customer orders
+          {t('orders.subtitle')}
         </p>
       </div>
 
@@ -465,7 +467,7 @@ export function OrdersPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by order number or buyer..."
+              placeholder={t('orders.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -475,15 +477,14 @@ export function OrdersPage() {
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="All Statuses" />
+              <SelectValue placeholder={t('orders.allStatuses')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-              <SelectItem value="shipped">Shipped</SelectItem>
-              <SelectItem value="completed">Completed & Sent</SelectItem>
-              <SelectItem value="shipped">Shipped</SelectItem>
+              <SelectItem value="all">{t('orders.allStatuses')}</SelectItem>
+              <SelectItem value="processing">{t('orders.processing')}</SelectItem>
+              <SelectItem value="awaiting_payment">{t('orders.awaitingPayment')}</SelectItem>
+              <SelectItem value="shipped">{t('orders.shipped')}</SelectItem>
+              <SelectItem value="completed">{t('orders.completedSent')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -501,7 +502,7 @@ export function OrdersPage() {
                 'bg-purple-500 text-white hover:bg-purple-600'
             )}
           >
-            Dropshipping
+            {t('orders.dropshipping')}
           </Button>
           <Button
             variant={quickFilter === 'ready_today' ? 'default' : 'outline'}
@@ -514,7 +515,7 @@ export function OrdersPage() {
                 'bg-blue-500 text-white hover:bg-blue-600'
             )}
           >
-            Ready Today
+            {t('orders.readyToday')}
           </Button>
           <Button
             variant={quickFilter === 'low_stock' ? 'default' : 'outline'}
@@ -527,7 +528,7 @@ export function OrdersPage() {
                 'bg-red-500 text-white hover:bg-red-600'
             )}
           >
-            Low Stock Items
+            {t('orders.lowStockItems')}
           </Button>
         </div>
       </div>
@@ -537,8 +538,8 @@ export function OrdersPage() {
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">
-              {selectedOrders.size} order{selectedOrders.size > 1 ? 's' : ''}{' '}
-              selected
+              {selectedOrders.size} {selectedOrders.size === 1 ? t('orders.order') : t('orders.orders')}{' '}
+              {t('orders.selected')}
             </span>
           </div>
           <div className="flex gap-2">
@@ -548,7 +549,7 @@ export function OrdersPage() {
               onClick={() => handleBulkAction('proforma')}
             >
               <FileText className="w-4 h-4 mr-2" />
-              Generate Proforma (PDF)
+              {t('orders.generateProforma')}
             </Button>
             <Button
               variant="outline"
@@ -556,7 +557,7 @@ export function OrdersPage() {
               onClick={() => handleBulkAction('send_email')}
             >
               <Mail className="w-4 h-4 mr-2" />
-              Send Email
+              {t('orders.sendEmail')}
             </Button>
           </div>
         </div>
@@ -576,28 +577,28 @@ export function OrdersPage() {
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead>Order No.</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Buyer</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Shipping</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t('orders.orderNo')}</TableHead>
+              <TableHead>{t('orders.date')}</TableHead>
+              <TableHead>{t('orders.buyer')}</TableHead>
+              <TableHead>{t('orders.items')}</TableHead>
+              <TableHead>{t('orders.total')}</TableHead>
+              <TableHead>{t('orders.shipping')}</TableHead>
+              <TableHead>{t('orders.status')}</TableHead>
+              <TableHead className="text-right">{t('orders.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8">
-                  Loading orders...
+                  {t('orders.loadingOrders')}
                 </TableCell>
               </TableRow>
             ) : filteredOrders.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground">No orders found</p>
+                    <p className="text-muted-foreground">{t('orders.noOrdersFound')}</p>
                     {searchQuery || statusFilter !== 'all' || quickFilter ? (
                       <Button
                         variant="outline"
@@ -608,7 +609,7 @@ export function OrdersPage() {
                           setQuickFilter(null)
                         }}
                       >
-                        Clear filters
+                        {t('orders.clearFilters')}
                       </Button>
                     ) : null}
                   </div>
@@ -645,7 +646,7 @@ export function OrdersPage() {
                   </TableCell>
                   <TableCell>
                     <span className="text-sm">
-                      {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                      {order.items.length} {order.items.length === 1 ? t('products.item') : t('products.items')}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -654,7 +655,7 @@ export function OrdersPage() {
                   <TableCell>
                     <ShippingMethodBadge method={order.shipping_method} size="sm" />
                   </TableCell>
-                  <TableCell>{getStatusBadge(order.status)}</TableCell>
+                  <TableCell>{getStatusBadge(order.status, t)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
                       <Button
@@ -683,20 +684,20 @@ export function OrdersPage() {
                             onClick={() => handleOrderAction(order, 'duplicate')}
                           >
                             <Copy className="w-4 h-4 mr-2" />
-                            Duplicate as New Order
+                            {t('orders.duplicateAsNewOrder')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleOrderAction(order, 'proforma')}
                           >
                             <FileText className="w-4 h-4 mr-2" />
-                            Generate Proforma Invoice
+                            {t('orders.generateProformaInvoice')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleOrderAction(order, 'send_email')}
                           >
                             <Mail className="w-4 h-4 mr-2" />
-                            Send by Email
+                            {t('orders.sendByEmail')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -728,7 +729,7 @@ export function OrdersPage() {
         }}
       >
         <Plus className="h-6 w-6" />
-        <span className="sr-only">New Order</span>
+        <span className="sr-only">{t('orders.newOrder')}</span>
       </Button>
     </div>
   )

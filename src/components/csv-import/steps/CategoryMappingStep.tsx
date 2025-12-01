@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { GlassCard } from '@/components/GlassCard'
 import { Badge } from '@/components/ui/badge'
@@ -199,6 +200,7 @@ export function CategoryMappingStep({
   existingCategories,
   onUpdateMapping,
 }: CategoryMappingStepProps) {
+  const { t } = useTranslation()
   // State
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
@@ -590,7 +592,7 @@ export function CategoryMappingStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{categoryStats.exactMatches}</p>
-              <p className="text-sm text-muted-foreground">Exact Match</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.categoryMapping.exactMatch')}</p>
             </div>
           </div>
         </GlassCard>
@@ -602,7 +604,7 @@ export function CategoryMappingStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{categoryStats.autoMatches}</p>
-              <p className="text-sm text-muted-foreground">Auto-Mapped</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.categoryMapping.autoMapped')}</p>
             </div>
           </div>
         </GlassCard>
@@ -614,7 +616,7 @@ export function CategoryMappingStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{categoryStats.manualReview}</p>
-              <p className="text-sm text-muted-foreground">Need Review</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.categoryMapping.needReview')}</p>
             </div>
           </div>
         </GlassCard>
@@ -626,7 +628,7 @@ export function CategoryMappingStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{categoryStats.newCategories}</p>
-              <p className="text-sm text-muted-foreground">New Categories</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.categoryMapping.newCategories')}</p>
             </div>
           </div>
         </GlassCard>
@@ -638,11 +640,11 @@ export function CategoryMappingStep({
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <Badge className="bg-blue-500 text-white">
-                {selectedItems.size} selected
+                {selectedItems.size} {t('csvImport.categoryMapping.selected')}
               </Badge>
               <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>
                 <X className="w-4 h-4 mr-1" />
-                Clear
+                {t('csvImport.categoryMapping.clear')}
               </Button>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -652,7 +654,7 @@ export function CategoryMappingStep({
                 onClick={() => setBulkAssignOpen(true)}
               >
                 <Package className="w-4 h-4 mr-1" />
-                Assign to Existing
+                {t('csvImport.categoryMapping.assignToExisting')}
               </Button>
               <Button
                 variant="outline"
@@ -661,7 +663,7 @@ export function CategoryMappingStep({
                 className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
               >
                 <Wand2 className="w-4 h-4 mr-1" />
-                Create as Source Names
+                {t('csvImport.categoryMapping.createAsSourceNames')}
               </Button>
               <Button
                 size="sm"
@@ -675,7 +677,7 @@ export function CategoryMappingStep({
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Create Custom
+                {t('csvImport.categoryMapping.createCustom')}
               </Button>
             </div>
           </div>
@@ -686,29 +688,29 @@ export function CategoryMappingStep({
       {categoryMappings.length === 0 && (
         <GlassCard className="text-center py-12">
           <FolderTree className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Category Columns Mapped</h3>
+          <h3 className="text-lg font-semibold mb-2">{t('csvImport.categoryMapping.noCategoryColumnsMapped')}</h3>
           <p className="text-muted-foreground">
-            No category or sub-category columns were detected or mapped.
+            {t('csvImport.categoryMapping.noCategoryColumnsDetected')}
           </p>
         </GlassCard>
       )}
 
       {/* Category Mappings Section */}
       {categoryMappingsGroup.length > 0 && renderSection(
-        'Category Mappings',
+        t('csvImport.categoryMapping.categoryMappings'),
         <FolderTree className="w-5 h-5" />,
         categoryMappingsGroup,
         'text-blue-600',
-        isLoadingCategories ? 'Loading...' : `${allCategories.length} in catalog`
+        isLoadingCategories ? t('general.loading') : `${allCategories.length} ${t('csvImport.categoryMapping.inCatalog')}`
       )}
 
       {/* Sub-Category Mappings Section */}
       {subCategoryMappingsGroup.length > 0 && renderSection(
-        'Sub-Category Mappings',
+        t('csvImport.categoryMapping.subCategoryMappings'),
         <Layers className="w-5 h-5" />,
         subCategoryMappingsGroup,
         'text-purple-600',
-        'Nested under main categories'
+        t('csvImport.categoryMapping.nestedUnderMain')
       )}
 
       {/* Smart Matching Info */}
@@ -718,9 +720,9 @@ export function CategoryMappingStep({
             <Sparkles className="w-4 h-4 text-slate-600 dark:text-slate-400" />
           </div>
           <div>
-            <h4 className="font-semibold">Quick Actions</h4>
+            <h4 className="font-semibold">{t('csvImport.categoryMapping.quickActions')}</h4>
             <p className="text-sm text-muted-foreground mt-1">
-              Select items and use <strong>"Create as Source Names"</strong> to quickly create new categories using the original names from your CSV.
+              {t('csvImport.categoryMapping.quickActionsDescription')}
             </p>
           </div>
         </div>
@@ -730,22 +732,22 @@ export function CategoryMappingStep({
       <Dialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign {selectedItems.size} Items</DialogTitle>
+            <DialogTitle>{t('csvImport.categoryMapping.assignItems', { count: selectedItems.size })}</DialogTitle>
             <DialogDescription>
-              Select an existing category to assign all selected items.
+              {t('csvImport.categoryMapping.selectExistingCategory')}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             {allCategories.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <AlertCircle className="w-8 h-8 mx-auto mb-2 text-amber-500" />
-                <p>No categories available.</p>
-                <p className="text-sm mt-1">Create categories first or import products with categories.</p>
+                <p>{t('csvImport.categoryMapping.noCategoriesAvailable')}</p>
+                <p className="text-sm mt-1">{t('csvImport.categoryMapping.createCategoriesFirst')}</p>
               </div>
             ) : (
               <Select value={bulkTargetCategory} onValueChange={setBulkTargetCategory}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category..." />
+                  <SelectValue placeholder={t('csvImport.categoryMapping.selectCategory')} />
                 </SelectTrigger>
                 <SelectContent>
                   {allCategories.map(cat => (
@@ -758,7 +760,7 @@ export function CategoryMappingStep({
                     className="text-emerald-600 font-medium border-t mt-1 pt-2"
                   >
                     <Plus className="w-3 h-3 inline mr-2" />
-                    Create New...
+                    {t('csvImport.categoryMapping.createNew')}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -766,13 +768,13 @@ export function CategoryMappingStep({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBulkAssignOpen(false)}>
-              Cancel
+              {t('general.cancel')}
             </Button>
             <Button 
               onClick={handleBulkAssign} 
               disabled={!bulkTargetCategory || allCategories.length === 0}
             >
-              Assign
+              {t('csvImport.categoryMapping.assign')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -795,12 +797,12 @@ export function CategoryMappingStep({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-emerald-600" />
-              Create New Category
+              {t('csvImport.categoryMapping.createNewCategory')}
             </DialogTitle>
             <DialogDescription>
               {newCategoryDialog.mode === 'bulk' 
-                ? `Create a new category and assign ${selectedItems.size} items to it.`
-                : 'Create a new category for this mapping.'
+                ? t('csvImport.categoryMapping.createNewCategoryDescription', { count: selectedItems.size })
+                : t('csvImport.categoryMapping.createNewCategorySingle')
               }
             </DialogDescription>
           </DialogHeader>
@@ -808,12 +810,12 @@ export function CategoryMappingStep({
           <div className="space-y-4 py-4">
             {/* Category Name */}
             <div className="space-y-2">
-              <Label htmlFor="new-cat-name">Category Name</Label>
+              <Label htmlFor="new-cat-name">{t('csvImport.categoryMapping.categoryName')}</Label>
               <Input
                 id="new-cat-name"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Enter category name..."
+                placeholder={t('csvImport.categoryMapping.enterCategoryName')}
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newCategoryName.trim() && (newCategoryType === 'main' || newCategoryParent)) {
@@ -826,7 +828,7 @@ export function CategoryMappingStep({
 
             {/* Category Type */}
             <div className="space-y-3">
-              <Label>Category Type</Label>
+              <Label>{t('csvImport.categoryMapping.categoryType')}</Label>
               <RadioGroup value={newCategoryType} onValueChange={(v: string) => setNewCategoryType(v as 'main' | 'sub')}>
                 <div className={cn(
                   "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors",
@@ -836,10 +838,10 @@ export function CategoryMappingStep({
                   <Label htmlFor="type-main" className="flex-1 cursor-pointer">
                     <div className="font-medium flex items-center gap-2">
                       <FolderTree className="w-4 h-4 text-blue-600" />
-                      Main Category
+                      {t('csvImport.categoryMapping.mainCategory')}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Top-level category
+                      {t('csvImport.categoryMapping.topLevelCategory')}
                     </p>
                   </Label>
                 </div>
@@ -851,10 +853,10 @@ export function CategoryMappingStep({
                   <Label htmlFor="type-sub" className="flex-1 cursor-pointer">
                     <div className="font-medium flex items-center gap-2">
                       <Layers className="w-4 h-4 text-purple-600" />
-                      Sub-Category
+                      {t('csvImport.categoryMapping.subCategory')}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Under an existing main category
+                      {t('csvImport.categoryMapping.underExistingMain')}
                     </p>
                   </Label>
                 </div>
@@ -864,11 +866,11 @@ export function CategoryMappingStep({
             {/* Parent Category (for sub-category) - only main categories */}
             {newCategoryType === 'sub' && (
               <div className="space-y-2">
-                <Label>Parent Category</Label>
+                <Label>{t('csvImport.categoryMapping.parentCategory')}</Label>
                 {newCategoryParent === '__new_parent__' ? (
                   <div className="space-y-2">
                     <Input
-                      placeholder="Enter new parent category name..."
+                      placeholder={t('csvImport.categoryMapping.enterNewParentCategoryName')}
                       value={newParentName}
                       onChange={(e) => setNewParentName(e.target.value)}
                       autoFocus
@@ -884,13 +886,13 @@ export function CategoryMappingStep({
                       className="text-xs"
                     >
                       <X className="w-3 h-3 mr-1" />
-                      Cancel - Select Existing
+                      {t('csvImport.categoryMapping.cancelSelectExisting')}
                     </Button>
                   </div>
                 ) : (
                   <Select value={newCategoryParent || ''} onValueChange={setNewCategoryParent}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select parent category..." />
+                      <SelectValue placeholder={t('csvImport.categoryMapping.selectParentCategory')} />
                     </SelectTrigger>
                     <SelectContent>
                       {mainCategoriesOnly.length > 0 ? (
@@ -904,12 +906,12 @@ export function CategoryMappingStep({
                         ))
                       ) : (
                         <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                          No main categories found. Create one below.
+                          {t('csvImport.categoryMapping.noMainCategoriesFound')}
                         </div>
                       )}
                       <SelectItem value="__new_parent__" className="text-emerald-600 font-medium border-t mt-1 pt-2">
                         <Plus className="w-3 h-3 inline mr-2" />
-                        Create New Parent Category...
+                        {t('csvImport.categoryMapping.createNewParentCategory')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -918,14 +920,14 @@ export function CategoryMappingStep({
                   <p className="text-xs text-muted-foreground">
                     {newCategoryParent === '__new_parent__' ? (
                       newParentName ? (
-                        <>Will create: <span className="font-medium text-purple-600">{newParentName} &gt; {newCategoryName || '[name]'}</span></>
+                        <>{t('csvImport.categoryMapping.willCreate')}: <span className="font-medium text-purple-600">{newParentName} &gt; {newCategoryName || '[name]'}</span></>
                       ) : (
-                        <>Enter parent name above</>
+                        <>{t('csvImport.categoryMapping.enterParentNameAbove')}</>
                       )
                     ) : newCategoryParent ? (
-                      <>Will create: <span className="font-medium text-purple-600">{newCategoryParent} &gt; {newCategoryName || '[name]'}</span></>
+                      <>{t('csvImport.categoryMapping.willCreate')}: <span className="font-medium text-purple-600">{newCategoryParent} &gt; {newCategoryName || '[name]'}</span></>
                     ) : (
-                      <>Select or create a parent category</>
+                      <>{t('csvImport.categoryMapping.selectOrCreateParent')}</>
                     )}
                   </p>
                 )}
@@ -935,7 +937,7 @@ export function CategoryMappingStep({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewCategoryDialog({ open: false, mapping: null, mode: 'single' })}>
-              Cancel
+              {t('general.cancel')}
             </Button>
             <Button 
               onClick={handleCreateNewCategory}
@@ -948,7 +950,7 @@ export function CategoryMappingStep({
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Create
+              {t('csvImport.categoryMapping.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -969,17 +971,17 @@ export function CategoryMappingStep({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-purple-600" />
-              Create {bulkSubcategoryDialog.subcategories.length} Sub-Categories
+              {t('csvImport.categoryMapping.createSubCategories', { count: bulkSubcategoryDialog.subcategories.length })}
             </DialogTitle>
             <DialogDescription>
-              Assign a parent category for all selected sub-categories. They will be created as &quot;{bulkSubcategoryParent || 'Parent'} {'>'} Sub-Category Name&quot;.
+              {t('csvImport.categoryMapping.assignParentForAll', { parent: bulkSubcategoryParent || 'Parent' })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             {/* Subcategories List */}
             <div className="space-y-2">
-              <Label>Sub-Categories to Create ({bulkSubcategoryDialog.subcategories.length})</Label>
+              <Label>{t('csvImport.categoryMapping.subCategoriesToCreate', { count: bulkSubcategoryDialog.subcategories.length })}</Label>
               <div className="max-h-[200px] overflow-y-auto border rounded-lg p-3 bg-gray-50 dark:bg-gray-900/50 space-y-1">
                 {bulkSubcategoryDialog.subcategories.map((sub, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-sm py-1">
@@ -992,11 +994,11 @@ export function CategoryMappingStep({
 
             {/* Parent Category Selection */}
             <div className="space-y-2">
-              <Label>Parent Category</Label>
+              <Label>{t('csvImport.categoryMapping.parentCategory')}</Label>
               {bulkSubcategoryParent === '__new_parent__' ? (
                 <div className="space-y-2">
                   <Input
-                    placeholder="Enter new parent category name..."
+                    placeholder={t('csvImport.categoryMapping.enterNewParentCategoryName')}
                     value={bulkNewParentName}
                     onChange={(e) => setBulkNewParentName(e.target.value)}
                     autoFocus
@@ -1012,7 +1014,7 @@ export function CategoryMappingStep({
                     className="text-xs"
                   >
                     <X className="w-3 h-3 mr-1" />
-                    Cancel - Select Existing
+                    {t('csvImport.categoryMapping.cancelSelectExisting')}
                   </Button>
                 </div>
               ) : (
@@ -1022,7 +1024,7 @@ export function CategoryMappingStep({
                     onValueChange={setBulkSubcategoryParent}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select parent category..." />
+                      <SelectValue placeholder={t('csvImport.categoryMapping.selectParentCategory')} />
                     </SelectTrigger>
                     <SelectContent>
                       {mainCategoriesOnly.length > 0 ? (
@@ -1036,7 +1038,7 @@ export function CategoryMappingStep({
                         ))
                       ) : (
                         <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                          No main categories found. Create one below.
+                          {t('csvImport.categoryMapping.noMainCategoriesFound')}
                         </div>
                       )}
                       <SelectItem 
@@ -1044,7 +1046,7 @@ export function CategoryMappingStep({
                         className="text-emerald-600 font-medium border-t mt-1 pt-2"
                       >
                         <Plus className="w-3 h-3 inline mr-2" />
-                        Create New Parent Category...
+                        {t('csvImport.categoryMapping.createNewParentCategory')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -1061,7 +1063,7 @@ export function CategoryMappingStep({
                       className="text-xs text-muted-foreground hover:text-foreground"
                     >
                       <X className="w-3 h-3 mr-1" />
-                      Or create as main categories (no parent)
+                      {t('csvImport.categoryMapping.orCreateAsMainCategories')}
                     </Button>
                   </div>
                 </>
@@ -1072,7 +1074,7 @@ export function CategoryMappingStep({
             {bulkSubcategoryParent && bulkSubcategoryParent !== '__new_parent__' && (
               <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
                 <p className="text-xs font-medium text-purple-700 dark:text-purple-400 mb-2">
-                  Preview:
+                  {t('csvImport.validation.preview')}:
                 </p>
                 <div className="space-y-1 text-xs text-purple-600 dark:text-purple-500">
                   {bulkSubcategoryDialog.subcategories.slice(0, 3).map((sub, idx) => (
@@ -1118,7 +1120,7 @@ export function CategoryMappingStep({
                 setBulkSubcategoryParent('')
               }}
             >
-              Cancel
+              {t('general.cancel')}
             </Button>
             <Button 
               onClick={handleBulkSubcategoryCreate}
@@ -1126,7 +1128,7 @@ export function CategoryMappingStep({
               className="bg-purple-600 hover:bg-purple-700"
             >
               <Layers className="w-4 h-4 mr-2" />
-              Create {bulkSubcategoryDialog.subcategories.length} Sub-Categories
+              {t('csvImport.categoryMapping.createSubCategories', { count: bulkSubcategoryDialog.subcategories.length })}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSmartMapping } from '@/hooks/useSmartMapping'
@@ -55,18 +56,19 @@ export interface ImportResult {
   errors: Array<{ row: number; error: string }>
 }
 
-const WIZARD_STEPS = [
-  { id: 1, name: 'Upload', icon: Upload, description: 'Upload & Detect' },
-  { id: 2, name: 'Columns', icon: Columns, description: 'Map Columns' },
-  { id: 3, name: 'Categories', icon: FolderTree, description: 'Map Categories' },
-  { id: 4, name: 'Validate', icon: CheckCircle2, description: 'Preview & Fix' },
-  { id: 5, name: 'Complete', icon: Zap, description: 'Import Results' },
-]
-
 export function CSVImportWizard() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+
+  const WIZARD_STEPS = [
+    { id: 1, name: t('csvImport.wizard.upload'), icon: Upload, description: t('csvImport.wizard.uploadDetect') },
+    { id: 2, name: t('csvImport.wizard.columns'), icon: Columns, description: t('csvImport.wizard.mapColumns') },
+    { id: 3, name: t('csvImport.wizard.categories'), icon: FolderTree, description: t('csvImport.wizard.mapCategories') },
+    { id: 4, name: t('csvImport.wizard.validate'), icon: CheckCircle2, description: t('csvImport.wizard.previewFix') },
+    { id: 5, name: t('csvImport.wizard.complete'), icon: Zap, description: t('csvImport.wizard.importResults') },
+  ]
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
@@ -724,7 +726,7 @@ export function CSVImportWizard() {
                 disabled={importMutation.isPending}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
+                {t('general.back')}
               </Button>
             )}
             
@@ -738,7 +740,7 @@ export function CSVImportWizard() {
                 className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-all"
               >
                 <X className="w-4 h-4 mr-1.5" />
-                Start Over
+                {t('csvImport.wizard.startOver')}
               </Button>
             )}
           </div>
@@ -754,12 +756,12 @@ export function CSVImportWizard() {
                 {importMutation.isPending ? (
                   <>
                     <span className="animate-spin mr-2">⏳</span>
-                    Importing... {importProgress}%
+                    {t('csvImport.validation.importingProducts')}... {importProgress}%
                   </>
                 ) : (
                   <>
                     <Zap className="w-4 h-4 mr-2" />
-                    Start Import
+                    {t('csvImport.wizard.startImport')}
                   </>
                 )}
               </Button>
@@ -772,11 +774,11 @@ export function CSVImportWizard() {
                 {smartMapping.isProcessing ? (
                   <>
                     <span className="animate-spin mr-2">⏳</span>
-                    Processing...
+                    {t('general.loading')}...
                   </>
                 ) : (
                   <>
-                    Continue
+                    {t('general.continue')}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
@@ -810,7 +812,7 @@ export function CSVImportWizard() {
               onClick={() => setDeleteDialogOpen(false)}
               disabled={deleteAllMutation.isPending}
             >
-              Cancel
+              {t('general.cancel')}
             </Button>
             <Button
               variant="destructive"

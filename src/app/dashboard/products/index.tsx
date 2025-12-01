@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
@@ -24,6 +25,7 @@ const ITEMS_PER_PAGE = 24
 const INITIAL_LOAD_SIZE = 150 // Load 150 products initially for fast render
 
 export function ProductsPage() {
+  const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all')
@@ -255,14 +257,14 @@ export function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['products', 'count'] })
       queryClient.invalidateQueries({ queryKey: ['products', 'filter-options'] })
       toast({
-        title: 'Product deleted',
-        description: 'The product has been removed successfully.',
+        title: t('products.productDeleted'),
+        description: t('products.productRemoved'),
       })
     },
     onError: () => {
       toast({
-        title: 'Error',
-        description: 'Failed to delete product.',
+        title: t('products.error'),
+        description: t('products.failedToDelete'),
         variant: 'destructive',
       })
     },
@@ -276,13 +278,13 @@ export function ProductsPage() {
   const handleEdit = (_product: Product) => {
     // TODO: Implement edit functionality
     toast({
-      title: 'Edit Product',
-      description: 'Edit functionality coming soon.',
+      title: t('products.editProduct'),
+      description: t('products.editComingSoon'),
     })
   }
 
   const handleDelete = (product: Product) => {
-    if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
+    if (confirm(t('products.deleteConfirm', { name: product.name }))) {
       deleteMutation.mutate(product.id)
     }
   }
@@ -307,9 +309,9 @@ export function ProductsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">All Products</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('products.title')}</h1>
         <p className="text-muted-foreground">
-          {isLoading && !totalCount ? 'Loading...' : `${totalCount ?? 0} products`}
+          {isLoading && !totalCount ? t('products.loading') : `${totalCount ?? 0} ${t('products.products')}`}
         </p>
       </div>
 
@@ -320,7 +322,7 @@ export function ProductsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search products by name, SKU, description, or category..."
+              placeholder={t('products.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -340,10 +342,10 @@ export function ProductsPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder={t('products.category')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">{t('products.allCategories')}</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat}
@@ -360,10 +362,10 @@ export function ProductsPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Manufacturer" />
+                <SelectValue placeholder={t('products.manufacturer')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Manufacturers</SelectItem>
+                <SelectItem value="all">{t('products.allManufacturers')}</SelectItem>
                 {manufacturers.map((man) => (
                   <SelectItem key={man} value={man}>
                     {man}
@@ -380,10 +382,10 @@ export function ProductsPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Availability" />
+                <SelectValue placeholder={t('products.availability')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Availability</SelectItem>
+                <SelectItem value="all">{t('products.allAvailability')}</SelectItem>
                 {availabilityOptions.map((avail) => (
                   <SelectItem key={avail} value={avail}>
                     {avail}
@@ -400,13 +402,13 @@ export function ProductsPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Stock Level" />
+                <SelectValue placeholder={t('products.stockLevel')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Stock</SelectItem>
-                <SelectItem value="in-stock">In Stock</SelectItem>
-                <SelectItem value="low-stock">Low Stock (1-10)</SelectItem>
-                <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                <SelectItem value="all">{t('products.allStock')}</SelectItem>
+                <SelectItem value="in-stock">{t('products.inStock')}</SelectItem>
+                <SelectItem value="low-stock">{t('products.lowStock')}</SelectItem>
+                <SelectItem value="out-of-stock">{t('products.outOfStock')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -417,7 +419,7 @@ export function ProductsPage() {
                 className="w-full"
               >
                 <X className="w-4 h-4 mr-2" />
-                Clear Filters
+                {t('products.clearFilters')}
               </Button>
             )}
           </div>
@@ -425,10 +427,10 @@ export function ProductsPage() {
           {/* Active Filters Display */}
           {hasActiveFilters && (
             <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-sm text-muted-foreground">Active filters:</span>
+              <span className="text-sm text-muted-foreground">{t('products.activeFilters')}</span>
               {searchQuery && (
                 <Badge variant="secondary" className="gap-1">
-                  Search: {searchQuery}
+                  {t('products.search')}: {searchQuery}
                   <button
                     onClick={() => setSearchQuery('')}
                     className="ml-1 hover:text-destructive"
@@ -439,7 +441,7 @@ export function ProductsPage() {
               )}
               {selectedCategory !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  Category: {selectedCategory}
+                  {t('products.category')}: {selectedCategory}
                   <button
                     onClick={() => setSelectedCategory('all')}
                     className="ml-1 hover:text-destructive"
@@ -450,7 +452,7 @@ export function ProductsPage() {
               )}
               {selectedManufacturer !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  Manufacturer: {selectedManufacturer}
+                  {t('products.manufacturer')}: {selectedManufacturer}
                   <button
                     onClick={() => setSelectedManufacturer('all')}
                     className="ml-1 hover:text-destructive"
@@ -521,9 +523,9 @@ export function ProductsPage() {
             <GlassCard>
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
-                  {Math.min(currentPage * ITEMS_PER_PAGE, totalCount || 0)} of{' '}
-                  {totalCount || 0} products
+                  {t('products.showing')} {(currentPage - 1) * ITEMS_PER_PAGE + 1} {t('products.to')}{' '}
+                  {Math.min(currentPage * ITEMS_PER_PAGE, totalCount || 0)} {t('products.of')}{' '}
+                  {totalCount || 0} {t('products.products')}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -533,7 +535,7 @@ export function ProductsPage() {
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="w-4 h-4" />
-                    Previous
+                    {t('products.previous')}
                   </Button>
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -566,7 +568,7 @@ export function ProductsPage() {
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                   >
-                    Next
+                    {t('products.next')}
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -583,17 +585,17 @@ export function ProductsPage() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold mb-2">
-              {hasActiveFilters ? 'No products match your filters' : 'No products found'}
+              {hasActiveFilters ? t('products.noProductsMatch') : t('products.noProductsFound')}
             </h3>
             <p className="text-muted-foreground mb-6">
               {hasActiveFilters
-                ? 'Try adjusting your search or filters'
-                : 'No products available at the moment'}
+                ? t('products.tryAdjusting')
+                : t('products.noProductsAvailable')}
             </p>
             {hasActiveFilters && (
               <Button variant="outline" onClick={clearFilters}>
                 <X className="w-4 h-4 mr-2" />
-                Clear All Filters
+                {t('products.clearAllFilters')}
               </Button>
             )}
           </div>

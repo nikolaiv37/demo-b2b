@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { GlassCard } from '@/components/GlassCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ export function ImportResultsStep({
   onViewProducts,
   onImportMore,
 }: ImportResultsStepProps) {
+  const { t } = useTranslation()
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -62,10 +64,10 @@ export function ImportResultsStep({
               <CheckCircle2 className="w-10 h-10 text-white" />
             </div>
             <h2 className="text-3xl font-bold mb-2">
-              Import Complete! 🎉
+              {t('csvImport.results.importComplete')}
             </h2>
             <p className="text-lg text-muted-foreground">
-              Successfully imported <span className="font-semibold text-green-600 dark:text-green-400">{result.imported.toLocaleString()}</span> products
+              {t('csvImport.results.successfullyImported', { count: result.imported })}
             </p>
           </div>
         </div>
@@ -78,7 +80,7 @@ export function ImportResultsStep({
             <Package className="w-5 h-5 text-green-600" />
           </div>
           <p className="text-3xl font-bold">{result.imported.toLocaleString()}</p>
-          <p className="text-sm text-muted-foreground">Products Added</p>
+          <p className="text-sm text-muted-foreground">{t('csvImport.results.productsAdded')}</p>
         </GlassCard>
 
         <GlassCard className="p-4 text-center">
@@ -88,7 +90,7 @@ export function ImportResultsStep({
           <p className="text-3xl font-bold">
             {result.categoriesCreated}/{result.categoriesMapped}
           </p>
-          <p className="text-sm text-muted-foreground">Categories Mapped</p>
+          <p className="text-sm text-muted-foreground">{t('csvImport.results.categoriesMapped')}</p>
         </GlassCard>
 
         <GlassCard className="p-4 text-center">
@@ -96,7 +98,7 @@ export function ImportResultsStep({
             <ImageIcon className="w-5 h-5 text-slate-600" />
           </div>
           <p className="text-3xl font-bold">{result.imagesProcessed.toLocaleString()}</p>
-          <p className="text-sm text-muted-foreground">Images Processed</p>
+          <p className="text-sm text-muted-foreground">{t('csvImport.results.imagesProcessed')}</p>
         </GlassCard>
 
         <GlassCard className="p-4 text-center">
@@ -104,7 +106,7 @@ export function ImportResultsStep({
             <Building2 className="w-5 h-5 text-slate-600" />
           </div>
           <p className="text-xl font-bold truncate">{result.distributor}</p>
-          <p className="text-sm text-muted-foreground">Distributor</p>
+          <p className="text-sm text-muted-foreground">{t('csvImport.results.distributor')}</p>
         </GlassCard>
       </div>
 
@@ -112,18 +114,18 @@ export function ImportResultsStep({
       <GlassCard>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <FileSpreadsheet className="w-5 h-5" />
-          Import Summary
+          {t('csvImport.results.importSummary')}
         </h3>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-muted-foreground">Total Products</span>
+            <span className="text-muted-foreground">{t('csvImport.results.totalProducts')}</span>
             <span className="font-mono font-semibold">{result.total.toLocaleString()}</span>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <span className="text-green-700 dark:text-green-400">Imported</span>
+              <span className="text-green-700 dark:text-green-400">{t('csvImport.results.imported')}</span>
             </span>
             <span className="font-mono font-semibold text-green-700 dark:text-green-400">{result.imported.toLocaleString()}</span>
           </div>
@@ -131,7 +133,7 @@ export function ImportResultsStep({
             <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
               <span className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 text-blue-500" />
-                <span className="text-blue-700 dark:text-blue-400">Updated</span>
+                <span className="text-blue-700 dark:text-blue-400">{t('csvImport.results.updated')}</span>
               </span>
               <span className="font-mono font-semibold text-blue-700 dark:text-blue-400">{result.updated.toLocaleString()}</span>
             </div>
@@ -140,7 +142,7 @@ export function ImportResultsStep({
             <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 text-amber-500">⏭️</span>
-                <span className="text-amber-700 dark:text-amber-400">Skipped</span>
+                <span className="text-amber-700 dark:text-amber-400">{t('csvImport.results.skipped')}</span>
               </span>
               <span className="font-mono font-semibold text-amber-700 dark:text-amber-400">{result.skipped.toLocaleString()}</span>
             </div>
@@ -149,7 +151,7 @@ export function ImportResultsStep({
             <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
               <span className="flex items-center gap-2">
                 <XCircle className="w-4 h-4 text-red-500" />
-                <span className="text-red-700 dark:text-red-400">Failed</span>
+                <span className="text-red-700 dark:text-red-400">{t('csvImport.results.failed')}</span>
               </span>
               <span className="font-mono font-semibold text-red-700 dark:text-red-400">{result.failed.toLocaleString()}</span>
             </div>
@@ -157,14 +159,14 @@ export function ImportResultsStep({
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
             <span className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-gray-500" />
-              <span className="text-muted-foreground">Duration</span>
+              <span className="text-muted-foreground">{t('csvImport.results.duration')}</span>
             </span>
             <span className="font-mono font-semibold">{formatDuration(result.duration)}</span>
           </div>
           <div className="flex items-center justify-between py-2">
             <span className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-slate-500" />
-              <span className="text-muted-foreground">Success Rate</span>
+              <span className="text-muted-foreground">{t('csvImport.results.successRate')}</span>
             </span>
             <Badge className={cn(
               "text-lg px-3 py-1",
@@ -183,7 +185,7 @@ export function ImportResultsStep({
         <GlassCard className="border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-950/10">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-700 dark:text-red-400">
             <XCircle className="w-5 h-5" />
-            Import Errors
+            {t('csvImport.results.importErrors')}
             <Badge variant="destructive">{result.errors.length}</Badge>
           </h3>
 
@@ -191,14 +193,14 @@ export function ImportResultsStep({
             {result.errors.slice(0, 10).map((error, index) => (
               <div key={index} className="flex items-start gap-2 text-sm">
                 <Badge variant="outline" className="font-mono shrink-0">
-                  Row {error.row}
+                  {t('csvImport.validation.row', { row: error.row })}
                 </Badge>
                 <span className="text-red-600 dark:text-red-400">{error.error}</span>
               </div>
             ))}
             {result.errors.length > 10 && (
               <p className="text-sm text-muted-foreground">
-                ... and {result.errors.length - 10} more errors
+                {t('csvImport.results.andMoreErrors', { count: result.errors.length - 10 })}
               </p>
             )}
           </div>
@@ -213,11 +215,10 @@ export function ImportResultsStep({
           </div>
           <div>
             <h4 className="font-semibold">
-              💾 Mappings Saved!
+              {t('csvImport.results.mappingsSaved')}
             </h4>
             <p className="text-sm text-muted-foreground">
-              Your column and category mappings for {result.distributor} have been saved. 
-              Future imports from this distributor will be even faster!
+              {t('csvImport.results.mappingsSavedDescription', { distributor: result.distributor })}
             </p>
           </div>
         </div>
@@ -231,7 +232,7 @@ export function ImportResultsStep({
           className="flex-1 bg-gradient-to-r from-slate-700 to-slate-900 hover:from-slate-800 hover:to-slate-950 text-white text-lg py-6"
         >
           <Package className="w-5 h-5 mr-2" />
-          View Products
+          {t('csvImport.results.viewProducts')}
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
 
@@ -242,7 +243,7 @@ export function ImportResultsStep({
           className="flex-1 text-lg py-6"
         >
           <RefreshCw className="w-5 h-5 mr-2" />
-          Import More
+          {t('csvImport.results.importMore')}
         </Button>
       </div>
     </div>

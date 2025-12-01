@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -31,80 +32,79 @@ import {
 
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
-// Main navigation items
-const mainNavItems = [
+// Navigation items structure (titles will be translated in component)
+const mainNavItemsConfig = [
   {
-    title: 'Overview',
+    titleKey: 'nav.overview',
     href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
-    title: 'Orders',
+    titleKey: 'nav.orders',
     href: '/dashboard/orders',
     icon: FileText,
     badge: 0, // TODO: Calculate from orders with awaiting_payment status
   },
   {
-    title: 'Complaints & Returns',
+    titleKey: 'nav.complaintsReturns',
     href: '/dashboard/complaints',
     icon: AlertCircle,
   },
   {
-    title: 'Analytics',
+    titleKey: 'nav.analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
   },
 ]
 
-// Catalog submenu items
-const catalogSubmenuItems = [
+const catalogSubmenuItemsConfig = [
   {
-    title: 'Categories',
+    titleKey: 'nav.categories',
     href: '/dashboard/categories',
     icon: Grid3X3,
   },
   {
-    title: 'All Products',
+    titleKey: 'nav.allProducts',
     href: '/dashboard/products',
     icon: Package,
   },
   {
-    title: 'Wishlist',
+    titleKey: 'nav.wishlist',
     href: '/dashboard/wishlist',
     icon: Heart,
   },
 ]
 
-// Settings submenu items
-const settingsSubmenuItems = [
+const settingsSubmenuItemsConfig = [
   {
-    title: 'Company',
+    titleKey: 'nav.company',
     href: '/dashboard/settings?tab=company',
     icon: Building2,
   },
   {
-    title: 'Profile',
+    titleKey: 'nav.profile',
     href: '/dashboard/settings?tab=profile',
     icon: User,
   },
   {
-    title: 'Billing',
+    titleKey: 'nav.billing',
     href: '/dashboard/settings?tab=billing',
     icon: CreditCard,
   },
   {
-    title: 'Appearance',
+    titleKey: 'nav.appearance',
     href: '/dashboard/settings?tab=appearance',
     icon: Palette,
   },
   {
-    title: 'CSV Import',
+    titleKey: 'nav.csvImport',
     href: '/dashboard/csv-import',
     icon: Upload,
   },
 ]
 
 export function SidebarNav() {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const { company, isAdmin, signOut } = useAuth()
@@ -112,6 +112,20 @@ export function SidebarNav() {
   // Default to open on page load
   const [settingsOpen, setSettingsOpen] = useState<string>('settings')
   const [catalogOpen, setCatalogOpen] = useState<string>('catalog')
+
+  // Translate navigation items
+  const mainNavItems = mainNavItemsConfig.map(item => ({
+    ...item,
+    title: t(item.titleKey),
+  }))
+  const catalogSubmenuItems = catalogSubmenuItemsConfig.map(item => ({
+    ...item,
+    title: t(item.titleKey),
+  }))
+  const settingsSubmenuItems = settingsSubmenuItemsConfig.map(item => ({
+    ...item,
+    title: t(item.titleKey),
+  }))
 
   // Check if item is active
   const isItemActive = (href: string) => {
@@ -237,7 +251,7 @@ export function SidebarNav() {
         {/* Main Navigation Section */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-2 mb-2">
-            Main Navigation
+            {t('nav.mainNavigation')}
           </h3>
           <nav className="space-y-1">
             {mainNavItems.map((item) => {
@@ -304,7 +318,7 @@ export function SidebarNav() {
                       'w-5 h-5 flex-shrink-0',
                       isCatalogActive() ? 'text-white' : 'text-gray-700 dark:text-gray-300'
                     )} />
-                    <span className="font-medium flex-1">Catalog</span>
+                    <span className="font-medium flex-1">{t('nav.catalog')}</span>
                   </div>
                   <button
                     type="button"
@@ -389,7 +403,7 @@ export function SidebarNav() {
         {/* Tools & Account Section */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-2 mb-2">
-            Tools & Account
+            {t('nav.toolsAndAccount')}
           </h3>
           <nav className="space-y-1">
             {/* Settings with Submenu */}
@@ -432,7 +446,7 @@ export function SidebarNav() {
                       'w-5 h-5 flex-shrink-0',
                       isSettingsActive() ? 'text-white' : 'text-gray-700 dark:text-gray-300'
                     )} />
-                    <span className="font-medium flex-1">Settings</span>
+                    <span className="font-medium flex-1">{t('nav.settings')}</span>
                   </div>
                   {/* Custom chevron button - always visible, good looking, and rotates */}
                   <button
@@ -514,7 +528,7 @@ export function SidebarNav() {
               onClick={signOut}
             >
               <LogOut className="w-5 h-5 mr-3" />
-              <span className="font-medium">Logout</span>
+              <span className="font-medium">{t('nav.logout')}</span>
             </Button>
           </nav>
         </div>
