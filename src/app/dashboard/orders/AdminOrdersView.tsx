@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
@@ -129,6 +130,7 @@ function isThisWeek(dateString: string): boolean {
 }
 
 export function AdminOrdersView() {
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -357,9 +359,9 @@ export function AdminOrdersView() {
       <div className="space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-3xl font-bold">All Customer Orders</h1>
+          <h1 className="text-3xl font-bold">{t('adminOrders.title')}</h1>
           <p className="text-muted-foreground mt-1">
-            View and manage all customer orders
+            {t('adminOrders.subtitle')}
           </p>
         </div>
 
@@ -370,7 +372,7 @@ export function AdminOrdersView() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by order number, company name, or email..."
+                placeholder={t('adminOrders.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -392,10 +394,10 @@ export function AdminOrdersView() {
               >
                 <SelectTrigger className="w-full sm:w-[220px]">
                   <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="All Companies" />
+                  <SelectValue placeholder={t('adminOrders.allCompanies')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Companies</SelectItem>
+                  <SelectItem value="all">{t('adminOrders.allCompanies')}</SelectItem>
                   {uniqueCompanies.map((company) => (
                     <SelectItem key={company} value={company}>
                       {company}
@@ -422,14 +424,14 @@ export function AdminOrdersView() {
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="All Statuses" />
+                <SelectValue placeholder={t('adminOrders.allStatuses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="completed">Completed & Sent</SelectItem>
+                <SelectItem value="all">{t('adminOrders.allStatuses')}</SelectItem>
+                <SelectItem value="processing">{t('adminOrders.processing')}</SelectItem>
+                <SelectItem value="awaiting_payment">{t('adminOrders.awaitingPayment')}</SelectItem>
+                <SelectItem value="shipped">{t('adminOrders.shipped')}</SelectItem>
+                <SelectItem value="completed">{t('adminOrders.completedSent')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -447,7 +449,7 @@ export function AdminOrdersView() {
                   'bg-gray-700 text-white hover:bg-gray-800'
               )}
             >
-              Today
+              {t('adminOrders.today')}
             </Button>
             <Button
               variant={quickFilter === 'this_week' ? 'default' : 'outline'}
@@ -460,7 +462,7 @@ export function AdminOrdersView() {
                   'bg-gray-700 text-white hover:bg-gray-800'
               )}
             >
-              This Week
+              {t('adminOrders.thisWeek')}
             </Button>
             
             {/* Status Filter Buttons - New Workflow */}
@@ -473,7 +475,7 @@ export function AdminOrdersView() {
                   'bg-blue-500 text-white hover:bg-blue-600'
               )}
             >
-              Processing
+              {t('adminOrders.processing')}
             </Button>
             <Button
               variant={statusFilter === 'awaiting_payment' ? 'default' : 'outline'}
@@ -484,7 +486,7 @@ export function AdminOrdersView() {
                   'bg-orange-500 text-white hover:bg-orange-600'
               )}
             >
-              Awaiting Payment
+              {t('adminOrders.awaitingPayment')}
             </Button>
             <Button
               variant={statusFilter === 'shipped' ? 'default' : 'outline'}
@@ -495,7 +497,7 @@ export function AdminOrdersView() {
                   'bg-purple-500 text-white hover:bg-purple-600'
               )}
             >
-              Shipped
+              {t('adminOrders.shipped')}
             </Button>
             <Button
               variant={statusFilter === 'completed' ? 'default' : 'outline'}
@@ -506,7 +508,7 @@ export function AdminOrdersView() {
                   'bg-green-500 text-white hover:bg-green-600'
               )}
             >
-              Completed & Sent
+              {t('adminOrders.completedSent')}
             </Button>
           </div>
         </div>
@@ -516,28 +518,28 @@ export function AdminOrdersView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Company Name</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Shipping</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('orders.orderNumber')}</TableHead>
+                <TableHead>{t('orders.date')}</TableHead>
+                <TableHead>{t('orders.companyName')}</TableHead>
+                <TableHead>{t('orders.items')}</TableHead>
+                <TableHead>{t('orders.total')}</TableHead>
+                <TableHead>{t('orders.shipping')}</TableHead>
+                <TableHead>{t('orders.status')}</TableHead>
+                <TableHead className="text-right">{t('orders.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
-                    Loading orders...
+                    {t('orders.loadingOrders')}
                   </TableCell>
                 </TableRow>
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
-                      <p className="text-muted-foreground">No orders found</p>
+                      <p className="text-muted-foreground">{t('orders.noOrdersFound')}</p>
                       {searchQuery || statusFilter !== 'all' || companyFilter !== 'all' || quickFilter ? (
                         <Button
                           variant="outline"
@@ -555,7 +557,7 @@ export function AdminOrdersView() {
                             }
                           }}
                         >
-                          Clear filters
+                          {t('orders.clearFilters')}
                         </Button>
                       ) : null}
                     </div>
@@ -577,7 +579,7 @@ export function AdminOrdersView() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
-                        {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                        {order.items.length} {order.items.length === 1 ? t('products.item') : t('products.items')}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -598,10 +600,10 @@ export function AdminOrdersView() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="processing">Processing</SelectItem>
-                          <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-                          <SelectItem value="shipped">Shipped</SelectItem>
-                          <SelectItem value="completed">Completed & Sent</SelectItem>
+                          <SelectItem value="processing">{t('adminOrders.processing')}</SelectItem>
+                          <SelectItem value="awaiting_payment">{t('adminOrders.awaitingPayment')}</SelectItem>
+                          <SelectItem value="shipped">{t('adminOrders.shipped')}</SelectItem>
+                          <SelectItem value="completed">{t('adminOrders.completedSent')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -630,7 +632,7 @@ export function AdminOrdersView() {
             <>
               <DialogHeader>
                 <DialogTitle>
-                  Order #{selectedOrder.order_number}
+                  {t('orders.orderNumber')} {selectedOrder.order_number}
                 </DialogTitle>
               </DialogHeader>
 
@@ -638,7 +640,7 @@ export function AdminOrdersView() {
                 {/* Status and Order Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Status</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('orders.status')}</p>
                     <Select
                       value={selectedOrder.status}
                       onValueChange={(value) => {
@@ -652,32 +654,32 @@ export function AdminOrdersView() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="processing">Processing</SelectItem>
-                        <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="completed">Completed & Sent</SelectItem>
+                        <SelectItem value="processing">{t('orders.processing')}</SelectItem>
+                        <SelectItem value="awaiting_payment">{t('orders.awaitingPayment')}</SelectItem>
+                        <SelectItem value="shipped">{t('orders.shipped')}</SelectItem>
+                        <SelectItem value="completed">{t('orders.completedSent')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Order Number</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('orders.orderNo')}</p>
                     <p className="font-mono text-sm font-semibold">
                       #{selectedOrder.order_number}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Company Name</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('orders.companyName')}</p>
                     <p className="text-sm font-medium">{selectedOrder.company_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Created</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('general.date')}</p>
                     <p className="text-sm">{formatDateTime(selectedOrder.created_at)}</p>
                   </div>
                 </div>
 
                 {/* Shipping Method */}
                 <div className="p-4 rounded-lg bg-muted/50 border">
-                  <p className="text-sm text-muted-foreground mb-2">Shipping Method</p>
+                  <p className="text-sm text-muted-foreground mb-2">{t('orders.shipping')}</p>
                   <div className="flex items-center gap-3">
                     <ShippingMethodBadge method={selectedOrder.shipping_method} size="md" />
                     <span className="text-sm text-muted-foreground">
@@ -689,12 +691,12 @@ export function AdminOrdersView() {
                 {/* Customer Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Email</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('general.email')}</p>
                     <p className="text-sm">{selectedOrder.email}</p>
                   </div>
                   {selectedOrder.phone && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t('general.phone')}</p>
                       <p className="text-sm">{selectedOrder.phone}</p>
                     </div>
                   )}
@@ -703,7 +705,7 @@ export function AdminOrdersView() {
                 {/* Order Items */}
                 {selectedOrder.items && selectedOrder.items.length > 0 && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Items</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t('orders.items')}</p>
                     <div className="space-y-2">
                       {selectedOrder.items.map((item, index) => (
                         <div
@@ -713,7 +715,7 @@ export function AdminOrdersView() {
                           <div className="flex-1">
                             <p className="font-medium">{item.product_name}</p>
                             <p className="text-sm text-muted-foreground font-mono">
-                              SKU: {item.sku}
+                              {t('products.sku')}: {item.sku}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {formatPrice(item.unit_price)} × {item.quantity}
@@ -730,7 +732,7 @@ export function AdminOrdersView() {
 
                 {/* Total */}
                 <div className="flex justify-between items-center pt-4 border-t">
-                  <p className="text-lg font-semibold">Total</p>
+                  <p className="text-lg font-semibold">{t('orders.total')}</p>
                   <p className="text-lg font-bold">{formatPrice(selectedOrder.total)}</p>
                 </div>
 

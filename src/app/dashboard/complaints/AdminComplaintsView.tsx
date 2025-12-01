@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -77,13 +78,13 @@ function mapStatusToDb(status: Complaint['status']): string {
 
 // Status badge function removed - using OrderStatusBadge component instead
 
-function getReasonLabel(reason: string) {
+function getReasonLabel(reason: string, t: (key: string) => string) {
   const labels: Record<string, string> = {
-    damaged_transport: 'Damaged in transport',
-    wrong_product: 'Wrong product',
-    missing_parts: 'Missing parts',
-    defective: 'Defective',
-    other: 'Other',
+    damaged_transport: t('complaints.damagedTransport'),
+    wrong_product: t('complaints.wrongProduct'),
+    missing_parts: t('complaints.missingParts'),
+    defective: t('complaints.defective'),
+    other: t('complaints.other'),
   }
   return labels[reason] || reason
 }
@@ -99,6 +100,7 @@ function formatComplaintDate(dateString: string): string {
 }
 
 export function AdminComplaintsView() {
+  const { t } = useTranslation()
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -199,14 +201,14 @@ export function AdminComplaintsView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-complaints'] })
       toast({
-        title: 'Status updated',
-        description: 'The complaint status has been updated.',
+        title: t('complaints.statusUpdated'),
+        description: t('complaints.statusUpdated'),
       })
     },
     onError: (error: Error) => {
       toast({
-        title: 'Error updating status',
-        description: error.message || 'Failed to update complaint status.',
+        title: t('complaints.error'),
+        description: error.message || t('complaints.failedToSubmit'),
         variant: 'destructive',
       })
     },
@@ -225,14 +227,14 @@ export function AdminComplaintsView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-complaints'] })
       toast({
-        title: 'Notes updated',
-        description: 'Internal notes have been saved.',
+        title: t('complaints.noteAdded'),
+        description: t('complaints.noteAdded'),
       })
     },
     onError: (error: Error) => {
       toast({
-        title: 'Error updating notes',
-        description: error.message || 'Failed to update internal notes.',
+        title: t('complaints.error'),
+        description: error.message || t('complaints.failedToSubmit'),
         variant: 'destructive',
       })
     },
@@ -281,9 +283,9 @@ export function AdminComplaintsView() {
       <div className="space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-3xl font-bold">All Customer Complaints</h1>
+          <h1 className="text-3xl font-bold">{t('complaints.adminView')}</h1>
           <p className="text-muted-foreground mt-1">
-            View and manage all customer complaints
+            {t('complaints.subtitle')}
           </p>
         </div>
 
@@ -293,7 +295,7 @@ export function AdminComplaintsView() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by ticket ID, order ID, or company name..."
+              placeholder={t('complaints.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -303,14 +305,14 @@ export function AdminComplaintsView() {
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="All Statuses" />
+              <SelectValue placeholder={t('complaints.allStatuses')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
+              <SelectItem value="all">{t('complaints.allStatuses')}</SelectItem>
+              <SelectItem value="new">{t('complaints.new')}</SelectItem>
+              <SelectItem value="in-progress">{t('complaints.inProgress')}</SelectItem>
+              <SelectItem value="resolved">{t('complaints.resolved')}</SelectItem>
+              <SelectItem value="closed">{t('complaints.closed')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -320,27 +322,27 @@ export function AdminComplaintsView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Ticket ID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Company Name</TableHead>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('complaints.orderNumber')}</TableHead>
+                <TableHead>{t('complaints.date')}</TableHead>
+                <TableHead>{t('complaints.company')}</TableHead>
+                <TableHead>{t('complaints.orderId')}</TableHead>
+                <TableHead>{t('complaints.status')}</TableHead>
+                <TableHead>{t('complaints.items')}</TableHead>
+                <TableHead className="text-right">{t('complaints.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
-                    Loading complaints...
+                    {t('general.loading')}...
                   </TableCell>
                 </TableRow>
               ) : filteredComplaints.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
-                      <p className="text-muted-foreground">No complaints found</p>
+                      <p className="text-muted-foreground">{t('complaints.noComplaints')}</p>
                       {searchQuery || statusFilter !== 'all' ? (
                         <Button
                           variant="outline"
@@ -350,7 +352,7 @@ export function AdminComplaintsView() {
                             setStatusFilter('all')
                           }}
                         >
-                          Clear filters
+                          {t('products.clearFilters')}
                         </Button>
                       ) : null}
                     </div>
@@ -387,16 +389,16 @@ export function AdminComplaintsView() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="in-progress">In Progress</SelectItem>
-                          <SelectItem value="resolved">Resolved</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
+                          <SelectItem value="new">{t('complaints.new')}</SelectItem>
+                          <SelectItem value="in-progress">{t('complaints.inProgress')}</SelectItem>
+                          <SelectItem value="resolved">{t('complaints.resolved')}</SelectItem>
+                          <SelectItem value="closed">{t('complaints.closed')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
-                        {complaint.items?.length || 0} item{complaint.items?.length !== 1 ? 's' : ''}
+                        {complaint.items?.length || 0} {t('products.items')}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -406,7 +408,7 @@ export function AdminComplaintsView() {
                         onClick={() => handleViewDetails(complaint)}
                       >
                         <Eye className="w-4 h-4 mr-2" />
-                        View Details
+                        {t('complaints.view')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -432,7 +434,7 @@ export function AdminComplaintsView() {
                 {/* Status and Order Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Status</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.status')}</p>
                     <Select
                       value={selectedComplaint.status}
                       onValueChange={(value) => {
@@ -446,15 +448,15 @@ export function AdminComplaintsView() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
-                        <SelectItem value="resolved">Resolved</SelectItem>
-                        <SelectItem value="closed">Closed</SelectItem>
+                        <SelectItem value="new">{t('complaints.new')}</SelectItem>
+                        <SelectItem value="in-progress">{t('complaints.inProgress')}</SelectItem>
+                        <SelectItem value="resolved">{t('complaints.resolved')}</SelectItem>
+                        <SelectItem value="closed">{t('complaints.closed')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Order ID</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.orderId')}</p>
                     <p className="font-mono text-sm">
                       {selectedComplaint.order_number
                         ? `#${selectedComplaint.order_number}`
@@ -462,27 +464,27 @@ export function AdminComplaintsView() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Company Name</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.company')}</p>
                     <p className="text-sm font-medium">
-                      {selectedComplaint.company_name || 'Unknown Company'}
+                      {selectedComplaint.company_name || t('general.none')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Created</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('general.date')}</p>
                     <p className="text-sm">{formatDateTime(selectedComplaint.created_at)}</p>
                   </div>
                 </div>
 
                 {/* Reason */}
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Reason</p>
-                  <p className="font-medium">{getReasonLabel(selectedComplaint.reason)}</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t('complaints.reason')}</p>
+                  <p className="font-medium">{getReasonLabel(selectedComplaint.reason, t)}</p>
                 </div>
 
                 {/* Items */}
                 {selectedComplaint.items && selectedComplaint.items.length > 0 && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Items</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t('complaints.items')}</p>
                     <div className="space-y-2">
                       {selectedComplaint.items.map((item, index) => (
                         <div
@@ -505,7 +507,7 @@ export function AdminComplaintsView() {
                 {/* Description */}
                 {selectedComplaint.message && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.description')}</p>
                     <p className="text-sm whitespace-pre-wrap">{selectedComplaint.message}</p>
                   </div>
                 )}
@@ -513,7 +515,7 @@ export function AdminComplaintsView() {
                 {/* Photos */}
                 {selectedComplaint.photos && selectedComplaint.photos.length > 0 && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Photos</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t('complaints.photos')}</p>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {selectedComplaint.photos.map((photo, index) => (
                         <div key={index} className="relative group">
@@ -538,7 +540,7 @@ export function AdminComplaintsView() {
 
                 {/* Internal Notes (Admin Only) */}
                 <div>
-                  <Label htmlFor="internal-notes">Internal Notes</Label>
+                  <Label htmlFor="internal-notes">{t('complaints.internalNotes')}</Label>
                   <Textarea
                     id="internal-notes"
                     value={selectedComplaint.internal_notes || ''}
@@ -551,12 +553,12 @@ export function AdminComplaintsView() {
                         handleInternalNotesChange(e.target.value)
                       }
                     }}
-                    placeholder="Add internal notes about this complaint (only visible to admins)..."
+                    placeholder={t('complaints.addNote')}
                     rows={4}
                     className="mt-2"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    These notes are only visible to admins and will not be shown to the customer.
+                    {t('complaints.internalNotesDescription')}
                   </p>
                 </div>
               </div>

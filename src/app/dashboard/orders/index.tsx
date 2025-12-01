@@ -577,9 +577,9 @@ export function OrdersPage() {
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead>{t('orders.orderNo')}</TableHead>
+              <TableHead>{t('orders.orderNumber')}</TableHead>
               <TableHead>{t('orders.date')}</TableHead>
-              <TableHead>{t('orders.buyer')}</TableHead>
+              <TableHead>{t('orders.companyName')}</TableHead>
               <TableHead>{t('orders.items')}</TableHead>
               <TableHead>{t('orders.total')}</TableHead>
               <TableHead>{t('orders.shipping')}</TableHead>

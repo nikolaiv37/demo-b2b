@@ -1,5 +1,6 @@
 // This is the page owners open every morning with their coffee ☕
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
@@ -119,6 +120,7 @@ interface AnalyticsData {
 }
 
 export function AnalyticsPage() {
+  const { t } = useTranslation()
   const { user, profile, isAdmin } = useAuth()
   const [dateRange, setDateRange] = useState<DateRange>('alltime')
   
@@ -652,11 +654,11 @@ export function AnalyticsPage() {
         <GlassCard className="p-12">
           <div className="text-center">
             <BarChart3 className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-semibold mb-2">Error loading analytics</h3>
+            <h3 className="text-xl font-semibold mb-2">{t('analytics.errorLoading')}</h3>
             <p className="text-muted-foreground mb-6">
-              {error instanceof Error ? error.message : 'Failed to load analytics data'}
+              {error instanceof Error ? error.message : t('analytics.failedToLoad')}
             </p>
-            <Button onClick={() => window.location.reload()}>Refresh</Button>
+            <Button onClick={() => window.location.reload()}>{t('analytics.refresh')}</Button>
           </div>
         </GlassCard>
       </div>
@@ -668,9 +670,9 @@ export function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('analytics.title')}</h1>
           <p className="text-muted-foreground">
-            Track your business performance and make data-driven decisions
+            {t('analytics.subtitle')}
           </p>
         </div>
         <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
@@ -678,9 +680,9 @@ export function AnalyticsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="last30">Last 30 days</SelectItem>
-            <SelectItem value="last90">Last 90 days</SelectItem>
-            <SelectItem value="alltime">All time</SelectItem>
+            <SelectItem value="last30">{t('analytics.last30Days')}</SelectItem>
+            <SelectItem value="last90">{t('analytics.last90Days')}</SelectItem>
+            <SelectItem value="alltime">{t('analytics.allTime')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -714,7 +716,7 @@ export function AnalyticsPage() {
             )}
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Total Revenue</p>
+            <p className="text-sm text-muted-foreground">{t('analytics.totalRevenue')}</p>
             <p className="text-2xl font-bold">{formatCurrency(displayData.totalRevenue)}</p>
             <div className="flex items-center gap-1 text-xs">
               {displayData.totalRevenueMoM >= 0 ? (
@@ -739,7 +741,7 @@ export function AnalyticsPage() {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Total Orders</p>
+            <p className="text-sm text-muted-foreground">{t('analytics.totalOrders')}</p>
             <p className="text-2xl font-bold">{displayData.totalOrders}</p>
           </div>
         </GlassCard>
@@ -752,7 +754,7 @@ export function AnalyticsPage() {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Average Order Value</p>
+            <p className="text-sm text-muted-foreground">{t('analytics.averageOrderValue')}</p>
             <p className="text-2xl font-bold">{formatCurrency(displayData.averageOrderValue)}</p>
           </div>
         </GlassCard>
@@ -766,11 +768,11 @@ export function AnalyticsPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Quotes → Orders</p>
+              <p className="text-sm text-muted-foreground">{t('analytics.quotesToOrders')}</p>
               <p className="text-2xl font-bold">
                 {displayData.quotesToOrdersConversion.toFixed(1)}%
               </p>
-              <p className="text-xs text-muted-foreground">Last 30 days</p>
+              <p className="text-xs text-muted-foreground">{t('analytics.last30Days')}</p>
             </div>
           </GlassCard>
         )}
@@ -784,9 +786,9 @@ export function AnalyticsPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Pending Quotes</p>
+              <p className="text-sm text-muted-foreground">{t('analytics.pendingQuotes')}</p>
               <p className="text-2xl font-bold">{displayData.myPendingQuotesCount}</p>
-              <p className="text-xs text-muted-foreground">Awaiting approval</p>
+              <p className="text-xs text-muted-foreground">{t('analytics.awaitingApproval')}</p>
             </div>
           </GlassCard>
         )}
@@ -794,7 +796,7 @@ export function AnalyticsPage() {
 
       {/* Revenue Over Time */}
       <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
-        <h3 className="text-lg font-semibold mb-4">Revenue Over Time</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('analytics.revenueOverTime')}</h3>
         {displayData.revenueOverTime.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={displayData.revenueOverTime}>
@@ -837,14 +839,14 @@ export function AnalyticsPage() {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            No revenue data available
+            {t('analytics.noRevenueData')}
           </div>
         )}
       </GlassCard>
 
       {/* Top 10 Products by Revenue */}
       <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
-        <h3 className="text-lg font-semibold mb-4">Top 10 Products by Revenue</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('analytics.top10Products')}</h3>
         {displayData.topProducts.length > 0 ? (
           <ResponsiveContainer width="100%" height={400}>
               <BarChart
@@ -884,7 +886,7 @@ export function AnalyticsPage() {
           </ResponsiveContainer>
         ) : (
           <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-            No product sales data available
+            {t('analytics.noProductSalesData')}
           </div>
         )}
       </GlassCard>
@@ -892,17 +894,17 @@ export function AnalyticsPage() {
       {/* Top 10 Customers by Revenue (Admin only) */}
       {isAdmin && (
         <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
-          <h3 className="text-lg font-semibold mb-4">Top 10 Customers by Revenue</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('analytics.top10Customers')}</h3>
           {displayData.topCustomers.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-16">Rank</TableHead>
-                    <TableHead>Company Name</TableHead>
-                    <TableHead className="text-right">Total Spent</TableHead>
-                    <TableHead className="text-right">Orders</TableHead>
-                    <TableHead>Last Order</TableHead>
+                    <TableHead className="w-16">{t('analytics.rank')}</TableHead>
+                    <TableHead>{t('analytics.companyName')}</TableHead>
+                    <TableHead className="text-right">{t('analytics.totalSpent')}</TableHead>
+                    <TableHead className="text-right">{t('analytics.orders')}</TableHead>
+                    <TableHead>{t('analytics.lastOrder')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -924,7 +926,7 @@ export function AnalyticsPage() {
             </div>
           ) : (
             <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-              No customer data available
+              {t('analytics.noCustomerData')}
             </div>
           )}
         </GlassCard>
@@ -933,17 +935,17 @@ export function AnalyticsPage() {
       {/* Recent Low-Stock Products */}
       <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Low-Stock Products</h3>
-          <Badge variant="destructive">{displayData.lowStockProducts.length} items</Badge>
+          <h3 className="text-lg font-semibold">{t('analytics.lowStockProducts')}</h3>
+          <Badge variant="destructive">{displayData.lowStockProducts.length} {t('analytics.items')}</Badge>
         </div>
         {displayData.lowStockProducts.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Current Stock</TableHead>
-                  <TableHead>Alert</TableHead>
+                  <TableHead>{t('analytics.product')}</TableHead>
+                  <TableHead>{t('analytics.currentStock')}</TableHead>
+                  <TableHead>{t('analytics.alert')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -955,12 +957,12 @@ export function AnalyticsPage() {
                         <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{product.stock} units</TableCell>
+                    <TableCell>{product.stock} {t('analytics.units')}</TableCell>
                     <TableCell>
                       {product.stock <= 5 ? (
-                        <Badge variant="destructive">Critical</Badge>
+                        <Badge variant="destructive">{t('analytics.critical')}</Badge>
                       ) : (
-                        <Badge variant="secondary">Low</Badge>
+                        <Badge variant="secondary">{t('analytics.low')}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -971,7 +973,7 @@ export function AnalyticsPage() {
         ) : (
           <div className="text-center py-12">
             <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">All products are well stocked!</p>
+            <p className="text-muted-foreground">{t('analytics.allProductsWellStocked')}</p>
           </div>
         )}
       </GlassCard>
@@ -979,13 +981,13 @@ export function AnalyticsPage() {
       {/* Quote Funnel (Admin only) */}
       {isAdmin && (
         <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
-          <h3 className="text-lg font-semibold mb-4">Quote Funnel (Last 30 Days)</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('analytics.quoteFunnel')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Draft */}
             <div className="p-4 rounded-lg border border-border/50 bg-white/50">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Draft</span>
+                <span className="text-sm font-medium text-muted-foreground">{t('analytics.draft')}</span>
               </div>
               <p className="text-2xl font-bold mb-1">{displayData.quoteFunnel.draft}</p>
               <p className="text-xs text-muted-foreground">100%</p>
@@ -995,14 +997,14 @@ export function AnalyticsPage() {
             <div className="p-4 rounded-lg border border-border/50 bg-white/50">
               <div className="flex items-center gap-2 mb-2">
                 <Send className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-medium">Sent</span>
+                <span className="text-sm font-medium">{t('analytics.sent')}</span>
               </div>
               <p className="text-2xl font-bold mb-1">{displayData.quoteFunnel.sent}</p>
               <p className="text-xs text-muted-foreground">
                 {displayData.quoteFunnel.draft > 0
                   ? ((displayData.quoteFunnel.sent / displayData.quoteFunnel.draft) * 100).toFixed(1)
                   : 0}
-                % from draft
+                % {t('analytics.fromDraft')}
               </p>
             </div>
 
@@ -1010,14 +1012,14 @@ export function AnalyticsPage() {
             <div className="p-4 rounded-lg border border-border/50 bg-white/50">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-medium">Accepted</span>
+                <span className="text-sm font-medium">{t('analytics.accepted')}</span>
               </div>
               <p className="text-2xl font-bold mb-1">{displayData.quoteFunnel.accepted}</p>
               <p className="text-xs text-muted-foreground">
                 {displayData.quoteFunnel.sent > 0
                   ? ((displayData.quoteFunnel.accepted / displayData.quoteFunnel.sent) * 100).toFixed(1)
                   : 0}
-                % from sent
+                % {t('analytics.fromSent')}
               </p>
             </div>
 
@@ -1025,14 +1027,14 @@ export function AnalyticsPage() {
             <div className="p-4 rounded-lg border border-border/50 bg-white/50">
               <div className="flex items-center gap-2 mb-2">
                 <ShoppingCart className="w-4 h-4 text-purple-500" />
-                <span className="text-sm font-medium">Ordered</span>
+                <span className="text-sm font-medium">{t('analytics.ordered')}</span>
               </div>
               <p className="text-2xl font-bold mb-1">{displayData.quoteFunnel.ordered}</p>
               <p className="text-xs text-muted-foreground">
                 {displayData.quoteFunnel.accepted > 0
                   ? ((displayData.quoteFunnel.ordered / displayData.quoteFunnel.accepted) * 100).toFixed(1)
                   : 0}
-                % from accepted
+                % {t('analytics.fromAccepted')}
               </p>
             </div>
           </div>
@@ -1044,33 +1046,33 @@ export function AnalyticsPage() {
         <>
           {/* My Order Status Breakdown */}
           <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
-            <h3 className="text-lg font-semibold mb-4">My Order Status</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('analytics.myOrderStatus')}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="p-4 rounded-lg border border-border/50 bg-white/50">
                 <div className="flex items-center gap-2 mb-2">
                   <FileText className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-medium">Pending</span>
+                  <span className="text-sm font-medium">{t('analytics.pending')}</span>
                 </div>
                 <p className="text-2xl font-bold">{displayData.myQuotesStatus.pending}</p>
               </div>
               <div className="p-4 rounded-lg border border-border/50 bg-white/50">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-medium">Approved</span>
+                  <span className="text-sm font-medium">{t('analytics.approved')}</span>
                 </div>
                 <p className="text-2xl font-bold">{displayData.myQuotesStatus.approved}</p>
               </div>
               <div className="p-4 rounded-lg border border-border/50 bg-white/50">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-red-500" />
-                  <span className="text-sm font-medium">Rejected</span>
+                  <span className="text-sm font-medium">{t('analytics.rejected')}</span>
                 </div>
                 <p className="text-2xl font-bold">{displayData.myQuotesStatus.rejected}</p>
               </div>
               <div className="p-4 rounded-lg border border-border/50 bg-white/50">
                 <div className="flex items-center gap-2 mb-2">
                   <FileText className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium">Expired</span>
+                  <span className="text-sm font-medium">{t('analytics.expired')}</span>
                 </div>
                 <p className="text-2xl font-bold">{displayData.myQuotesStatus.expired}</p>
               </div>
@@ -1080,15 +1082,15 @@ export function AnalyticsPage() {
           {/* My Recent Orders */}
           {displayData.myRecentQuotes && displayData.myRecentQuotes.length > 0 && (
             <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
-              <h3 className="text-lg font-semibold mb-4">My Recent Orders</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('analytics.myRecentOrders')}</h3>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order No.</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>{t('analytics.orderNo')}</TableHead>
+                      <TableHead>{t('analytics.total')}</TableHead>
+                      <TableHead>{t('analytics.status')}</TableHead>
+                      <TableHead>{t('analytics.date')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
@@ -15,6 +16,7 @@ import { Heart, ShoppingCart, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 export function WishlistPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { toast } = useToast()
   const { wishlistItems, removeFromWishlist, count: wishlistCount } = useWishlist()
@@ -47,8 +49,8 @@ export function WishlistPage() {
   const handleRemove = (sku: string) => {
     removeFromWishlist(sku)
     toast({
-      title: 'Removed from wishlist',
-      description: 'Item has been removed from your wishlist',
+      title: t('wishlist.removedFromWishlist'),
+      description: t('wishlist.itemRemoved'),
     })
   }
 
@@ -56,8 +58,8 @@ export function WishlistPage() {
   const handleAddAllToOrder = () => {
     if (products.length === 0) {
       toast({
-        title: 'No items',
-        description: 'Your wishlist is empty',
+        title: t('wishlist.noItems'),
+        description: t('wishlist.wishlistEmpty'),
         variant: 'destructive',
       })
       return
@@ -77,15 +79,15 @@ export function WishlistPage() {
 
     if (addedCount > 0) {
       toast({
-        title: 'Added to cart',
-        description: `${addedCount} item${addedCount > 1 ? 's' : ''} added to cart${failedCount > 0 ? ` (${failedCount} failed)` : ''}`,
+        title: t('wishlist.addedToCart'),
+        description: t('wishlist.itemsAdded', { count: addedCount, s: addedCount > 1 ? 's' : '' }) + (failedCount > 0 ? ` (${failedCount} ${t('general.failed')})` : ''),
       })
       // Navigate to cart or orders
       navigate('/dashboard/orders')
     } else {
       toast({
-        title: 'Failed to add items',
-        description: 'Could not add items to cart',
+        title: t('wishlist.failedToAdd'),
+        description: t('wishlist.couldNotAdd'),
         variant: 'destructive',
       })
     }
@@ -101,8 +103,8 @@ export function WishlistPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">My Wishlist</h1>
-          <p className="text-muted-foreground">Your saved favorites</p>
+          <h1 className="text-3xl font-bold mb-2">{t('wishlist.title')}</h1>
+          <p className="text-muted-foreground">{t('wishlist.subtitle')}</p>
         </div>
 
         <GlassCard>
@@ -110,13 +112,13 @@ export function WishlistPage() {
             <div className="w-20 h-20 mx-auto mb-4 text-muted-foreground flex items-center justify-center">
               <Heart className="w-full h-full" strokeWidth={1.5} />
             </div>
-            <h3 className="text-xl font-semibold mb-2">No items saved yet</h3>
+            <h3 className="text-xl font-semibold mb-2">{t('wishlist.noItemsSaved')}</h3>
             <p className="text-muted-foreground mb-6">
-              Click ♥ on products you like to save them to your wishlist.
+              {t('wishlist.noItemsDescription')}
             </p>
             <Button onClick={() => navigate('/dashboard/products')}>
               <ShoppingCart className="w-4 h-4 mr-2" />
-              Browse Products
+              {t('wishlist.browseProducts')}
             </Button>
           </div>
         </GlassCard>
@@ -129,7 +131,7 @@ export function WishlistPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">My Wishlist</h1>
+          <h1 className="text-3xl font-bold">{t('wishlist.title')}</h1>
           {wishlistCount > 0 && (
             <Badge variant="destructive" className="text-base px-3 py-1">
               {wishlistCount}
@@ -139,7 +141,7 @@ export function WishlistPage() {
         {products.length > 0 && (
           <Button size="lg" onClick={handleAddAllToOrder} className="bg-blue-600 hover:bg-blue-700">
             <ShoppingCart className="w-5 h-5 mr-2" />
-            Add All to Order
+            {t('wishlist.addAllToOrder')}
           </Button>
         )}
       </div>
@@ -174,7 +176,7 @@ export function WishlistPage() {
                   size="icon"
                   className="h-9 w-9 rounded-full shadow-lg"
                   onClick={() => handleRemove(product.sku)}
-                  title="Remove from wishlist"
+                  title={t('wishlist.removeFromWishlist')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -188,13 +190,13 @@ export function WishlistPage() {
             <div className="w-20 h-20 mx-auto mb-4 text-muted-foreground flex items-center justify-center">
               <Heart className="w-full h-full" strokeWidth={1.5} />
             </div>
-            <h3 className="text-xl font-semibold mb-2">No items found</h3>
+            <h3 className="text-xl font-semibold mb-2">{t('wishlist.noItemsFound')}</h3>
             <p className="text-muted-foreground mb-6">
-              Some items may have been removed from the catalog.
+              {t('wishlist.itemsRemovedFromCatalog')}
             </p>
             <Button onClick={() => navigate('/dashboard/products')}>
               <ShoppingCart className="w-4 h-4 mr-2" />
-              Browse Products
+              {t('wishlist.browseProducts')}
             </Button>
           </div>
         </GlassCard>

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -20,17 +21,18 @@ import {
   ArrowRight,
 } from 'lucide-react'
 
-const companyFormSchema = z.object({
-  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
-  eikBulstat: z.string().min(1, 'ЕИК / BULSTAT is required'),
-  vatNumber: z.string().min(1, 'VAT Number (ДДС №) is required'),
-  phone: z.string().min(1, 'Company phone is required'),
-  address: z.string().min(10, 'Address must be at least 10 characters'),
-  website: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
+// Schema will be created inside component to use translations
+const createCompanyFormSchema = (t: (key: string) => string) => z.object({
+  companyName: z.string().min(2, t('company.companyNameMinLength')),
+  eikBulstat: z.string().min(1, t('company.eikRequired')),
+  vatNumber: z.string().min(1, t('company.vatRequired')),
+  phone: z.string().min(1, t('company.phoneRequired')),
+  address: z.string().min(10, t('company.addressMinLength')),
+  website: z.string().url(t('company.invalidUrl')).optional().or(z.literal('')),
   logo: z.instanceof(File).optional(),
 })
 
-export type CompanyFormData = z.infer<typeof companyFormSchema>
+export type CompanyFormData = z.infer<ReturnType<typeof createCompanyFormSchema>>
 
 interface CompanyFormProps {
   company?: Company | null
@@ -47,6 +49,7 @@ export function CompanyForm({
   showLogoUpload = true,
   mode = 'edit',
 }: CompanyFormProps) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { toast } = useToast()
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -54,6 +57,8 @@ export function CompanyForm({
     company?.logo_url || ''
   )
   const [isDragging, setIsDragging] = useState(false)
+
+  const companyFormSchema = createCompanyFormSchema(t)
 
   const {
     register,
@@ -101,8 +106,8 @@ export function CompanyForm({
         // Validate file type
         if (!file.type.startsWith('image/')) {
           toast({
-            title: 'Invalid file type',
-            description: 'Please upload an image file',
+            title: t('company.invalidFileType'),
+            description: t('company.pleaseUploadImage'),
             variant: 'destructive',
           })
           return
@@ -111,8 +116,8 @@ export function CompanyForm({
         // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast({
-            title: 'File too large',
-            description: 'Please upload an image smaller than 5MB',
+            title: t('company.fileTooLarge'),
+            description: t('company.pleaseUploadSmaller'),
             variant: 'destructive',
           })
           return
@@ -165,8 +170,8 @@ export function CompanyForm({
   const onFormSubmit = async (data: CompanyFormData) => {
     if (!user) {
       toast({
-        title: 'Error',
-        description: 'You must be logged in',
+        title: t('company.error'),
+        description: t('company.mustBeLoggedIn'),
         variant: 'destructive',
       })
       return
@@ -195,8 +200,8 @@ export function CompanyForm({
         logoUrl = publicUrl
       } catch (error: any) {
         toast({
-          title: 'Logo upload failed',
-          description: error.message || 'Failed to upload logo',
+          title: t('company.logoUploadFailed'),
+          description: error.message || t('company.failedToUploadLogo'),
           variant: 'destructive',
         })
         return
@@ -211,11 +216,11 @@ export function CompanyForm({
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="companyName" className="text-base">
-            Company Name <span className="text-destructive">*</span>
+            {t('company.companyName')} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="companyName"
-            placeholder="Acme Furniture Co."
+            placeholder={t('company.companyNamePlaceholder')}
             className="h-12"
             {...register('companyName')}
           />
@@ -229,7 +234,7 @@ export function CompanyForm({
         {slug && (
           <div className="p-4 glass-card border border-primary/20 rounded-lg">
             <p className="text-sm text-muted-foreground mb-1">
-              Your catalog URL will be:
+              {t('company.catalogUrl')}
             </p>
             <p className="font-mono text-primary font-semibold text-sm">
               /catalog/{slug}
@@ -240,11 +245,11 @@ export function CompanyForm({
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="eikBulstat" className="text-base">
-              ЕИК / BULSTAT <span className="text-destructive">*</span>
+              {t('company.eikBulstat')} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="eikBulstat"
-              placeholder="123456789"
+              placeholder={t('company.eikBulstatPlaceholder')}
               className="h-12"
               {...register('eikBulstat')}
             />
@@ -257,11 +262,11 @@ export function CompanyForm({
 
           <div className="space-y-2">
             <Label htmlFor="vatNumber" className="text-base">
-              VAT Number (ДДС №) <span className="text-destructive">*</span>
+              {t('company.vatNumber')} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="vatNumber"
-              placeholder="BG123456789"
+              placeholder={t('company.vatNumberPlaceholder')}
               className="h-12"
               {...register('vatNumber')}
             />
@@ -276,12 +281,12 @@ export function CompanyForm({
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-base flex items-center gap-2">
             <Phone className="w-4 h-4" />
-            Company Phone <span className="text-destructive">*</span>
+            {t('company.companyPhone')} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="phone"
             type="tel"
-            placeholder="+359 888 123 456"
+            placeholder={t('company.companyPhonePlaceholder')}
             className="h-12"
             {...register('phone')}
           />
@@ -293,11 +298,11 @@ export function CompanyForm({
         <div className="space-y-2">
           <Label htmlFor="address" className="text-base flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            Full Company Address <span className="text-destructive">*</span>
+            {t('company.fullCompanyAddress')} <span className="text-destructive">*</span>
           </Label>
           <Textarea
             id="address"
-            placeholder="Street address, City, Postal Code, Country"
+            placeholder={t('company.addressPlaceholder')}
             className="min-h-[100px] resize-none"
             {...register('address')}
           />
@@ -309,13 +314,13 @@ export function CompanyForm({
         <div className="space-y-2">
           <Label htmlFor="website" className="text-base flex items-center gap-2">
             <Globe className="w-4 h-4" />
-            Company Website{' '}
-            <span className="text-muted-foreground text-sm">(optional)</span>
+            {t('company.companyWebsite')}{' '}
+            <span className="text-muted-foreground text-sm">{t('company.websiteOptional')}</span>
           </Label>
           <Input
             id="website"
             type="url"
-            placeholder="https://www.example.com"
+            placeholder={t('company.websitePlaceholder')}
             className="h-12"
             {...register('website')}
           />
@@ -328,8 +333,8 @@ export function CompanyForm({
           <div className="space-y-2">
             <Label className="text-base flex items-center gap-2">
               <Upload className="w-4 h-4" />
-              Company Logo{' '}
-              <span className="text-muted-foreground text-sm">(optional)</span>
+              {t('company.companyLogo')}{' '}
+              <span className="text-muted-foreground text-sm">{t('company.logoOptional')}</span>
             </Label>
             <div
               className={cn(
@@ -349,7 +354,7 @@ export function CompanyForm({
                     <div className="relative">
                       <img
                         src={logoPreview}
-                        alt="Logo preview"
+                        alt={t('company.logoPreview')}
                         className="w-48 h-48 object-contain rounded-lg glass-card p-4"
                       />
                       <button
@@ -368,7 +373,7 @@ export function CompanyForm({
                       onClick={() => document.getElementById('logo-input')?.click()}
                       className="w-full sm:w-auto"
                     >
-                      Change Logo
+                      {t('company.changeLogo')}
                     </Button>
                   </div>
                 </div>
@@ -381,11 +386,11 @@ export function CompanyForm({
                     <div>
                       <p className="text-base font-semibold mb-1">
                         {isDragging
-                          ? 'Drop your logo here'
-                          : 'Click to upload or drag and drop'}
+                          ? t('company.dropLogoHere')
+                          : t('company.clickToUpload')}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        PNG, JPG, or SVG up to 5MB
+                        {t('company.logoFormats')}
                       </p>
                     </div>
                   </div>
@@ -408,16 +413,16 @@ export function CompanyForm({
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {mode === 'onboarding' ? 'Processing...' : 'Saving...'}
+              {mode === 'onboarding' ? t('company.processing') : t('company.saving')}
             </>
           ) : (
             mode === 'onboarding' ? (
               <>
-                Continue
+                {t('company.continue')}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </>
             ) : (
-              'Save Changes'
+              t('company.saveChanges')
             )
           )}
         </Button>

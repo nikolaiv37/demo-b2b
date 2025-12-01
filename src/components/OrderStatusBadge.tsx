@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { OrderStatus, QuoteStatus } from '@/types'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,7 @@ function mapLegacyStatus(status: string): string {
 }
 
 export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
+  const { t } = useTranslation()
   // Map legacy status to new status for display
   const mappedStatus = mapLegacyStatus(status)
 
@@ -38,38 +40,38 @@ export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
       // New workflow statuses
       case 'processing':
         return {
-          label: 'Processing',
+          label: t('orderStatus.processing'),
           className: 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30',
         }
       case 'awaiting_payment':
         return {
-          label: 'Awaiting Payment',
+          label: t('orderStatus.awaitingPayment'),
           className: 'bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30',
         }
       case 'shipped':
         return {
-          label: 'Shipped',
+          label: t('orderStatus.shipped'),
           className: 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30',
         }
       case 'completed':
         return {
-          label: 'Completed & Sent',
+          label: t('orderStatus.completedSent'),
           className: 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30',
         }
       // Legacy statuses for backwards compatibility
       case 'rejected':
         return {
-          label: 'Rejected',
+          label: t('orderStatus.rejected'),
           className: 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30',
         }
       case 'expired':
         return {
-          label: 'Expired',
+          label: t('orderStatus.expired'),
           className: 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30',
         }
       case 'cancelled':
         return {
-          label: 'Cancelled',
+          label: t('orderStatus.cancelled'),
           className: 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30',
         }
       default:

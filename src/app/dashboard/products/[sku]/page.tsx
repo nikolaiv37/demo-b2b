@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { supabase } from '@/lib/supabase/client'
@@ -42,6 +43,7 @@ import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
  * This will work forever, even after database migrations or CSV re-imports.
  */
 export function ProductDetailPage() {
+  const { t } = useTranslation()
   const { sku } = useParams<{ sku: string }>()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -93,7 +95,7 @@ export function ProductDetailPage() {
             </p>
             <Button onClick={() => navigate('/dashboard/products')} className="w-full">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Catalog
+              {t('general.backToCatalog')}
             </Button>
           </GlassCard>
         </div>
