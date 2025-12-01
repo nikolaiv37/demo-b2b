@@ -174,6 +174,15 @@ export function CSVImportWizard() {
           
           // Only include fields that exist in the database schema
           for (const [key, value] of Object.entries(row)) {
+            // Handle virtual/compatibility fields that don't exist in the DB schema
+            // but should be mapped to real DB columns.
+            if (key === 'stock') {
+              // Map logical "stock" field to actual DB quantity column
+              // value is already parsed to a number in useSmartMapping.getTransformedData
+              cleaned.quantity = (value as number) || 0
+              continue
+            }
+
             // Skip fields that don't exist in DB
             if (!validDbColumns.has(key)) {
               continue
@@ -182,8 +191,6 @@ export function CSVImportWizard() {
             // Map fields to correct DB column names
             if (key === 'wholesale_price') {
               cleaned.weboffer_price = value
-            } else if (key === 'stock') {
-              cleaned.quantity = value || 0
             } else if (key === 'subcategory') {
               // Handle subcategory - combine with category if both exist
               const subcategory = typeof value === 'string' ? value.trim() : ''
