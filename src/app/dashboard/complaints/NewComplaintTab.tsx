@@ -288,7 +288,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
       if (error) throw error
       return complaint
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: t('complaints.complaintSubmitted'),
         description: t('complaints.complaintSubmittedDescription'),

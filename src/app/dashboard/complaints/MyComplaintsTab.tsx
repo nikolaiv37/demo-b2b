@@ -237,7 +237,7 @@ export function MyComplaintsTab() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Status</p>
-                    {getStatusBadge(selectedComplaint.status)}
+                    {getStatusBadge(selectedComplaint.status, t)}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Order ID</p>
@@ -260,7 +260,7 @@ export function MyComplaintsTab() {
                 {/* Reason */}
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Reason</p>
-                  <p className="font-medium">{getReasonLabel(selectedComplaint.reason)}</p>
+                  <p className="font-medium">{getReasonLabel(selectedComplaint.reason, t)}</p>
                 </div>
 
                 {/* Items */}
