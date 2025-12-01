@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GlassCard } from '@/components/GlassCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,6 +51,7 @@ export function ColumnMappingStep({
   distributorName,
   onUpdateMapping,
 }: ColumnMappingStepProps) {
+  const { t } = useTranslation()
   // Selection state
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
 
@@ -184,7 +186,7 @@ export function ColumnMappingStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.autoMapped}</p>
-              <p className="text-sm text-muted-foreground">Auto-Mapped</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.columnMapping.autoMapped')}</p>
             </div>
           </div>
         </GlassCard>
@@ -196,7 +198,7 @@ export function ColumnMappingStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.reviewNeeded}</p>
-              <p className="text-sm text-muted-foreground">Need Review</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.columnMapping.needReview')}</p>
             </div>
           </div>
         </GlassCard>
@@ -208,7 +210,7 @@ export function ColumnMappingStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.unmapped}</p>
-              <p className="text-sm text-muted-foreground">Unmapped</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.columnMapping.unmapped')}</p>
             </div>
           </div>
         </GlassCard>
@@ -234,10 +236,10 @@ export function ColumnMappingStep({
             </div>
             <div>
               <p className="text-lg font-bold">
-                {columnValidation.isValid ? '✅ Ready' : '⚠️ Missing'}
+                {columnValidation.isValid ? t('csvImport.columnMapping.ready') : t('csvImport.columnMapping.missing')}
               </p>
               <p className="text-sm text-muted-foreground">
-                {columnValidation.totalMapped}/{columnMappings.length} mapped
+                {columnValidation.totalMapped}/{columnMappings.length} {t('csvImport.columnMapping.mapped')}
               </p>
             </div>
           </div>
@@ -254,10 +256,10 @@ export function ColumnMappingStep({
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="font-semibold text-red-700 dark:text-red-400">
-                    Missing Required Fields
+                    {t('csvImport.columnMapping.missingRequiredFields')}
                   </h4>
                   <p className="text-sm text-red-600 dark:text-red-500 mb-2">
-                    The following required fields must be mapped to continue:
+                    {t('csvImport.columnMapping.mustBeMapped')}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {columnValidation.missingRequired.map(field => (
@@ -278,10 +280,10 @@ export function ColumnMappingStep({
                 <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="font-semibold text-amber-700 dark:text-amber-400">
-                    Duplicate Mappings Detected
+                    {t('csvImport.columnMapping.duplicateMappingsDetected')}
                   </h4>
                   <p className="text-sm text-amber-600 dark:text-amber-500 mb-2">
-                    The following fields are mapped to multiple columns. Each field can only be mapped once:
+                    {t('csvImport.columnMapping.mappedToMultiple')}
                   </p>
                   <div className="space-y-2">
                     {columnValidation.duplicateMappings.map(({ field, columns }) => (
@@ -290,10 +292,10 @@ export function ColumnMappingStep({
                           {field.replace(/_/g, ' ')}:
                         </div>
                         <div className="text-sm text-amber-600 dark:text-amber-500">
-                          Mapped to: {columns.map(c => `"${c}"`).join(', ')}
+                          {t('csvImport.columnMapping.mappedTo')} {columns.map(c => `"${c}"`).join(', ')}
                         </div>
                         <div className="text-xs text-amber-500 dark:text-amber-600 mt-1">
-                          💡 Tip: Only one column should be mapped to this field. The system will automatically unmap previous columns when you select a new one.
+                          {t('csvImport.columnMapping.tip')}
                         </div>
                       </div>
                     ))}
@@ -311,18 +313,17 @@ export function ColumnMappingStep({
           <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
           <div>
             <h4 className="font-semibold text-blue-700 dark:text-blue-400">
-              Important: Category & Sub-Category Fields
+              {t('csvImport.columnMapping.importantCategoryFields')}
             </h4>
             <p className="text-sm text-blue-600 dark:text-blue-500">
-              <strong>Category</strong> and <strong>Sub-Category</strong> can only be assigned to one column each. 
-              These fields are protected to ensure proper category mapping in the next step.
+              {t('csvImport.columnMapping.categorySubcategoryInfo')}
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="outline" className="border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
-                {usedFields.has('category') ? `✅ Category → ${usedFields.get('category')}` : '⏳ Category not mapped'}
+                {usedFields.has('category') ? `✅ Category → ${usedFields.get('category')}` : t('csvImport.columnMapping.categoryNotMapped')}
               </Badge>
               <Badge variant="outline" className="border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
-                {usedFields.has('subcategory') ? `✅ Sub-Category → ${usedFields.get('subcategory')}` : '⏳ Sub-Category not mapped'}
+                {usedFields.has('subcategory') ? `✅ Sub-Category → ${usedFields.get('subcategory')}` : t('csvImport.columnMapping.subCategoryNotMapped')}
               </Badge>
             </div>
           </div>
@@ -335,11 +336,11 @@ export function ColumnMappingStep({
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <Badge className="bg-blue-500 text-white">
-                {selectedItems.size} selected
+                {selectedItems.size} {t('csvImport.columnMapping.selected')}
               </Badge>
               <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>
                 <X className="w-4 h-4 mr-1" />
-                Clear
+                {t('csvImport.columnMapping.clear')}
               </Button>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -350,7 +351,7 @@ export function ColumnMappingStep({
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 <Ban className="w-4 h-4 mr-1" />
-                Ignore All
+                {t('csvImport.columnMapping.ignoreAll')}
               </Button>
               <Button
                 variant="outline"
@@ -359,7 +360,7 @@ export function ColumnMappingStep({
                 className="border-amber-300 text-amber-700 hover:bg-amber-50"
               >
                 <XCircle className="w-4 h-4 mr-1" />
-                Unmap All
+                {t('csvImport.columnMapping.unmapAll')}
               </Button>
             </div>
           </div>
@@ -371,13 +372,13 @@ export function ColumnMappingStep({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Columns className="w-5 h-5" />
-            Column Mappings
+            {t('csvImport.columnMapping.columnMappings')}
             <Badge variant="secondary" className="ml-2">
-              {columnMappings.length} columns
+              {columnMappings.length} {t('csvImport.columnMapping.columns')}
             </Badge>
           </h3>
           <Badge variant="outline">
-            {distributorName} Format
+            {distributorName} {t('csvImport.columnMapping.format')}
           </Badge>
         </div>
 
@@ -399,17 +400,17 @@ export function ColumnMappingStep({
                   </div>
                 </th>
                 <th className="text-left px-4 py-3 font-semibold text-sm bg-white dark:bg-gray-950">
-                  Source Column
+                  {t('csvImport.columnMapping.sourceColumn')}
                 </th>
                 <th className="px-4 py-3 w-12 bg-white dark:bg-gray-950"></th>
                 <th className="text-left px-4 py-3 font-semibold text-sm bg-white dark:bg-gray-950">
-                  Map To Field
+                  {t('csvImport.columnMapping.mapToField')}
                 </th>
                 <th className="text-center px-4 py-3 font-semibold text-sm bg-white dark:bg-gray-950">
-                  Status
+                  {t('csvImport.columnMapping.status')}
                 </th>
                 <th className="text-center px-4 py-3 font-semibold text-sm bg-white dark:bg-gray-950">
-                  Match
+                  {t('csvImport.columnMapping.match')}
                 </th>
               </tr>
             </thead>
@@ -462,11 +463,11 @@ export function ColumnMappingStep({
                         mapping.targetField && mapping.targetField !== 'ignore' && 'border-green-300 dark:border-green-700',
                         (mapping.targetField === 'category' || mapping.targetField === 'subcategory') && 'border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/20'
                       )}>
-                        <SelectValue placeholder="Select field..." />
+                        <SelectValue placeholder={t('general.select')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unmapped">— Not Mapped —</SelectItem>
-                        <SelectItem value="ignore">🚫 Ignore Column</SelectItem>
+                        <SelectItem value="unmapped">{t('csvImport.columnMapping.notMapped')}</SelectItem>
+                        <SelectItem value="ignore">{t('csvImport.columnMapping.ignoreColumn')}</SelectItem>
                         {availableFields.map(field => {
                           const isAvailable = isFieldAvailable(field.value, mapping.sourceColumn)
                           const isCurrentlySelected = mapping.targetField === field.value
@@ -484,7 +485,7 @@ export function ColumnMappingStep({
                             >
                               {isImportantField && '📁 '}
                               {field.label}
-                              {!isAvailable && !isCurrentlySelected && ' (already used)'}
+                              {!isAvailable && !isCurrentlySelected && ` (${t('csvImport.columnMapping.alreadyUsed')})`}
                             </SelectItem>
                           )
                         })}
@@ -515,23 +516,23 @@ export function ColumnMappingStep({
         <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3 text-green-500" />
-            <span>Mapped</span>
+            <span>{t('csvImport.columnMapping.mapped')}</span>
           </div>
           <div className="flex items-center gap-1">
             <AlertCircle className="w-3 h-3 text-amber-500" />
-            <span>Review Suggested</span>
+            <span>{t('csvImport.columnMapping.reviewSuggested')}</span>
           </div>
           <div className="flex items-center gap-1">
             <XCircle className="w-3 h-3 text-gray-400" />
-            <span>Not Mapped</span>
+            <span>{t('csvImport.columnMapping.notMapped')}</span>
           </div>
           <div className="flex items-center gap-1">
             <Ban className="w-3 h-3 text-gray-400" />
-            <span>Ignored</span>
+            <span>{t('csvImport.columnMapping.ignored')}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-blue-200 dark:bg-blue-800" />
-            <span>Category/Sub-Cat</span>
+            <span>{t('csvImport.columnMapping.categorySubCat')}</span>
           </div>
         </div>
       </GlassCard>
@@ -544,11 +545,10 @@ export function ColumnMappingStep({
           </div>
           <div>
             <h4 className="font-semibold">
-              Smart Matching Active
+              {t('csvImport.columnMapping.smartMatchingActive')}
             </h4>
             <p className="text-sm text-muted-foreground">
-              Columns are auto-mapped using pattern matching across multiple languages (German, Greek, Bulgarian, Dutch). 
-              Adjust any mapping by selecting a different field from the dropdown.
+              {t('csvImport.columnMapping.smartMatchingDescription')}
             </p>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useAllCompanyUnpaidBalances } from '@/hooks/useCompanyUnpaidBalances'
@@ -21,6 +22,7 @@ type SortField = 'unpaidAmount' | 'orderCount' | 'lastOrderDate' | 'companyName'
 type SortDirection = 'asc' | 'desc'
 
 export function UnpaidBalancesPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const { data, isLoading, error } = useAllCompanyUnpaidBalances()
@@ -34,11 +36,11 @@ export function UnpaidBalancesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
         <AlertTriangle className="w-12 h-12 mb-4 text-amber-500" />
-        <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-        <p className="text-sm mb-4">This page is only available to administrators.</p>
+        <h2 className="text-xl font-semibold mb-2">{t('unpaidBalances.accessDenied')}</h2>
+        <p className="text-sm mb-4">{t('unpaidBalances.adminOnly')}</p>
         <Button onClick={() => navigate('/dashboard')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
+          {t('unpaidBalances.backToDashboard')}
         </Button>
       </div>
     )
@@ -103,9 +105,9 @@ export function UnpaidBalancesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
         <AlertTriangle className="w-12 h-12 mb-4 text-red-500" />
-        <h2 className="text-xl font-semibold mb-2">Error Loading Data</h2>
-        <p className="text-sm mb-4">Failed to load unpaid balances. Please try again.</p>
-        <Button onClick={() => window.location.reload()}>Retry</Button>
+        <h2 className="text-xl font-semibold mb-2">{t('unpaidBalances.errorLoadingData')}</h2>
+        <p className="text-sm mb-4">{t('unpaidBalances.failedToLoad')}</p>
+        <Button onClick={() => window.location.reload()}>{t('unpaidBalances.retry')}</Button>
       </div>
     )
   }
@@ -123,14 +125,14 @@ export function UnpaidBalancesPage() {
               className="gap-1.5"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t('general.back')}
             </Button>
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Unpaid Balances
+            {t('unpaidBalances.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Overview of all companies with outstanding payments
+            {t('unpaidBalances.subtitle')}
           </p>
         </div>
         
@@ -138,17 +140,17 @@ export function UnpaidBalancesPage() {
         {data && !isLoading && (
           <div className="flex items-center gap-4">
             <GlassCard className="px-4 py-3">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Unpaid</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t('unpaidBalances.totalUnpaid')}</p>
               <p className="text-2xl font-bold text-amber-500">
                 {formatCurrency(data.totalUnpaidAmount, 'EUR')}
               </p>
             </GlassCard>
             <GlassCard className="px-4 py-3">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Companies</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t('unpaidBalances.companies')}</p>
               <p className="text-2xl font-bold">{data.companies.length}</p>
             </GlassCard>
             <GlassCard className="px-4 py-3">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Orders</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t('unpaidBalances.orders')}</p>
               <p className="text-2xl font-bold">{data.totalOrdersCount}</p>
             </GlassCard>
           </div>
@@ -162,14 +164,14 @@ export function UnpaidBalancesPage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by company name or email..."
+              placeholder={t('unpaidBalances.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 bg-white/5 dark:bg-black/5 border-white/10 dark:border-white/5"
             />
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Showing {filteredAndSortedCompanies.length} of {data?.companies.length || 0} companies</span>
+            <span>{t('unpaidBalances.showing')} {filteredAndSortedCompanies.length} {t('unpaidBalances.of')} {data?.companies.length || 0} {t('unpaidBalances.companies')}</span>
           </div>
         </div>
 
@@ -191,7 +193,7 @@ export function UnpaidBalancesPage() {
                       onClick={() => handleSort('companyName')}
                     >
                       <div className="flex items-center">
-                        Company
+                        {t('unpaidBalances.company')}
                         <SortIcon field="companyName" />
                       </div>
                     </th>
@@ -200,7 +202,7 @@ export function UnpaidBalancesPage() {
                       onClick={() => handleSort('unpaidAmount')}
                     >
                       <div className="flex items-center justify-end">
-                        Unpaid Amount
+                        {t('unpaidBalances.unpaidAmount')}
                         <SortIcon field="unpaidAmount" />
                       </div>
                     </th>
@@ -209,7 +211,7 @@ export function UnpaidBalancesPage() {
                       onClick={() => handleSort('orderCount')}
                     >
                       <div className="flex items-center justify-center">
-                        Orders
+                        {t('unpaidBalances.orders')}
                         <SortIcon field="orderCount" />
                       </div>
                     </th>
@@ -218,11 +220,11 @@ export function UnpaidBalancesPage() {
                       onClick={() => handleSort('lastOrderDate')}
                     >
                       <div className="flex items-center justify-end">
-                        Last Order
+                        {t('unpaidBalances.lastOrder')}
                         <SortIcon field="lastOrderDate" />
                       </div>
                     </th>
-                    <th className="pb-3 font-medium text-right">Actions</th>
+                    <th className="pb-3 font-medium text-right">{t('unpaidBalances.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 dark:divide-white/5">
@@ -241,7 +243,7 @@ export function UnpaidBalancesPage() {
                               {(company.companyName || company.email || 'U').charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <p className="font-medium">{company.companyName || 'Unknown Company'}</p>
+                              <p className="font-medium">{company.companyName || t('unpaidBalances.unknownCompany')}</p>
                               {company.email && (
                                 <p className="text-xs text-muted-foreground">{company.email}</p>
                               )}
@@ -258,7 +260,7 @@ export function UnpaidBalancesPage() {
                         </td>
                         <td className="py-4 text-center">
                           <Badge variant="outline" className="bg-white/5 dark:bg-black/5 text-sm">
-                            {company.orderCount} {company.orderCount === 1 ? 'order' : 'orders'}
+                            {company.orderCount} {company.orderCount === 1 ? t('unpaidBalances.order') : t('unpaidBalances.orders')}
                           </Badge>
                         </td>
                         <td className="py-4 text-right text-sm text-muted-foreground">
@@ -275,7 +277,7 @@ export function UnpaidBalancesPage() {
                             onClick={() => navigate(`/dashboard/orders?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`)}
                             className="text-xs"
                           >
-                            View Orders
+                            {t('unpaidBalances.viewOrders')}
                           </Button>
                         </td>
                       </tr>
@@ -303,7 +305,7 @@ export function UnpaidBalancesPage() {
                           {(company.companyName || company.email || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium">{company.companyName || 'Unknown Company'}</p>
+                          <p className="font-medium">{company.companyName || t('unpaidBalances.unknownCompany')}</p>
                           {company.email && (
                             <p className="text-xs text-muted-foreground truncate max-w-[200px]">{company.email}</p>
                           )}
@@ -314,18 +316,18 @@ export function UnpaidBalancesPage() {
                     <div className="flex items-center justify-between text-sm pt-3 border-t border-white/10 dark:border-white/5">
                       <div className="flex items-center gap-6">
                         <div>
-                          <span className="text-muted-foreground text-xs block">Unpaid</span>
+                          <span className="text-muted-foreground text-xs block">{t('unpaidBalances.unpaid')}</span>
                           <p className={`font-semibold text-lg ${isHighAmount ? 'text-red-500' : isMediumAmount ? 'text-amber-500' : 'text-foreground'}`}>
                             {formatCurrency(company.unpaidAmount, 'EUR')}
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground text-xs block">Orders</span>
+                          <span className="text-muted-foreground text-xs block">{t('unpaidBalances.orders')}</span>
                           <p className="font-medium text-lg">{company.orderCount}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-muted-foreground text-xs block">Last Order</span>
+                        <span className="text-muted-foreground text-xs block">{t('unpaidBalances.lastOrder')}</span>
                         <p className="text-sm">
                           {new Date(company.lastOrderDate).toLocaleDateString('en-US', {
                             month: 'short',
@@ -345,22 +347,22 @@ export function UnpaidBalancesPage() {
             {searchQuery ? (
               <>
                 <Search className="w-12 h-12 mb-4 text-muted-foreground/50" />
-                <h3 className="text-lg font-medium mb-1">No results found</h3>
-                <p className="text-sm">Try adjusting your search query</p>
+                <h3 className="text-lg font-medium mb-1">{t('unpaidBalances.noResultsFound')}</h3>
+                <p className="text-sm">{t('unpaidBalances.tryAdjustingSearch')}</p>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSearchQuery('')}
                   className="mt-4"
                 >
-                  Clear Search
+                  {t('unpaidBalances.clearSearch')}
                 </Button>
               </>
             ) : (
               <>
                 <CreditCard className="w-12 h-12 mb-4 text-green-500" />
-                <h3 className="text-lg font-medium mb-1">No unpaid orders</h3>
-                <p className="text-sm">All companies are up to date with payments</p>
+                <h3 className="text-lg font-medium mb-1">{t('unpaidBalances.noUnpaidOrders')}</h3>
+                <p className="text-sm">{t('unpaidBalances.allCompaniesUpToDate')}</p>
               </>
             )}
           </div>

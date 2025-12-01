@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { ShippingMethod, SHIPPING_METHOD_CONFIG } from '@/types'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,7 @@ export function ShippingMethodBadge({
   useGreyStyle = true, // Default to grey style like in order creation
   className,
 }: ShippingMethodBadgeProps) {
+  const { t } = useTranslation()
   // Default to shop_delivery if method is not provided
   const shippingMethod = (method as ShippingMethod) || 'shop_delivery'
   const config = SHIPPING_METHOD_CONFIG[shippingMethod] || {
@@ -65,8 +67,24 @@ export function ShippingMethodBadge({
     lg: 'w-5 h-5',
   }
 
+  // Get translated labels
+  const getTranslatedLabel = (method: ShippingMethod, full: boolean) => {
+    switch (method) {
+      case 'warehouse_pickup':
+        return full ? t('shipping.warehousePickup') : t('shipping.warehousePickupShort')
+      case 'transport_company':
+        return full ? t('shipping.transportCompany') : t('shipping.transportCompanyShort')
+      case 'dropshipping':
+        return full ? t('shipping.dropshipping') : t('shipping.dropshippingShort')
+      case 'shop_delivery':
+        return full ? t('shipping.shopDelivery') : t('shipping.shopDeliveryShort')
+      default:
+        return t('overview.unknown')
+    }
+  }
+
   // Use full label if showFullLabel is true, otherwise use short label
-  const displayLabel = showFullLabel ? config.label : config.shortLabel
+  const displayLabel = getTranslatedLabel(shippingMethod, showFullLabel)
 
   return (
     <Badge
@@ -96,7 +114,23 @@ export function ShippingMethodSelect({
   disabled?: boolean
   className?: string
 }) {
+  const { t } = useTranslation()
   const methods: ShippingMethod[] = ['shop_delivery', 'warehouse_pickup', 'transport_company', 'dropshipping']
+
+  const getTranslatedLabel = (method: ShippingMethod) => {
+    switch (method) {
+      case 'warehouse_pickup':
+        return t('shipping.warehousePickup')
+      case 'transport_company':
+        return t('shipping.transportCompany')
+      case 'dropshipping':
+        return t('shipping.dropshipping')
+      case 'shop_delivery':
+        return t('shipping.shopDelivery')
+      default:
+        return t('overview.unknown')
+    }
+  }
 
   return (
     <select
@@ -114,7 +148,7 @@ export function ShippingMethodSelect({
         const config = SHIPPING_METHOD_CONFIG[method]
         return (
           <option key={method} value={method}>
-            {config.icon} {config.label}
+            {config.icon} {getTranslatedLabel(method)}
           </option>
         )
       })}

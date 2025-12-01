@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
@@ -88,6 +89,7 @@ const COLORS = [
 ]
 
 export function DashboardOverview() {
+  const { t } = useTranslation()
   const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
   
@@ -414,7 +416,7 @@ export function DashboardOverview() {
         if (!category && item.sku) {
           category = productsMap.get(item.sku)
         }
-        category = category || 'Uncategorized'
+        category = category || t('overview.uncategorized')
         const currentRevenue = categoryRevenueMap.get(category) || 0
         categoryRevenueMap.set(category, currentRevenue + item.total)
       })
@@ -447,7 +449,7 @@ export function DashboardOverview() {
         return {
           id: String(order.id),
           order_number: orderNumber,
-          customer_name: order.company_name || 'Unknown',
+          customer_name: order.company_name || t('overview.unknown'),
           customer_email: order.email || '',
           total: Number(order.total || 0),
           status: order.status,
@@ -552,7 +554,7 @@ export function DashboardOverview() {
                 {change > 0 ? '+' : ''}
                 {change.toFixed(1)}%
               </span>
-              <span className="text-xs text-muted-foreground ml-1">vs last month</span>
+              <span className="text-xs text-muted-foreground ml-1">{t('overview.vsLastMonth')}</span>
             </div>
           )}
           {sparkline && sparkline.length > 0 && (
@@ -589,28 +591,28 @@ export function DashboardOverview() {
       {/* Header */}
       <div>
         <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-          Command Center
+          {t('overview.title')}
         </h1>
         <p className="text-muted-foreground">
-          Real-time insights into your furniture business
+          {t('overview.subtitle')}
         </p>
       </div>
 
       {/* Hero Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Total Revenue"
+          title={t('overview.totalRevenue')}
           value={stats ? formatCurrency(stats.totalRevenue, 'EUR') : '—'}
-          subtitle={stats ? `€${stats.thisMonthRevenue.toFixed(2)} this month` : undefined}
+          subtitle={stats ? `€${stats.thisMonthRevenue.toFixed(2)} ${t('overview.thisMonth')}` : undefined}
           icon={DollarSign}
           color="text-green-500"
           change={revenueChange}
           sparkline={revenueSparkline}
         />
         <StatCard
-          title="Total Orders"
+          title={t('overview.totalOrders')}
           value={stats?.totalOrders.toString() || '—'}
-          subtitle={stats ? `${stats.thisMonthOrders} this month` : undefined}
+          subtitle={stats ? `${stats.thisMonthOrders} ${t('overview.thisMonth')}` : undefined}
           icon={ShoppingCart}
           color="text-blue-500"
           change={ordersChange}
@@ -619,9 +621,9 @@ export function DashboardOverview() {
         {/* Role-based card: Admin sees Active Customers, Company users see Unpaid Balance */}
         {isAdmin ? (
           <StatCard
-            title="Active Customers"
+            title={t('overview.activeCustomers')}
             value={stats?.activeCustomers.toString() || '—'}
-            subtitle="Placed orders"
+            subtitle={t('overview.placedOrders')}
             icon={Users}
             color="text-purple-500"
           />
@@ -629,7 +631,7 @@ export function DashboardOverview() {
           <GlassCard hover className="relative overflow-hidden">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-1">Unpaid Balance</p>
+                <p className="text-sm text-muted-foreground mb-1">{t('overview.unpaidBalance')}</p>
                 {isLoading || unpaidLoading ? (
                   <Skeleton className="h-10 w-32 mb-2" />
                 ) : (
@@ -639,15 +641,15 @@ export function DashboardOverview() {
                 )}
                 <p className="text-sm text-muted-foreground mb-2">
                   {unpaidData?.unpaidOrdersCount === 1
-                    ? '1 order awaiting payment'
-                    : `${unpaidData?.unpaidOrdersCount || 0} orders awaiting payment`}
+                    ? `1 ${t('overview.orderAwaitingPayment')}`
+                    : `${unpaidData?.unpaidOrdersCount || 0} ${t('overview.ordersAwaitingPayment')}`}
                 </p>
                 {unpaidData && unpaidData.unpaidOrdersCount > 0 && (
                   <button
                     onClick={() => navigate('/dashboard/orders?filter=pending')}
                     className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
                   >
-                    View pending orders
+                    {t('overview.viewPendingOrders')}
                     <ArrowRight className="w-3 h-3" />
                   </button>
                 )}
@@ -660,12 +662,12 @@ export function DashboardOverview() {
         )}
         
         <StatCard
-          title="Products in Catalog"
+          title={t('overview.productsInCatalog')}
           value={stats?.totalProducts.toString() || '—'}
           subtitle={
             stats && stats.lowStockCount > 0
-              ? `${stats.lowStockCount} low stock`
-              : 'All stocked'
+              ? `${stats.lowStockCount} ${t('overview.lowStock')}`
+              : t('overview.allStocked')
           }
           icon={Package}
           color={stats && stats.lowStockCount > 0 ? 'text-red-500' : 'text-amber-500'}
@@ -681,12 +683,12 @@ export function DashboardOverview() {
                 <Building2 className="w-5 h-5 text-amber-500" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Unpaid Balances by Company</h2>
+                <h2 className="text-xl font-semibold">{t('overview.unpaidBalancesByCompany')}</h2>
                 {companyUnpaidData && !companyUnpaidLoading && (
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    Total unpaid: <span className="font-semibold text-amber-500">{formatCurrency(companyUnpaidData.totalUnpaidAmount, 'EUR')}</span>
+                    {t('overview.totalUnpaid')} <span className="font-semibold text-amber-500">{formatCurrency(companyUnpaidData.totalUnpaidAmount, 'EUR')}</span>
                     <span className="mx-2">•</span>
-                    {companyUnpaidData.totalOrdersCount} {companyUnpaidData.totalOrdersCount === 1 ? 'order' : 'orders'}
+                    {companyUnpaidData.totalOrdersCount} {companyUnpaidData.totalOrdersCount === 1 ? t('orders.order') : t('orders.orders')}
                   </p>
                 )}
               </div>
@@ -695,7 +697,7 @@ export function DashboardOverview() {
               onClick={() => navigate('/dashboard/unpaid-balances')}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white/5 dark:hover:bg-black/5 border border-white/10 dark:border-white/5"
             >
-              View All
+              {t('overview.viewAll')}
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -713,10 +715,10 @@ export function DashboardOverview() {
                 <table className="w-full">
                   <thead>
                     <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider">
-                      <th className="pb-3 font-medium">Company</th>
-                      <th className="pb-3 font-medium text-right">Unpaid Amount</th>
-                      <th className="pb-3 font-medium text-center">Orders</th>
-                      <th className="pb-3 font-medium text-right">Last Order</th>
+                      <th className="pb-3 font-medium">{t('overview.company')}</th>
+                      <th className="pb-3 font-medium text-right">{t('overview.unpaidAmount')}</th>
+                      <th className="pb-3 font-medium text-center">{t('overview.orders')}</th>
+                      <th className="pb-3 font-medium text-right">{t('overview.lastOrder')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 dark:divide-white/5">
@@ -736,7 +738,7 @@ export function DashboardOverview() {
                                 {(company.companyName || company.email || 'U').charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <p className="font-medium text-sm">{company.companyName || 'Unknown Company'}</p>
+                                <p className="font-medium text-sm">{company.companyName || t('overview.unknownCompany')}</p>
                                 {company.email && (
                                   <p className="text-xs text-muted-foreground truncate max-w-[200px]">{company.email}</p>
                                 )}
@@ -827,8 +829,8 @@ export function DashboardOverview() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border border-dashed border-white/10 dark:border-white/5 rounded-lg bg-white/5 dark:bg-black/5">
               <CreditCard className="w-8 h-8 mb-3 text-green-500" />
-              <p className="text-sm font-medium">No unpaid orders</p>
-              <p className="text-xs mt-1">All companies are up to date with payments</p>
+              <p className="text-sm font-medium">{t('unpaidBalances.noUnpaidOrders')}</p>
+              <p className="text-xs mt-1">{t('unpaidBalances.allCompaniesUpToDate')}</p>
             </div>
           )}
         </GlassCard>
@@ -838,7 +840,7 @@ export function DashboardOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
         <GlassCard>
-          <h2 className="text-xl font-semibold mb-4">Revenue This Month</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('overview.revenueThisMonth')}</h2>
           {isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : stats?.revenueByDay && stats.revenueByDay.length > 0 ? (
@@ -882,14 +884,14 @@ export function DashboardOverview() {
             </ResponsiveContainer>
           ) : (
             <div className="h-64 flex items-center justify-center text-muted-foreground">
-              No revenue data this month
+              {t('overview.noRevenueDataThisMonth')}
             </div>
           )}
         </GlassCard>
 
         {/* Orders Chart */}
         <GlassCard>
-          <h2 className="text-xl font-semibold mb-4">Orders (Last 30 Days)</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('overview.ordersLast30Days')}</h2>
           {isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : stats?.ordersByDay && stats.ordersByDay.length > 0 ? (
@@ -918,7 +920,7 @@ export function DashboardOverview() {
             </ResponsiveContainer>
           ) : (
             <div className="h-64 flex items-center justify-center text-muted-foreground">
-              No orders in the last 30 days
+              {t('overview.noOrdersLast30Days')}
             </div>
           )}
         </GlassCard>
@@ -927,7 +929,7 @@ export function DashboardOverview() {
       {/* Categories Pie Chart */}
       {stats?.categoriesByRevenue && stats.categoriesByRevenue.length > 0 && (
         <GlassCard>
-          <h2 className="text-xl font-semibold mb-4">Top Categories by Revenue</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('overview.topCategoriesByRevenue')}</h2>
           {isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : (
@@ -983,12 +985,12 @@ export function DashboardOverview() {
         {/* Recent Orders */}
         <GlassCard className="border border-white/10 dark:border-white/5">
           <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/10 dark:border-white/5">
-            <h2 className="text-xl font-semibold">Recent Orders</h2>
+            <h2 className="text-xl font-semibold">{t('overview.recentOrders')}</h2>
             <button
               onClick={() => navigate('/dashboard/orders')}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/5 dark:hover:bg-black/5"
             >
-              View all
+              {t('overview.viewAll')}
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -1034,7 +1036,7 @@ export function DashboardOverview() {
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground border border-dashed border-white/10 dark:border-white/5 rounded-lg">
-              <p className="text-sm">No recent orders</p>
+              <p className="text-sm">{t('overview.noRecentOrders')}</p>
             </div>
           )}
         </GlassCard>
@@ -1049,7 +1051,7 @@ export function DashboardOverview() {
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full border border-white/20"></span>
                 )}
               </div>
-              <h2 className="text-xl font-semibold">Low Stock Alert</h2>
+              <h2 className="text-xl font-semibold">{t('overview.lowStockProducts')}</h2>
             </div>
             
             {/* Stock Status Bubbles - Real Data */}
@@ -1060,7 +1062,7 @@ export function DashboardOverview() {
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 shadow-sm hover:bg-green-500/15 transition-colors">
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm"></div>
                     <span className="text-xs font-semibold text-green-700 dark:text-green-400">
-                      In Stock: {stats.stockStatusCounts.inStock}
+                      {t('products.inStock')}: {stats.stockStatusCounts.inStock}
                     </span>
                   </div>
                 )}
@@ -1070,7 +1072,7 @@ export function DashboardOverview() {
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 shadow-sm hover:bg-orange-500/15 transition-colors">
                     <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm"></div>
                     <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
-                      Low Stock: {stats.stockStatusCounts.lowStock}
+                      {t('products.lowStock')}: {stats.stockStatusCounts.lowStock}
                     </span>
                   </div>
                 )}
@@ -1080,7 +1082,7 @@ export function DashboardOverview() {
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-sm hover:bg-red-500/15 transition-colors">
                     <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></div>
                     <span className="text-xs font-semibold text-red-700 dark:text-red-400">
-                      Out of Stock: {stats.stockStatusCounts.outOfStock}
+                      {t('products.outOfStock')}: {stats.stockStatusCounts.outOfStock}
                     </span>
                   </div>
                 )}
@@ -1096,7 +1098,7 @@ export function DashboardOverview() {
           ) : stats && stats.lowStockCount > 0 ? (
             <>
               <p className="text-base font-semibold text-foreground mb-5 px-1">
-                {stats.lowStockCount} products low on stock
+                {t('overview.productsLowOnStock', { count: stats.lowStockCount })}
               </p>
               <div className="space-y-2.5 mb-5">
                 {stats.lowStockProducts
@@ -1132,7 +1134,7 @@ export function DashboardOverview() {
                             variant="outline" 
                             className="bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30 text-xs font-medium shadow-sm"
                           >
-                            Only {product.stock} left
+                            {t('overview.onlyLeft', { count: product.stock })}
                           </Badge>
                         </div>
                       </div>
@@ -1144,7 +1146,7 @@ export function DashboardOverview() {
                   onClick={() => navigate('/dashboard/products?filter=low-stock')}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/5 dark:hover:bg-black/5"
                 >
-                  View all
+                  {t('overview.viewAllProducts')}
                   <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
@@ -1152,7 +1154,7 @@ export function DashboardOverview() {
           ) : (
             <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground border border-dashed border-white/10 dark:border-white/5 rounded-lg bg-white/5 dark:bg-black/5">
               <Package className="w-4 h-4" />
-              <p className="text-sm font-medium">All products have sufficient stock</p>
+              <p className="text-sm font-medium">{t('overview.allProductsSufficientStock')}</p>
             </div>
           )}
         </GlassCard>

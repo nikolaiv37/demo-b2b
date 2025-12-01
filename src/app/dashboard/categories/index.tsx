@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
@@ -28,6 +29,7 @@ import { Search, X, ChevronLeft, ChevronRight, Grid3X3, Package } from 'lucide-r
 const ITEMS_PER_PAGE = 24
 
 export function CategoriesPage() {
+  const { t } = useTranslation()
   const { mainCategory, subCategory } = useParams<{ mainCategory?: string; subCategory?: string }>()
   const navigate = useNavigate()
 
@@ -209,10 +211,10 @@ export function CategoriesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['category-products'] })
-      toast({ title: 'Product deleted', description: 'The product has been removed successfully.' })
+      toast({ title: t('products.productDeleted'), description: t('products.productRemoved') })
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete product.', variant: 'destructive' })
+      toast({ title: t('products.error'), description: t('products.failedToDelete'), variant: 'destructive' })
     },
   })
 
@@ -223,7 +225,7 @@ export function CategoriesPage() {
   }
 
   const handleDelete = (product: Product) => {
-    if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
+    if (confirm(t('products.deleteConfirm', { name: product.name }))) {
       deleteMutation.mutate(product.id)
     }
   }
@@ -266,10 +268,10 @@ export function CategoriesPage() {
             <div className="p-2 rounded-lg bg-primary/10">
               <Grid3X3 className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">Browse Categories</h1>
+            <h1 className="text-3xl font-bold">{t('categories.browseCategories')}</h1>
           </div>
           <p className="text-muted-foreground">
-            {categoriesLoading ? 'Loading...' : `${mainCategories.length} categories with ${mainCategories.reduce((sum, c) => sum + c.productCount, 0)} products`}
+            {categoriesLoading ? t('general.loading') : t('categories.categoriesWithProducts', { count: mainCategories.length, total: mainCategories.reduce((sum, c) => sum + c.productCount, 0) })}
           </p>
         </div>
 
@@ -294,7 +296,7 @@ export function CategoriesPage() {
         <div>
           <h1 className="text-3xl font-bold mb-2">{selectedMainCategoryData.name}</h1>
           <p className="text-muted-foreground">
-            {selectedMainCategoryData.productCount} products in {subcategories.length} subcategories
+            {t('categories.productsInSubcategories', { count: selectedMainCategoryData.productCount, subcount: subcategories.length })}
           </p>
         </div>
 
@@ -327,7 +329,7 @@ export function CategoriesPage() {
         <div>
           <h1 className="text-3xl font-bold mb-2">{selectedSubcategoryData.name}</h1>
           <p className="text-muted-foreground">
-            {totalCount} products
+            {t('categories.products', { count: totalCount })}
           </p>
         </div>
 
@@ -338,7 +340,7 @@ export function CategoriesPage() {
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
-                  placeholder="Search products..."
+                  placeholder={t('categories.searchProducts')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -347,10 +349,10 @@ export function CategoriesPage() {
               {manufacturers.length > 0 && (
                 <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Manufacturer" />
+                    <SelectValue placeholder={t('products.manufacturer')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Manufacturers</SelectItem>
+                    <SelectItem value="all">{t('products.allManufacturers')}</SelectItem>
                     {manufacturers.map((man) => (
                       <SelectItem key={man} value={man}>{man}</SelectItem>
                     ))}
@@ -359,19 +361,19 @@ export function CategoriesPage() {
               )}
               <Select value={stockFilter} onValueChange={setStockFilter}>
                 <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Stock" />
+                  <SelectValue placeholder={t('categories.stock')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Stock</SelectItem>
-                  <SelectItem value="in-stock">In Stock</SelectItem>
-                  <SelectItem value="low-stock">Low Stock</SelectItem>
-                  <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                  <SelectItem value="all">{t('products.allStock')}</SelectItem>
+                  <SelectItem value="in-stock">{t('products.inStock')}</SelectItem>
+                  <SelectItem value="low-stock">{t('products.lowStock')}</SelectItem>
+                  <SelectItem value="out-of-stock">{t('products.outOfStock')}</SelectItem>
                 </SelectContent>
               </Select>
               {hasActiveFilters && (
                 <Button variant="outline" onClick={clearFilters}>
                   <X className="w-4 h-4 mr-2" />
-                  Clear
+                  {t('categories.clear')}
                 </Button>
               )}
             </div>
@@ -379,10 +381,10 @@ export function CategoriesPage() {
             {/* Active filters */}
             {hasActiveFilters && (
               <div className="flex flex-wrap gap-2 items-center pt-2 border-t">
-                <span className="text-sm text-muted-foreground">Active:</span>
+                <span className="text-sm text-muted-foreground">{t('categories.active')}:</span>
                 {searchQuery && (
                   <Badge variant="secondary" className="gap-1">
-                    Search: {searchQuery}
+                    {t('products.search')}: {searchQuery}
                     <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
                       <X className="w-3 h-3" />
                     </button>
@@ -441,30 +443,30 @@ export function CategoriesPage() {
             {totalPages > 1 && (
               <GlassCard>
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
-                    {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount} products
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
+                <div className="text-sm text-muted-foreground">
+                  {t('products.showing')} {(currentPage - 1) * ITEMS_PER_PAGE + 1} {t('products.to')}{' '}
+                  {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} {t('products.of')} {totalCount} {t('products.products')}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    {t('products.previous')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    {t('products.next')}
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
                 </div>
               </GlassCard>
             )}
@@ -473,14 +475,14 @@ export function CategoriesPage() {
           <GlassCard>
             <div className="text-center py-16">
               <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-              <h3 className="text-lg font-semibold mb-2">No products found</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('categories.noProductsFound')}</h3>
               <p className="text-muted-foreground mb-4">
-                {hasActiveFilters ? 'Try adjusting your filters' : 'No products in this category yet'}
+                {hasActiveFilters ? t('categories.tryAdjustingFilters') : t('categories.noProductsInCategory')}
               </p>
               {hasActiveFilters && (
                 <Button variant="outline" onClick={clearFilters}>
                   <X className="w-4 h-4 mr-2" />
-                  Clear Filters
+                  {t('products.clearFilters')}
                 </Button>
               )}
             </div>
@@ -507,12 +509,12 @@ export function CategoriesPage() {
       <GlassCard>
         <div className="text-center py-16">
           <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-          <h3 className="text-lg font-semibold mb-2">Category not found</h3>
+          <h3 className="text-lg font-semibold mb-2">{t('categories.categoryNotFound')}</h3>
           <p className="text-muted-foreground mb-4">
-            The category you're looking for doesn't exist.
+            {t('categories.categoryDoesNotExist')}
           </p>
           <Button onClick={() => navigate('/dashboard/categories')}>
-            Browse All Categories
+            {t('categories.browseAllCategories')}
           </Button>
         </div>
       </GlassCard>

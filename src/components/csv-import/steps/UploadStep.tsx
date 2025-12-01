@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GlassCard } from '@/components/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +39,7 @@ export function UploadStep({
   detectedColumns,
   requiredColumnsFound,
 }: UploadStepProps) {
+  const { t } = useTranslation()
   const [dragActive, setDragActive] = useState(false)
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -139,16 +141,16 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
                 <Upload className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold mb-2">
-                Drop your CSV file here
+                {t('csvImport.upload.dropCsvFile')}
               </h3>
               <p className="text-muted-foreground mb-6">
-                or click to browse your files
+                {t('csvImport.upload.orClickToBrowse')}
               </p>
               <div className="flex items-center gap-4">
                 <Button variant="outline" size="lg" asChild>
                   <span>
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Choose File
+                    {t('csvImport.upload.chooseFile')}
                   </span>
                 </Button>
                 <Button 
@@ -160,7 +162,7 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
                   }}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download Template
+                  {t('csvImport.upload.downloadTemplate')}
                 </Button>
               </div>
             </label>
@@ -186,7 +188,7 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
                     <div className="animate-spin">
                       <Zap className="w-4 h-4 text-slate-500" />
                     </div>
-                    <span className="text-sm font-medium">Analyzing CSV structure...</span>
+                    <span className="text-sm font-medium">{t('csvImport.upload.analyzingCsv')}</span>
                   </div>
                   <Progress value={50} className="h-2" />
                 </div>
@@ -207,10 +209,10 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
             <div className="flex-1 space-y-4">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  🔍 Auto-Detection Complete
+                  {t('csvImport.upload.autoDetectionComplete')}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  We analyzed your CSV and detected the following:
+                  {t('csvImport.upload.weAnalyzed')}
                 </p>
               </div>
 
@@ -222,10 +224,10 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
                 )}>
                   <Building2 className={cn('w-8 h-8', getConfidenceColor(detectorConfidence))} />
                   <div>
-                    <p className="text-sm text-muted-foreground">Distributor</p>
+                    <p className="text-sm text-muted-foreground">{t('csvImport.upload.distributor')}</p>
                     <p className="font-semibold">{detectedDistributor.displayName}</p>
                     <p className={cn('text-xs font-medium', getConfidenceColor(detectorConfidence))}>
-                      {detectorConfidence}% confidence
+                      {detectorConfidence}% {t('csvImport.upload.confidence')}
                     </p>
                   </div>
                 </div>
@@ -234,7 +236,7 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
                 <div className="rounded-xl p-4 bg-blue-100 dark:bg-blue-900/20 flex items-center gap-3">
                   <Package className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Products Found</p>
+                    <p className="text-sm text-muted-foreground">{t('csvImport.upload.productsFound')}</p>
                     <p className="font-semibold text-2xl">{totalProducts.toLocaleString()}</p>
                   </div>
                 </div>
@@ -243,12 +245,12 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
                 <div className="rounded-xl p-4 bg-emerald-100 dark:bg-emerald-900/20 flex items-center gap-3">
                   <Columns className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Columns Detected</p>
+                    <p className="text-sm text-muted-foreground">{t('csvImport.upload.columnsDetected')}</p>
                     <p className="font-semibold">
-                      {requiredColumnsFound}/3 required
+                      {requiredColumnsFound}/3 {t('csvImport.upload.required')}
                     </p>
                     <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                      {detectedColumns} total columns
+                      {detectedColumns} {t('csvImport.upload.totalColumns')}
                     </p>
                   </div>
                 </div>
@@ -264,16 +266,16 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
                   )}
                 >
                   {requiredColumnsFound === 3 ? (
-                    <><CheckCircle2 className="w-3 h-3 mr-1" /> All required columns found</>
+                    <><CheckCircle2 className="w-3 h-3 mr-1" /> {t('csvImport.upload.allRequiredColumnsFound')}</>
                   ) : (
-                    <><AlertCircle className="w-3 h-3 mr-1" /> {3 - requiredColumnsFound} required column(s) missing</>
+                    <><AlertCircle className="w-3 h-3 mr-1" /> {t('csvImport.upload.requiredColumnsMissing', { count: 3 - requiredColumnsFound })}</>
                   )}
                 </Badge>
                 
                 {detectedDistributor.name !== 'generic' && (
                   <Badge variant="outline" className="text-sm">
                     <Zap className="w-3 h-3 mr-1" />
-                    Pre-configured mappings available
+                    {t('csvImport.upload.preConfiguredMappingsAvailable')}
                   </Badge>
                 )}
               </div>
@@ -287,7 +289,7 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
         <GlassCard>
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Building2 className="w-5 h-5" />
-            Supported Distributors
+            {t('csvImport.upload.supportedDistributors')}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
@@ -316,7 +318,7 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
             ))}
           </div>
           <p className="text-sm text-muted-foreground mt-4">
-            Don't see your distributor? No problem! Our smart detection works with any CSV format.
+            {t('csvImport.upload.dontSeeDistributor')}
           </p>
         </GlassCard>
       )}

@@ -1,12 +1,15 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { parseCSV, csvRowToProduct, cleanProductForDatabase } from '@/lib/csv/parser'
 import { validateTransformedProducts, TransformedProductData } from '@/lib/csv/validator'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
-import { toast } from '@/components/ui/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 
 export function useCSVImport() {
+  const { t } = useTranslation()
+  const { toast } = useToast()
   const [progress, setProgress] = useState(0)
   const [statusText, setStatusText] = useState('')
   const [previewData, setPreviewData] = useState<TransformedProductData[]>([])
@@ -213,13 +216,13 @@ export function useCSVImport() {
       // Show success toast with detailed stats
       const messages = []
       if (result.failed > 0) {
-        messages.push(`${result.failed} rows failed`)
+        messages.push(t('csvImport.results.rowsFailed', { count: result.failed }))
       }
       const details = messages.length > 0 ? ` (${messages.join(', ')})` : ''
       
       toast({
-        title: 'Import Successful! 🎉',
-        description: `Successfully imported ${result.imported} products!${details}`,
+        title: t('csvImport.results.importSuccessful'),
+        description: t('csvImport.results.successfullyImported', { count: result.imported }) + details,
         variant: 'default',
         duration: 5000,
       })
@@ -228,12 +231,12 @@ export function useCSVImport() {
     },
     onError: (error) => {
       trackEvent(AnalyticsEvents.CSV_IMPORT_FAILED, {
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : t('general.unknownError'),
       })
 
       toast({
-        title: 'Import Failed',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        title: t('csvImport.results.importFailed'),
+        description: error instanceof Error ? error.message : t('general.unknownError'),
         variant: 'destructive',
       })
     },

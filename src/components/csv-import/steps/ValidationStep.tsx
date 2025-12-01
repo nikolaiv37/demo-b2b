@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GlassCard } from '@/components/GlassCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -54,6 +55,7 @@ function DuplicateSKUModal({
   duplicates: Array<{ sku: string; rows: number[]; currentPrice?: number; newPrice?: number }>
   onAction: (action: 'update' | 'merge' | 'skip', skus?: string[]) => void
 }) {
+  const { t } = useTranslation()
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set())
 
   const toggleSku = (sku: string) => {
@@ -76,10 +78,10 @@ function DuplicateSKUModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Duplicate SKUs Found
+            {t('csvImport.validation.duplicateSKUsFound')}
           </DialogTitle>
           <DialogDescription>
-            {duplicates.length} product(s) already exist in your catalog. Choose how to handle them.
+            {t('csvImport.validation.productsAlreadyExist', { count: duplicates.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -109,7 +111,7 @@ function DuplicateSKUModal({
                     </code>
                   </div>
                   <Badge variant="outline" className="text-xs">
-                    {dup.rows.length} occurrences in CSV
+                    {dup.rows.length} {t('csvImport.validation.occurrencesInCsv')}
                   </Badge>
                 </div>
               </div>
@@ -124,7 +126,7 @@ function DuplicateSKUModal({
 
         <div className="flex items-center justify-between pt-4 border-t">
           <Button variant="ghost" size="sm" onClick={selectAll}>
-            Select All ({duplicates.length})
+            {t('csvImport.validation.selectAll', { count: duplicates.length })}
           </Button>
           <div className="flex gap-2">
             <Button
@@ -137,7 +139,7 @@ function DuplicateSKUModal({
               disabled={selectedSkus.size === 0}
             >
               <SkipForward className="w-4 h-4 mr-1" />
-              Skip Selected
+              {t('csvImport.validation.skipSelected')}
             </Button>
             <Button
               variant="outline"
@@ -149,7 +151,7 @@ function DuplicateSKUModal({
               disabled={selectedSkus.size === 0}
             >
               <Layers className="w-4 h-4 mr-1" />
-              Merge Stock
+              {t('csvImport.validation.mergeStock')}
             </Button>
             <Button
               size="sm"
@@ -159,7 +161,7 @@ function DuplicateSKUModal({
               }}
             >
               <ArrowRightLeft className="w-4 h-4 mr-1" />
-              Update All
+              {t('csvImport.validation.updateAll')}
             </Button>
           </div>
         </div>
@@ -180,16 +182,17 @@ function MissingPriceModal({
   items: Array<{ row: number; sku?: string; name?: string }>
   onAction: (action: 'set' | 'skip', rows?: number[]) => void
 }) {
+  const { t } = useTranslation()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <XCircle className="w-5 h-5 text-red-500" />
-            Missing Prices
+            {t('csvImport.validation.missingPricesTitle')}
           </DialogTitle>
           <DialogDescription>
-            {items.length} product(s) have no price and will be skipped during import.
+            {t('csvImport.validation.productsHaveNoPrice', { count: items.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -203,7 +206,7 @@ function MissingPriceModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="font-mono text-xs">
-                      Row {item.row}
+                      {t('csvImport.validation.row', { row: item.row })}
                     </Badge>
                     {item.sku && (
                       <code className="font-mono text-sm bg-white dark:bg-gray-800 px-2 py-0.5 rounded">
@@ -216,7 +219,7 @@ function MissingPriceModal({
                   </div>
                   <Badge variant="destructive" className="text-xs">
                     <DollarSign className="w-3 h-3 mr-1" />
-                    No Price
+                    {t('csvImport.validation.noPrice')}
                   </Badge>
                 </div>
               </div>
@@ -231,7 +234,7 @@ function MissingPriceModal({
 
         <div className="flex items-center justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {t('csvImport.validation.close')}
           </Button>
           <Button
             variant="destructive"
@@ -241,7 +244,7 @@ function MissingPriceModal({
             }}
           >
             <SkipForward className="w-4 h-4 mr-1" />
-            Skip All ({items.length})
+            {t('csvImport.validation.skipAll', { count: items.length })}
           </Button>
         </div>
       </DialogContent>
@@ -258,6 +261,7 @@ export function ValidationStep({
   importStatus,
   newCategories = [],
 }: ValidationStepProps) {
+  const { t } = useTranslation()
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false)
   const [showMissingPriceModal, setShowMissingPriceModal] = useState(false)
   const [showNewCategoriesExpanded, setShowNewCategoriesExpanded] = useState(false)
@@ -266,9 +270,9 @@ export function ValidationStep({
     return (
       <GlassCard className="text-center py-12">
         <RefreshCw className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
-        <h3 className="text-lg font-semibold mb-2">Validating Data...</h3>
+        <h3 className="text-lg font-semibold mb-2">{t('csvImport.validation.validatingData')}</h3>
         <p className="text-muted-foreground">
-          Please wait while we validate your import data.
+          {t('csvImport.validation.pleaseWait')}
         </p>
       </GlassCard>
     )
@@ -326,7 +330,7 @@ export function ValidationStep({
                 <Package className="w-5 h-5 text-slate-600 dark:text-slate-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold">Importing Products...</h3>
+                <h3 className="font-semibold">{t('csvImport.validation.importingProducts')}</h3>
                 <p className="text-sm text-muted-foreground">{importStatus}</p>
               </div>
               <span className="text-2xl font-bold">
@@ -355,7 +359,7 @@ export function ValidationStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{validation.validProducts.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">Valid Products</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.validation.validProducts')}</p>
             </div>
           </div>
         </GlassCard>
@@ -367,7 +371,7 @@ export function ValidationStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{validation.duplicateSKUs}</p>
-              <p className="text-sm text-muted-foreground">Duplicate SKUs</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.validation.duplicateSKUs')}</p>
             </div>
           </div>
         </GlassCard>
@@ -379,7 +383,7 @@ export function ValidationStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{validation.missingPrices}</p>
-              <p className="text-sm text-muted-foreground">Missing Prices</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.validation.missingPrices')}</p>
             </div>
           </div>
         </GlassCard>
@@ -391,7 +395,7 @@ export function ValidationStep({
             </div>
             <div>
               <p className="text-2xl font-bold">{validation.newCategories}</p>
-              <p className="text-sm text-muted-foreground">New Categories</p>
+              <p className="text-sm text-muted-foreground">{t('csvImport.validation.newCategories')}</p>
             </div>
           </div>
         </GlassCard>
@@ -402,9 +406,9 @@ export function ValidationStep({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Eye className="w-5 h-5" />
-            Import Preview
+            {t('csvImport.validation.importPreview')}
             <Badge variant="secondary">
-              {totalProducts.toLocaleString()} products
+              {totalProducts.toLocaleString()} {t('csvImport.validation.products')}
             </Badge>
           </h3>
           <Badge variant="outline">
@@ -417,9 +421,9 @@ export function ValidationStep({
           <table className="w-full">
             <thead>
               <tr className="border-b-2 border-gray-200 dark:border-gray-700">
-                <th className="text-left px-4 py-3 font-semibold text-sm">Status</th>
-                <th className="text-right px-4 py-3 font-semibold text-sm">Count</th>
-                <th className="text-center px-4 py-3 font-semibold text-sm">Action</th>
+                <th className="text-left px-4 py-3 font-semibold text-sm">{t('csvImport.validation.status')}</th>
+                <th className="text-right px-4 py-3 font-semibold text-sm">{t('csvImport.validation.count')}</th>
+                <th className="text-center px-4 py-3 font-semibold text-sm">{t('csvImport.validation.action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -427,7 +431,7 @@ export function ValidationStep({
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span className="font-medium">✅ Valid</span>
+                    <span className="font-medium">{t('csvImport.validation.valid')}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right font-mono">{validation.validProducts.toLocaleString()}</td>
@@ -439,7 +443,7 @@ export function ValidationStep({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-500" />
-                      <span className="font-medium">⚠️ Duplicate SKU</span>
+                      <span className="font-medium">{t('csvImport.validation.duplicateSKU')}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right font-mono">{validation.duplicateSKUs}</td>
@@ -451,7 +455,7 @@ export function ValidationStep({
                       onClick={() => setShowDuplicatesModal(true)}
                     >
                       <Search className="w-3 h-3 mr-1" />
-                      Review
+                      {t('csvImport.validation.review')}
                     </Button>
                   </td>
                 </tr>
@@ -462,7 +466,7 @@ export function ValidationStep({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <XCircle className="w-4 h-4 text-red-500" />
-                      <span className="font-medium">❌ Missing Price</span>
+                      <span className="font-medium">{t('csvImport.validation.missingPrice')}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right font-mono">{validation.missingPrices}</td>
@@ -474,7 +478,7 @@ export function ValidationStep({
                       onClick={() => setShowMissingPriceModal(true)}
                     >
                       <Search className="w-3 h-3 mr-1" />
-                      Review
+                      {t('csvImport.validation.review')}
                     </Button>
                   </td>
                 </tr>
@@ -485,7 +489,7 @@ export function ValidationStep({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <FolderPlus className="w-4 h-4 text-emerald-500" />
-                      <span className="font-medium">🆕 New Categories</span>
+                      <span className="font-medium">{t('csvImport.validation.newCategoriesLabel')}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right font-mono">{validation.newCategories}</td>
@@ -497,9 +501,9 @@ export function ValidationStep({
                       onClick={() => setShowNewCategoriesExpanded(!showNewCategoriesExpanded)}
                     >
                       {showNewCategoriesExpanded ? (
-                        <><ChevronUp className="w-3 h-3 mr-1" /> Hide</>
+                        <><ChevronUp className="w-3 h-3 mr-1" /> {t('csvImport.validation.hide')}</>
                       ) : (
-                        <><ChevronDown className="w-3 h-3 mr-1" /> Preview</>
+                        <><ChevronDown className="w-3 h-3 mr-1" /> {t('csvImport.validation.preview')}</>
                       )}
                     </Button>
                   </td>
@@ -519,10 +523,10 @@ export function ValidationStep({
             </div>
             <div>
               <h3 className="font-semibold text-emerald-700 dark:text-emerald-400">
-                New Categories to Create
+                {t('csvImport.validation.newCategoriesToCreate')}
               </h3>
               <p className="text-sm text-emerald-600 dark:text-emerald-500">
-                These categories will be automatically created during import
+                {t('csvImport.validation.willBeAutomaticallyCreated')}
               </p>
             </div>
           </div>
@@ -547,7 +551,7 @@ export function ValidationStep({
             ) : (
               <div className="col-span-full text-center py-4 text-muted-foreground">
                 <p className="text-sm">
-                  {validation.newCategories} new {validation.newCategories === 1 ? 'category' : 'categories'} will be created
+                  {validation.newCategories} {validation.newCategories === 1 ? t('csvImport.validation.newCategory') : t('csvImport.validation.newCategoriesPlural')} {t('csvImport.validation.willBeCreated')}
                 </p>
               </div>
             )}
@@ -560,7 +564,7 @@ export function ValidationStep({
         <GlassCard>
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <AlertCircle className="w-5 h-5" />
-            Issues & Warnings
+            {t('csvImport.validation.issuesWarnings')}
             <Badge variant="outline">{validation.issues.length}</Badge>
           </h3>
 
@@ -583,7 +587,7 @@ export function ValidationStep({
                     <p className="font-medium">{issue.message}</p>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="font-mono text-xs">
-                        {issue.count} {issue.count === 1 ? 'item' : 'items'}
+                        {issue.count} {issue.count === 1 ? t('csvImport.validation.item') : t('csvImport.validation.items')}
                       </Badge>
                       {issue.field === 'sku' && issue.message.includes('Duplicate') && (
                         <Button
@@ -593,15 +597,15 @@ export function ValidationStep({
                           onClick={() => setShowDuplicatesModal(true)}
                         >
                           <Search className="w-3 h-3 mr-1" />
-                          Review
+                          {t('csvImport.validation.review')}
                         </Button>
                       )}
                     </div>
                   </div>
                   {issue.rows && issue.rows.length > 0 && (
                     <p className="text-sm text-muted-foreground mt-1">
-                      Rows: {issue.rows.slice(0, 5).join(', ')}
-                      {issue.rows.length > 5 && ` and ${issue.rows.length - 5} more...`}
+                      {t('csvImport.validation.rows')} {issue.rows.slice(0, 5).join(', ')}
+                      {issue.rows.length > 5 && ` ${t('csvImport.validation.andMore', { count: issue.rows.length - 5 })}`}
                     </p>
                   )}
                 </div>
@@ -632,13 +636,13 @@ export function ValidationStep({
             <div>
               <h3 className="text-lg font-semibold">
                 {hasErrors 
-                  ? `Ready to Import (${validation.missingPrices} will be skipped)`
-                  : 'Ready to Import!'
+                  ? t('csvImport.validation.readyToImportSkipped', { skipped: validation.missingPrices })
+                  : t('csvImport.validation.readyToImport')
                 }
               </h3>
               <p className="text-sm text-muted-foreground">
-                {validation.validProducts.toLocaleString()} products will be imported.
-                {validation.duplicateSKUs > 0 && ` ${validation.duplicateSKUs} existing products will be updated.`}
+                {t('csvImport.validation.productsWillBeImported', { count: validation.validProducts })}
+                {validation.duplicateSKUs > 0 && ` ${t('csvImport.validation.existingProductsWillBeUpdated', { count: validation.duplicateSKUs })}`}
               </p>
             </div>
           </div>

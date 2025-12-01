@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { SidebarNav } from '@/components/SidebarNav'
 import { CartDrawer } from '@/components/CartDrawer'
 import { OrderRequestModal } from '@/components/QuoteRequestModal'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useAuth } from '@/hooks/useAuth'
 import { useCartStore } from '@/stores/cartStore'
 import { Button } from '@/components/ui/button'
@@ -30,20 +32,21 @@ import { supabase } from '@/lib/supabase/client'
 
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
-// Page title mapping for breadcrumbs
-const pageTitles: Record<string, string> = {
-  '/dashboard': 'Overview',
-  '/dashboard/products': 'Products',
-  '/dashboard/orders': 'Orders',
-  '/dashboard/complaints': 'Complaints & Returns',
-  '/dashboard/csv-import': 'CSV Import',
-  '/dashboard/quotes': 'Quotes',
-  '/dashboard/settings': 'Settings',
-  '/dashboard/analytics': 'Analytics',
-  '/dashboard/unpaid-balances': 'Unpaid Balances',
+// Page title mapping for breadcrumbs (will be translated in component)
+const pageTitleKeys: Record<string, string> = {
+  '/dashboard': 'nav.overview',
+  '/dashboard/products': 'products.title',
+  '/dashboard/orders': 'orders.title',
+  '/dashboard/complaints': 'nav.complaintsReturns',
+  '/dashboard/csv-import': 'nav.csvImport',
+  '/dashboard/quotes': 'orders.title',
+  '/dashboard/settings': 'settings.title',
+  '/dashboard/analytics': 'nav.analytics',
+  '/dashboard/unpaid-balances': 'orders.title',
 }
 
 export function DashboardLayout() {
+  const { t } = useTranslation()
   const [cartOpen, setCartOpen] = useState(false)
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
   const { user, profile, isAdmin, signOut } = useAuth()
@@ -90,12 +93,12 @@ export function DashboardLayout() {
   // Get current page title for breadcrumbs
   const getPageTitle = () => {
     const path = location.pathname
-    for (const [route, title] of Object.entries(pageTitles)) {
+    for (const [route, key] of Object.entries(pageTitleKeys)) {
       if (path === route || (route !== '/dashboard' && path.startsWith(route))) {
-        return title
+        return t(key)
       }
     }
-    return 'Dashboard'
+    return t('nav.overview')
   }
 
   // Get user initials for avatar
@@ -128,7 +131,7 @@ export function DashboardLayout() {
                   className="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer"
                   onClick={() => navigate('/dashboard')}
                 >
-                  Home
+                  {t('header.home')}
                 </span>
                 <ChevronRight className="h-4 w-4" />
                 <span className="text-gray-900 dark:text-gray-100 font-medium">
@@ -138,6 +141,12 @@ export function DashboardLayout() {
 
               {/* RIGHT: Actions Group */}
               <div className="flex items-center gap-4">
+                {/* Language Switcher */}
+                <LanguageSwitcher />
+
+                {/* Vertical Divider */}
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
+
                 {/* Theme Toggle */}
                 <Button
                   variant="ghost"
@@ -161,13 +170,13 @@ export function DashboardLayout() {
                     {pendingOrders > 0 && (
                       <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full text-xs font-medium">
                         <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                        <span>{pendingOrders} pending</span>
+                        <span>{pendingOrders} {t('header.pending')}</span>
                       </div>
                     )}
                     {lowStockItems > 0 && (
                       <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full text-xs font-medium">
                         <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        <span>{lowStockItems} low stock</span>
+                        <span>{lowStockItems} {t('header.lowStock')}</span>
                       </div>
                     )}
                   </div>
@@ -216,7 +225,7 @@ export function DashboardLayout() {
                           </span>
                           {isAdmin && (
                             <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                              Admin
+                              {t('header.admin')}
                             </Badge>
                           )}
                         </div>
@@ -246,7 +255,7 @@ export function DashboardLayout() {
                       className="cursor-pointer"
                     >
                       <Settings className="mr-2 h-4 w-4" />
-                      Account Settings
+                      {t('header.accountSettings')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
@@ -256,7 +265,7 @@ export function DashboardLayout() {
                       className="cursor-pointer"
                     >
                       <Building2 className="mr-2 h-4 w-4" />
-                      Company Info
+                      {t('header.companyInfo')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -266,7 +275,7 @@ export function DashboardLayout() {
                       className="cursor-pointer text-red-600 dark:text-red-400"
                     >
                       <LogOut className="mr-2 h-4 w-4" />
-                      Logout
+                      {t('nav.logout')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

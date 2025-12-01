@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,19 +12,20 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, Package } from 'lucide-react'
 
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-})
-
-type LoginFormData = z.infer<typeof loginSchema>
-
 export function LoginPage() {
+  const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
+
+  const loginSchema = z.object({
+    email: z.string().email(t('auth.invalidEmail')),
+    password: z.string().min(6, t('auth.passwordMinLength')),
+  })
+
+  type LoginFormData = z.infer<typeof loginSchema>
 
   const {
     register,
@@ -40,8 +42,8 @@ export function LoginPage() {
     if (verified === 'true') {
       // Show success toast
       toast({
-        title: 'Email confirmed!',
-        description: 'Your email has been verified. You can now log in.',
+        title: t('auth.emailConfirmed'),
+        description: t('auth.emailVerified'),
       })
       // Remove the query param from URL
       searchParams.delete('verified')
@@ -56,8 +58,8 @@ export function LoginPage() {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
           toast({
-            title: 'Email confirmed!',
-            description: 'Your email has been verified. Redirecting...',
+            title: t('auth.emailConfirmed'),
+            description: t('auth.redirecting'),
           })
           // Clean the hash from URL
           window.history.replaceState({}, '', window.location.pathname)
@@ -80,16 +82,16 @@ export function LoginPage() {
 
       if (error) {
         // Provide more helpful error messages
-        let errorMessage = error.message || 'Invalid email or password'
+        let errorMessage = error.message || t('auth.invalidEmailPassword')
         
         if (error.message?.includes('Email not confirmed') || error.message?.includes('email_not_confirmed')) {
-          errorMessage = 'Please check your email and confirm your account before logging in.'
+          errorMessage = t('auth.checkEmailConfirm')
         } else if (error.message?.includes('Invalid login credentials') || error.message?.includes('invalid_credentials')) {
-          errorMessage = 'Invalid email or password. Please check your credentials and try again.'
+          errorMessage = t('auth.invalidCredentials')
         }
         
         toast({
-          title: 'Login failed',
+          title: t('auth.loginFailed'),
           description: errorMessage,
           variant: 'destructive',
         })
@@ -98,17 +100,17 @@ export function LoginPage() {
 
       // Success! Show toast
       toast({
-        title: 'Welcome back!',
-        description: 'You have successfully logged in.',
+        title: t('auth.welcomeBack'),
+        description: t('auth.successfullyLoggedIn'),
       })
       
       // Use window.location for reliable redirect after login
       // This ensures the session is properly recognized
       window.location.href = '/dashboard/'
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
+      const errorMessage = error instanceof Error ? error.message : t('auth.unexpectedError')
       toast({
-        title: 'Login failed',
+        title: t('auth.loginFailed'),
         description: errorMessage,
         variant: 'destructive',
       })
@@ -121,8 +123,8 @@ export function LoginPage() {
     const email = getValues('email')
     if (!email) {
       toast({
-        title: 'Email required',
-        description: 'Please enter your email address first.',
+        title: t('auth.emailRequired'),
+        description: t('auth.enterEmailFirst'),
         variant: 'destructive',
       })
       return
@@ -137,13 +139,13 @@ export function LoginPage() {
       if (error) throw error
 
       toast({
-        title: 'Password reset email sent',
-        description: 'Check your email for a password reset link.',
+        title: t('auth.passwordResetEmailSent'),
+        description: t('auth.checkEmailResetLink'),
       })
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Please try again later.'
+      const errorMessage = error instanceof Error ? error.message : t('auth.tryAgainLater')
       toast({
-        title: 'Failed to send reset email',
+        title: t('auth.failedToSendResetEmail'),
         description: errorMessage,
         variant: 'destructive',
       })
@@ -160,19 +162,19 @@ export function LoginPage() {
           <div className="flex items-center justify-center mb-4">
             <Package className="w-12 h-12 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Welcome to FurniTrade</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('auth.welcomeToFurniTrade')}</h1>
           <p className="text-muted-foreground">
-            Sign in to your wholesale account
+            {t('auth.signInToAccount')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               {...register('email')}
             />
             {errors.email && (
@@ -182,14 +184,14 @@ export function LoginPage() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <button
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={isResettingPassword}
                 className="text-sm text-primary hover:underline disabled:opacity-50"
               >
-                {isResettingPassword ? 'Sending...' : 'Forgot password?'}
+                {isResettingPassword ? t('auth.sending') : t('auth.forgotPassword')}
               </button>
             </div>
             <Input
@@ -207,18 +209,18 @@ export function LoginPage() {
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
+            {t('auth.signIn')}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm">
           <p className="text-muted-foreground">
-            Don't have an account?{' '}
+            {t('auth.dontHaveAccount')}{' '}
             <Link
               to="/auth/signup"
               className="text-primary font-semibold hover:underline"
             >
-              Sign up
+              {t('auth.signUp')}
             </Link>
           </p>
         </div>

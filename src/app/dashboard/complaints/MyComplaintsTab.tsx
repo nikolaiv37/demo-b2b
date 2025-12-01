@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
@@ -43,22 +44,22 @@ interface Complaint {
   updated_at: string
 }
 
-function getStatusBadge(status: Complaint['status']) {
+function getStatusBadge(status: Complaint['status'], t: (key: string) => string) {
   const configs = {
     pending: {
-      label: 'Pending',
+      label: t('complaints.pending'),
       className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
     },
     'in-review': {
-      label: 'In Review',
+      label: t('complaints.inReview'),
       className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     },
     approved: {
-      label: 'Approved',
+      label: t('complaints.approved'),
       className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
     rejected: {
-      label: 'Rejected',
+      label: t('complaints.rejected'),
       className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     },
   }
@@ -71,18 +72,19 @@ function getStatusBadge(status: Complaint['status']) {
   )
 }
 
-function getReasonLabel(reason: string) {
+function getReasonLabel(reason: string, t: (key: string) => string) {
   const labels: Record<string, string> = {
-    damaged_transport: 'Damaged in transport',
-    wrong_product: 'Wrong product',
-    missing_parts: 'Missing parts',
-    defective: 'Defective',
-    other: 'Other',
+    damaged_transport: t('complaints.damagedTransport'),
+    wrong_product: t('complaints.wrongProduct'),
+    missing_parts: t('complaints.missingParts'),
+    defective: t('complaints.defective'),
+    other: t('complaints.other'),
   }
   return labels[reason] || reason
 }
 
 export function MyComplaintsTab() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -160,9 +162,9 @@ export function MyComplaintsTab() {
       <GlassCard className="p-12">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-semibold mb-2">No complaints yet</h3>
+          <h3 className="text-xl font-semibold mb-2">{t('complaints.noComplaints')}</h3>
           <p className="text-muted-foreground">
-            Hope everything arrives perfect! 🎉
+            {t('complaints.noComplaintsDescription')}
           </p>
         </div>
       </GlassCard>
@@ -176,12 +178,12 @@ export function MyComplaintsTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Ticket #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('complaints.orderNumber')}</TableHead>
+                <TableHead>{t('complaints.date')}</TableHead>
+                <TableHead>{t('complaints.orderId')}</TableHead>
+                <TableHead>{t('complaints.status')}</TableHead>
+                <TableHead>{t('complaints.items')}</TableHead>
+                <TableHead>{t('complaints.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,10 +198,10 @@ export function MyComplaintsTab() {
                       ? `#${complaint.order_number}`
                       : complaint.order_id.slice(0, 8)}
                   </TableCell>
-                  <TableCell>{getStatusBadge(complaint.status)}</TableCell>
+                  <TableCell>{getStatusBadge(complaint.status, t)}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">
-                      {complaint.items?.length || 0} item(s)
+                      {complaint.items?.length || 0} {t('products.items')}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -209,7 +211,7 @@ export function MyComplaintsTab() {
                       onClick={() => handleViewComplaint(complaint)}
                     >
                       <Eye className="w-4 h-4 mr-2" />
-                      View
+                      {t('complaints.view')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -287,7 +289,7 @@ export function MyComplaintsTab() {
                 {/* Description */}
                 {selectedComplaint.message && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.description')}</p>
                     <p className="text-sm whitespace-pre-wrap">{selectedComplaint.message}</p>
                   </div>
                 )}
@@ -295,7 +297,7 @@ export function MyComplaintsTab() {
                 {/* Photos */}
                 {selectedComplaint.photos && selectedComplaint.photos.length > 0 && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Photos</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t('complaints.photos')}</p>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {selectedComplaint.photos.map((photo, index) => (
                         <div key={index} className="relative group">

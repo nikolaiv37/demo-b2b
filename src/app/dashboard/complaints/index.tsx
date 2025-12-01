@@ -1,5 +1,6 @@
 // This page saves hours of WhatsApp chaos every week
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/hooks/useAuth'
 import { MyComplaintsTab } from './MyComplaintsTab'
@@ -7,6 +8,7 @@ import { NewComplaintTab } from './NewComplaintTab'
 import { AdminComplaintsView } from './AdminComplaintsView'
 
 export function ComplaintsPage() {
+  const { t } = useTranslation()
   const { isAdmin } = useAuth()
   const [activeTab, setActiveTab] = useState('my-complaints')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -25,19 +27,19 @@ export function ComplaintsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Complaints & Returns</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('complaints.title')}</h1>
         <p className="text-muted-foreground">
-          Report issues with your orders and request returns or replacements
+          {t('complaints.subtitle')}
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="glass">
           <TabsTrigger value="my-complaints">
-            My Complaints
+            {t('complaints.myComplaints')}
           </TabsTrigger>
           <TabsTrigger value="new-complaint">
-            New Complaint
+            {t('complaints.newComplaint')}
           </TabsTrigger>
         </TabsList>
 

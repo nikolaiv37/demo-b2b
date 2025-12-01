@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/GlassCard'
@@ -54,6 +55,7 @@ interface ComplaintFormData {
 }
 
 export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
+  const { t } = useTranslation()
   const { user, profile } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -288,8 +290,8 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
     },
     onSuccess: (data) => {
       toast({
-        title: 'Complaint submitted successfully!',
-        description: `Ticket #${data.id} has been created. We'll review it shortly.`,
+        title: t('complaints.complaintSubmitted'),
+        description: t('complaints.complaintSubmittedDescription'),
       })
       queryClient.invalidateQueries({ queryKey: ['complaints', user?.id] })
       onSubmitted()
@@ -306,8 +308,8 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
     },
     onError: (error: Error) => {
       toast({
-        title: 'Error submitting complaint',
-        description: error.message || 'Failed to submit complaint. Please try again.',
+        title: t('complaints.error'),
+        description: error.message || t('complaints.failedToSubmit'),
         variant: 'destructive',
       })
     },
@@ -318,8 +320,8 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
 
     if (!formData.orderId) {
       toast({
-        title: 'Order required',
-        description: 'Please select an order',
+        title: t('complaints.error'),
+        description: t('complaints.selectOrder'),
         variant: 'destructive',
       })
       return
@@ -327,8 +329,8 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
 
     if (formData.selectedItems.length === 0) {
       toast({
-        title: 'Items required',
-        description: 'Please select at least one item',
+        title: t('complaints.error'),
+        description: t('complaints.selectItems'),
         variant: 'destructive',
       })
       return
@@ -336,8 +338,8 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
 
     if (!formData.reason) {
       toast({
-        title: 'Reason required',
-        description: 'Please select a reason',
+        title: t('complaints.error'),
+        description: t('complaints.selectReason'),
         variant: 'destructive',
       })
       return
@@ -349,12 +351,12 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <GlassCard className="p-6 space-y-6">
-        <h2 className="text-xl font-semibold">Complaint Details</h2>
+        <h2 className="text-xl font-semibold">{t('complaints.newComplaint')}</h2>
 
         {/* User Info (Auto-filled) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t('general.name')}</Label>
             <Input
               id="name"
               value={profile?.full_name || ''}
@@ -363,7 +365,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               value={profile?.email || user?.email || ''}
@@ -372,10 +374,10 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">{t('general.phone')}</Label>
             <Input
               id="phone"
-              placeholder="Not set"
+              placeholder={t('general.none')}
               disabled
               className="bg-muted"
             />
@@ -384,7 +386,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
 
         {/* Order Selection */}
         <div className="space-y-2">
-          <Label htmlFor="order">Order ID *</Label>
+          <Label htmlFor="order">{t('complaints.orderId')} *</Label>
           {ordersLoading ? (
             <Skeleton className="h-10 w-full" />
           ) : (
@@ -394,19 +396,19 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
               required
             >
               <SelectTrigger id="order">
-                <SelectValue placeholder="Select an order" />
+                <SelectValue placeholder={t('complaints.selectOrder')} />
               </SelectTrigger>
               <SelectContent>
                 {orders && orders.length > 0 ? (
                   orders.map((order) => (
                     <SelectItem key={order.id} value={order.id.toString()}>
-                      Order #{order.order_number || order.id} -{' '}
+                      {t('orders.order')} #{order.order_number || order.id} -{' '}
                       {new Date(order.created_at).toLocaleDateString()}
                     </SelectItem>
                   ))
                 ) : (
                   <SelectItem value="no-orders" disabled>
-                    No orders found
+                    {t('orders.noOrdersFound')}
                   </SelectItem>
                 )}
               </SelectContent>
@@ -417,7 +419,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
         {/* Order Items Selection */}
         {selectedOrder && selectedOrder.items && selectedOrder.items.length > 0 && (
           <div className="space-y-4">
-            <Label>Select Problematic Items *</Label>
+            <Label>{t('complaints.selectItems')} *</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {selectedOrder.items.map((item: OrderItem, index: number) => {
                 const isSelected = formData.selectedItems.some(
@@ -458,7 +460,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
                               SKU: {item.sku}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Ordered: {item.quantity} pcs
+                              {t('orders.items')}: {item.quantity} {t('products.items')}
                             </p>
                           </div>
                           {isSelected && (
@@ -467,7 +469,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
                         </div>
                         {isSelected && selectedItem && (
                           <div className="mt-3 pt-3 border-t">
-                            <Label className="text-xs">Quantity to report</Label>
+                            <Label className="text-xs">{t('general.quantity')}</Label>
                             <div className="flex items-center gap-2 mt-1">
                               <Button
                                 type="button"
@@ -522,7 +524,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
 
         {/* Reason */}
         <div className="space-y-2">
-          <Label htmlFor="reason">Reason *</Label>
+          <Label htmlFor="reason">{t('complaints.reason')} *</Label>
           <Select
             value={formData.reason}
             onValueChange={(value) =>
@@ -531,37 +533,37 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
             required
           >
             <SelectTrigger id="reason">
-              <SelectValue placeholder="Select a reason" />
+              <SelectValue placeholder={t('complaints.selectReason')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="damaged_transport">
-                Damaged in transport
+                {t('complaints.damagedTransport')}
               </SelectItem>
-              <SelectItem value="wrong_product">Wrong product</SelectItem>
-              <SelectItem value="missing_parts">Missing parts</SelectItem>
-              <SelectItem value="defective">Defective</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
+              <SelectItem value="wrong_product">{t('complaints.wrongProduct')}</SelectItem>
+              <SelectItem value="missing_parts">{t('complaints.missingParts')}</SelectItem>
+              <SelectItem value="defective">{t('complaints.defective')}</SelectItem>
+              <SelectItem value="other">{t('complaints.other')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Description */}
         <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description">{t('complaints.description')}</Label>
           <Textarea
             id="description"
             value={formData.description}
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
             }
-            placeholder="Describe the issue in detail..."
+            placeholder={t('complaints.description') + '...'}
             rows={4}
           />
         </div>
 
         {/* Photo Upload */}
         <div className="space-y-2">
-          <Label>Photos (max 5)</Label>
+          <Label>{t('complaints.photos')} (max 5)</Label>
           <div
             className={cn(
               'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
@@ -585,10 +587,10 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
             <label htmlFor="photo-upload" className="cursor-pointer">
               <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Drag & drop photos here, or click to select
+                {t('general.dragDropPhotos')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {formData.photos.length}/5 photos
+                {formData.photos.length}/5 {t('complaints.photos')}
               </p>
             </label>
           </div>
@@ -621,12 +623,12 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
         {/* Help Link */}
         <div className="pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            Need help?{' '}
+            {t('general.help')}?{' '}
             <a
               href="mailto:support@furnitrade.com"
               className="text-primary hover:underline"
             >
-              Contact support
+              {t('general.contactSupport')}
             </a>
             {' or '}
             <a
@@ -635,7 +637,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              WhatsApp us
+              {t('general.whatsapp')}
             </a>
           </p>
         </div>
@@ -650,12 +652,12 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
           {submitMutation.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Submitting...
+              {t('complaints.submitting')}
             </>
           ) : (
             <>
               <AlertCircle className="w-4 h-4 mr-2" />
-              Submit Complaint
+              {t('complaints.submit')}
             </>
           )}
         </Button>
