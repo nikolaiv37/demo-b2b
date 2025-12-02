@@ -58,7 +58,46 @@ export function useCategoryHierarchy(companyId?: string) {
         companyId,
         at: new Date().toISOString(),
       })
+
+      // First, fetch all categories with their image_urls to create a lookup map
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('id, name, parent_id, image_url')
+
+      if (categoriesError) {
+        console.error('useCategoryHierarchy categories query error:', categoriesError)
+        // Continue anyway - we can still build hierarchy from products
+      }
+
+      // Create maps for category images:
+      // - main category name -> image_url
+      // - full subcategory path \"Main > Sub\" -> image_url
+      const categoryImageMap = new Map<string, string | null>()
+      const subcategoryImageMap = new Map<string, string | null>()
+      if (categoriesData) {
+        const categoryById = new Map<string, { id: string; name: string; parent_id: string | null; image_url: string | null }>()
+        categoriesData.forEach((cat) => {
+          categoryById.set(cat.id, cat)
+        })
+
+        categoriesData.forEach((cat) => {
+          if (!cat.parent_id) {
+            // Main category
+            categoryImageMap.set(cat.name, cat.image_url)
+          } else {
+            // Subcategory: build full path \"Parent > Child\"
+            const parent = categoryById.get(cat.parent_id)
+            if (parent) {
+              const fullName = `${parent.name} > ${cat.name}`
+              subcategoryImageMap.set(fullName, cat.image_url)
+            }
+          }
+        })
+      }
+
       // Fetch all visible products with their linked category (if any)
+      // Note: Supabase/PostgREST defaults to a 1,000 row limit; use an explicit range
+      // to ensure product counts reflect the full dataset.
       const { data, error } = await supabase
         .from('products')
         .select(
@@ -77,6 +116,7 @@ export function useCategoryHierarchy(companyId?: string) {
         `
         )
         .eq('is_visible', true)
+        .range(0, 9999)
 
       if (error) {
         console.error('useCategoryHierarchy query error:', error)
@@ -201,9 +241,12 @@ export function useCategoryHierarchy(companyId?: string) {
 
         // Get or create main category
         if (!mainCategories.has(mainCategory)) {
+          // Check if this category has an image_url from the categories table
+          const categoryImageUrl = categoryImageMap.get(mainCategory) || null
+          
           mainCategories.set(mainCategory, {
             name: mainCategory,
-            imageUrl: null,
+            imageUrl: categoryImageUrl, // Use category image_url if available
             subcategories: new Map(),
             productCount: 0,
           })
@@ -212,8 +255,9 @@ export function useCategoryHierarchy(companyId?: string) {
         const mainCat = mainCategories.get(mainCategory)!
         mainCat.productCount++
 
-        // Set main category image - prefer images with white/transparent backgrounds
-        if (imageUrl) {
+        // Set main category image - prefer category image_url, then product images
+        // Only use product images if category doesn't have an image_url set
+        if (!mainCat.imageUrl && imageUrl) {
           const currentScore = mainCat.imageUrl ? scoreImage(mainCat.imageUrl, false, 0) : 0
           const newScore = scoreImage(imageUrl, isMainImage, imageCount)
           
@@ -225,11 +269,14 @@ export function useCategoryHierarchy(companyId?: string) {
         // Handle subcategories
         if (subcategory) {
           if (!mainCat.subcategories.has(subcategory)) {
+            // Prefer subcategory image from categories table (full path \"Main > Sub\")
+            const subcategoryImageUrl = subcategoryImageMap.get(fullCategory) || null
+
             mainCat.subcategories.set(subcategory, {
               mainCategory,
               subcategory,
               fullCategory,
-              imageUrl: null,
+              imageUrl: subcategoryImageUrl,
               productCount: 0,
             })
           }
@@ -237,8 +284,9 @@ export function useCategoryHierarchy(companyId?: string) {
           const subCat = mainCat.subcategories.get(subcategory)!
           subCat.productCount++
 
-          // Set subcategory image - prefer images with white/transparent backgrounds
-          if (imageUrl) {
+          // Set subcategory image - prefer category image_url, then product images
+          // Only use product images if subcategory doesn't have an image_url set
+          if (!subCat.imageUrl && imageUrl) {
             const currentScore = subCat.imageUrl ? scoreImage(subCat.imageUrl, false, 0) : 0
             const newScore = scoreImage(imageUrl, isMainImage, imageCount)
             
@@ -272,6 +320,23 @@ export function useCategoryHierarchy(companyId?: string) {
           }
         }
       })
+
+      // Recalculate main category product counts using exact Supabase counts
+      // to avoid the 1,000-row limit affecting totals.
+      const mainCategoryValues = Array.from(mainCategories.values())
+      await Promise.all(
+        mainCategoryValues.map(async (mainCat) => {
+          const { count, error } = await supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_visible', true)
+            .ilike('category', `${mainCat.name}%`)
+
+          if (!error && typeof count === 'number') {
+            mainCat.productCount = count
+          }
+        })
+      )
 
       // Sort main categories by product count (descending)
       const sortedMainCategories = new Map(
