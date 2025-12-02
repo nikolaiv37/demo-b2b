@@ -27,8 +27,6 @@ import { ComplaintsPage } from '@/app/dashboard/complaints'
 import { UnpaidBalancesPage } from '@/app/dashboard/unpaid-balances'
 import { CategoriesPage } from '@/app/dashboard/categories'
 
-// Public Pages
-import { PublicCatalog } from '@/pages/PublicCatalog'
 import { NotFound } from '@/pages/NotFound'
 
 const queryClient = new QueryClient({
@@ -91,9 +89,6 @@ function App() {
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
               </Route>
-
-              {/* Public Routes */}
-              <Route path="/catalog/:companySlug" element={<PublicCatalog />} />
 
               {/* Redirect root to dashboard or login */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

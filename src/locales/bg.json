@@ -20,7 +20,7 @@
       "profile": "Профил",
       "billing": "Плащания",
       "appearance": "Външен Вид",
-      "csvImport": "CSV Импорт",
+      "csvImport": "CSV Импорт Вълшебник",
       "logout": "Изход"
     },
     "header": {
@@ -361,26 +361,33 @@
       "profileSettings": "Настройки на Профила",
       "fullName": "Пълно Име",
       "fullNamePlaceholder": "Иван Иванов",
+      "fullNameMinLength": "Пълното име трябва да бъде поне 2 символа",
       "emailCannotBeChanged": "Имейлът не може да бъде променен",
       "role": "Роля",
       "updateProfile": "Актуализирай Профил",
-      "billingPayments": "Плащания и Разплащания",
-      "stripeAccount": "Stripe Акаунт",
-      "connected": "Свързан",
-      "connectStripeAccount": "Свържете вашия Stripe акаунт, за да приемате плащания",
-      "connectStripe": "Свържи Stripe",
-      "paymentMethods": "Методи за Плащане",
-      "noPaymentMethods": "Няма записани методи за плащане",
-      "appearance": "Външен Вид",
-      "darkMode": "Тъмен Режим",
-      "toggleTheme": "Превключване между светъл и тъмен режим",
-      "themePreview": "Преглед на Темата",
       "success": "Успех",
-      "companyUpdated": "Информацията за фирмата е актуализирана успешно",
+      "companyUpdated": "Данните за фирмата са актуализирани успешно",
       "updateFailed": "Актуализацията е неуспешна",
       "failedToUpdate": "Неуспешно актуализиране на информацията за фирмата",
       "error": "Грешка",
-      "mustBeLoggedIn": "Трябва да сте влезли в системата и да имате фирма"
+      "mustBeLoggedIn": "Трябва да сте влезли в системата и да имате фирма",
+      "profileDescription": "Вижте своя имейл за вход и безопасно актуализирайте паролата си.",
+      "avatarAlt": "Потребителски аватар",
+      "changeAvatar": "Смени аватар",
+      "changePassword": "Смяна на Парола",
+      "changePasswordDescription": "Изберете силна парола, която не използвате на други сайтове.",
+      "currentPassword": "Текуща Парола",
+      "newPassword": "Нова Парола",
+      "confirmNewPassword": "Потвърди Новата Парола",
+      "passwordsMustMatch": "Паролите трябва да съвпадат",
+      "passwordUpdated": "Паролата е актуализирана успешно",
+      "passwordUpdateFailed": "Неуспешна актуализация на паролата",
+      "profileUpdated": "Профилът е актуализиран успешно",
+      "profileUpdateFailed": "Неуспешна актуализация на профила",
+      "passwordNote": "След смяна на паролата може да се наложи да влезете отново на други устройства.",
+      "stickyProfileHint": "Незаписаните промени по профила и паролата се управляват оттук.",
+      "saveProfile": "Запази Профил",
+      "updatePasswordButton": "Актуализирай Паролата"
     },
     "general": {
       "loading": "Зареждане...",
@@ -673,7 +680,6 @@
     "company": {
       "companyName": "Име на Фирма",
       "companyNamePlaceholder": "Акме Мебели ООД",
-      "catalogUrl": "URL адресът на вашия каталог ще бъде:",
       "eikBulstat": "ЕИК / BULSTAT",
       "eikBulstatPlaceholder": "123456789",
       "vatNumber": "ДДС №",
@@ -709,7 +715,9 @@
       "vatRequired": "ДДС № е задължително",
       "phoneRequired": "Телефонът на фирмата е задължителен",
       "addressMinLength": "Адресът трябва да бъде поне 10 символа",
-      "invalidUrl": "Моля, въведете валиден URL адрес"
+      "invalidUrl": "Моля, въведете валиден URL адрес",
+      "eikTooltip": "ЕИК/BULSTAT е уникалният идентификатор на фирмата, регистриран в България.",
+      "vatTooltip": "ДДС номер, използван за данъчно отчитане (напр. BG123456789)."
     }
   }
 }

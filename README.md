@@ -7,7 +7,6 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 ### Core Functionality
 - **CSV Bulk Import** - Import thousands of products with validation and progress tracking
 - **Tiered Pricing & MOQ** - Volume-based pricing with minimum order quantities
-- **Public Catalog** - SEO-optimized product catalog with search and filters
 - **Quote System** - Request and manage wholesale quotes with email notifications
 - **Order Management** - Track orders from approval to shipment
 - **Payment Integration** - Stripe integration for secure payments
@@ -136,18 +135,12 @@ The app will be available at `http://localhost:5173`
 2. **Complete Onboarding**
    - Set up your company name and details
    - Upload a company logo (optional)
-   - Your catalog URL will be automatically generated
 
 3. **Import Products**
    - Go to Dashboard → CSV Import
    - Download the template CSV file
    - Fill in your product data
    - Upload and import
-
-4. **Share Your Catalog**
-   - Your public catalog is available at:
-   - `/catalog/your-company-slug`
-   - Share this link with your buyers
 
 ### Using the Platform
 
@@ -173,23 +166,6 @@ The app will be available at `http://localhost:5173`
    - Track revenue and orders
    - Monitor pending quotes
    - Get low stock alerts
-
-#### For Buyers (Public Catalog)
-
-1. **Browse Products**
-   - Search and filter products
-   - View tiered pricing
-   - Check MOQ requirements
-
-2. **Request Quotes**
-   - Add products to cart
-   - Submit quote request with contact details
-   - Receive quote approval via email
-
-3. **Place Orders**
-   - Once quote is approved
-   - Proceed to checkout
-   - Make payment via Stripe
 
 ## 📁 Project Structure
 
@@ -242,7 +218,6 @@ src/
 ├── types/
 │   └── index.ts
 ├── pages/
-│   ├── PublicCatalog.tsx
 │   └── NotFound.tsx
 ├── i18n/
 │   └── en.json
@@ -337,7 +312,7 @@ The application is fully responsive with:
 ## 📊 Analytics Events
 
 The platform tracks:
-- Page views (dashboard, catalog)
+- Page views (dashboard)
 - User actions (login, signup)
 - Product interactions (view, add to cart)
 - Quote requests

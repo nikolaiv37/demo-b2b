@@ -6,18 +6,16 @@ import {
   LayoutDashboard,
   Package,
   FileText,
-  Upload,
   Settings,
   LogOut,
   Building2,
   User,
-  CreditCard,
-  Palette,
   ChevronDown,
   Heart,
   BarChart3,
   AlertCircle,
   Grid3X3,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useWishlist } from '@/hooks/useWishlist'
@@ -78,28 +76,13 @@ const catalogSubmenuItemsConfig = [
 const settingsSubmenuItemsConfig = [
   {
     titleKey: 'nav.company',
-    href: '/dashboard/settings?tab=company',
+    href: '/dashboard/settings#company',
     icon: Building2,
   },
   {
     titleKey: 'nav.profile',
-    href: '/dashboard/settings?tab=profile',
+    href: '/dashboard/settings#profile',
     icon: User,
-  },
-  {
-    titleKey: 'nav.billing',
-    href: '/dashboard/settings?tab=billing',
-    icon: CreditCard,
-  },
-  {
-    titleKey: 'nav.appearance',
-    href: '/dashboard/settings?tab=appearance',
-    icon: Palette,
-  },
-  {
-    titleKey: 'nav.csvImport',
-    href: '/dashboard/csv-import',
-    icon: Upload,
   },
 ]
 
@@ -137,12 +120,11 @@ export function SidebarNav() {
 
   // Check if submenu item is active
   const isSubmenuItemActive = (href: string) => {
-    // Handle query params for settings tabs
-    if (href.includes('?')) {
-      const [path, query] = href.split('?')
-      const [key, value] = query.split('=')
-      const urlParams = new URLSearchParams(window.location.search)
-      return location.pathname === path && urlParams.get(key) === value
+    // Handle hash-based settings sections
+    if (href.includes('#')) {
+      const [path, hash] = href.split('#')
+      if (!hash) return location.pathname === path
+      return location.pathname === path && location.hash === `#${hash}`
     }
     return location.pathname === href
   }
@@ -166,42 +148,44 @@ export function SidebarNav() {
 
   // Auto-open Catalog submenu if on catalog page or any submenu, or use saved state
   useEffect(() => {
-    const isActive = isCatalogActive()
-    if (isActive) {
+    const active = isCatalogActive()
+    if (active) {
+      setCatalogOpen('catalog')
+      return
+    }
+    // Check localStorage, default to open if not set
+    const savedState = localStorage.getItem('sidebar-catalog-open')
+    if (savedState === null) {
+      // First time - default to open
+      setCatalogOpen('catalog')
+      localStorage.setItem('sidebar-catalog-open', 'true')
+    } else if (savedState === 'true') {
       setCatalogOpen('catalog')
     } else {
-      // Check localStorage, default to open if not set
-      const savedState = localStorage.getItem('sidebar-catalog-open')
-      if (savedState === null) {
-        // First time - default to open
-        setCatalogOpen('catalog')
-        localStorage.setItem('sidebar-catalog-open', 'true')
-      } else if (savedState === 'true') {
-        setCatalogOpen('catalog')
-      } else {
-        setCatalogOpen('')
-      }
+      setCatalogOpen('')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search])
 
   // Auto-open Settings submenu if on settings page or any submenu, or use saved state
   useEffect(() => {
-    const isActive = isSettingsActive()
-    if (isActive) {
+    const active = isSettingsActive()
+    if (active) {
+      setSettingsOpen('settings')
+      return
+    }
+    // Check localStorage, default to open if not set
+    const savedState = localStorage.getItem('sidebar-settings-open')
+    if (savedState === null) {
+      // First time - default to open
+      setSettingsOpen('settings')
+      localStorage.setItem('sidebar-settings-open', 'true')
+    } else if (savedState === 'true') {
       setSettingsOpen('settings')
     } else {
-      // Check localStorage, default to open if not set
-      const savedState = localStorage.getItem('sidebar-settings-open')
-      if (savedState === null) {
-        // First time - default to open
-        setSettingsOpen('settings')
-        localStorage.setItem('sidebar-settings-open', 'true')
-      } else if (savedState === 'true') {
-        setSettingsOpen('settings')
-      } else {
-        setSettingsOpen('')
-      }
+      setSettingsOpen('')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search])
 
   // Save catalog submenu state to localStorage
@@ -406,6 +390,22 @@ export function SidebarNav() {
             {t('nav.toolsAndAccount')}
           </h3>
           <nav className="space-y-1">
+            {/* CSV Import Wizard - promoted as top-level item */}
+            {isAdmin && (
+              <Link
+                to="/dashboard/csv-import"
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
+                  isItemActive('/dashboard/csv-import')
+                    ? 'bg-[#0f172a] dark:bg-[#0f172a] text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                )}
+              >
+                <FileSpreadsheet className="w-5 h-5 flex-shrink-0" />
+                <span className="font-medium flex-1">{t('nav.csvImport')}</span>
+              </Link>
+            )}
+
             {/* Settings with Submenu */}
             <Accordion
               type="single"
