@@ -66,9 +66,5 @@ export const AnalyticsEvents = {
   // Dashboard
   DASHBOARD_VIEWED: 'dashboard_viewed',
   
-  // Catalog
-  CATALOG_VIEWED: 'catalog_viewed',
-  CATALOG_SEARCHED: 'catalog_searched',
-  CATALOG_FILTERED: 'catalog_filtered',
 }
 

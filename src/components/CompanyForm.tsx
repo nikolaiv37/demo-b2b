@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabase/client'
-import { slugify, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Company } from '@/types'
+import { Tooltip } from '@/components/ui/tooltip'
 import {
   Upload,
   Phone,
@@ -19,18 +20,20 @@ import {
   Globe,
   Loader2,
   ArrowRight,
+  Info,
 } from 'lucide-react'
 
 // Schema will be created inside component to use translations
-const createCompanyFormSchema = (t: (key: string) => string) => z.object({
-  companyName: z.string().min(2, t('company.companyNameMinLength')),
-  eikBulstat: z.string().min(1, t('company.eikRequired')),
-  vatNumber: z.string().min(1, t('company.vatRequired')),
-  phone: z.string().min(1, t('company.phoneRequired')),
-  address: z.string().min(10, t('company.addressMinLength')),
-  website: z.string().url(t('company.invalidUrl')).optional().or(z.literal('')),
-  logo: z.instanceof(File).optional(),
-})
+const createCompanyFormSchema = (t: (key: string) => string) =>
+  z.object({
+    companyName: z.string().min(2, t('company.companyNameMinLength')),
+    eikBulstat: z.string().min(1, t('company.eikRequired')),
+    vatNumber: z.string().min(1, t('company.vatRequired')),
+    phone: z.string().min(1, t('company.phoneRequired')),
+    address: z.string().min(10, t('company.addressMinLength')),
+    website: z.string().url(t('company.invalidUrl')).optional().or(z.literal('')),
+    logo: z.instanceof(File).optional(),
+  })
 
 export type CompanyFormData = z.infer<ReturnType<typeof createCompanyFormSchema>>
 
@@ -40,6 +43,20 @@ interface CompanyFormProps {
   isLoading?: boolean
   showLogoUpload?: boolean
   mode?: 'onboarding' | 'edit'
+  /**
+   * Optional HTML id for the underlying <form> element.
+   * Useful when controlling submission from an external sticky action bar.
+   */
+  formId?: string
+  /**
+   * When false, the internal submit button is hidden.
+   * This allows the parent to render a custom sticky Save Changes bar.
+   */
+  showSubmitButton?: boolean
+  /**
+   * Optional callback to expose form state (dirty/valid/submitting) to parent components.
+   */
+  onFormStateChange?: (state: { isDirty: boolean; isValid: boolean; isSubmitting: boolean }) => void
 }
 
 export function CompanyForm({
@@ -48,6 +65,9 @@ export function CompanyForm({
   isLoading = false,
   showLogoUpload = true,
   mode = 'edit',
+  formId,
+  showSubmitButton = true,
+  onFormStateChange,
 }: CompanyFormProps) {
   const { t } = useTranslation()
   const { user } = useAuth()
@@ -63,8 +83,7 @@ export function CompanyForm({
   const {
     register,
     handleSubmit,
-    formState: { errors },
-    watch,
+    formState: { errors, isDirty, isValid, isSubmitting },
     setValue,
     reset,
   } = useForm<CompanyFormData>({
@@ -82,8 +101,12 @@ export function CompanyForm({
       : undefined,
   })
 
-  const companyName = watch('companyName')
-  const slug = companyName ? slugify(companyName) : ''
+  // Expose form state to parent when requested (used for sticky Save Changes button)
+  useEffect(() => {
+    if (onFormStateChange) {
+      onFormStateChange({ isDirty, isValid, isSubmitting })
+    }
+  }, [isDirty, isValid, isSubmitting, onFormStateChange])
 
   // Update form when company changes
   useEffect(() => {
@@ -132,7 +155,7 @@ export function CompanyForm({
         reader.readAsDataURL(file)
       }
     },
-    [setValue, toast]
+    [setValue, toast, t]
   )
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,10 +221,11 @@ export function CompanyForm({
           .getPublicUrl(fileName)
 
         logoUrl = publicUrl
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast({
           title: t('company.logoUploadFailed'),
-          description: error.message || t('company.failedToUploadLogo'),
+          description:
+            error instanceof Error ? error.message : t('company.failedToUploadLogo'),
           variant: 'destructive',
         })
         return
@@ -212,7 +236,7 @@ export function CompanyForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
+    <form id={formId} onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="companyName" className="text-base">
@@ -231,22 +255,21 @@ export function CompanyForm({
           )}
         </div>
 
-        {slug && (
-          <div className="p-4 glass-card border border-primary/20 rounded-lg">
-            <p className="text-sm text-muted-foreground mb-1">
-              {t('company.catalogUrl')}
-            </p>
-            <p className="font-mono text-primary font-semibold text-sm">
-              /catalog/{slug}
-            </p>
-          </div>
-        )}
-
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="eikBulstat" className="text-base">
+          <Label htmlFor="eikBulstat" className="text-base flex items-center gap-2">
+            <span>
               {t('company.eikBulstat')} <span className="text-destructive">*</span>
-            </Label>
+            </span>
+            <Tooltip content={t('company.eikTooltip')}>
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground/80 bg-background/80 hover:bg-muted/60"
+              >
+                <Info className="w-3 h-3" />
+              </button>
+            </Tooltip>
+          </Label>
             <Input
               id="eikBulstat"
               placeholder={t('company.eikBulstatPlaceholder')}
@@ -261,9 +284,19 @@ export function CompanyForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vatNumber" className="text-base">
+          <Label htmlFor="vatNumber" className="text-base flex items-center gap-2">
+            <span>
               {t('company.vatNumber')} <span className="text-destructive">*</span>
-            </Label>
+            </span>
+            <Tooltip content={t('company.vatTooltip')}>
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground/80 bg-background/80 hover:bg-muted/60"
+              >
+                <Info className="w-3 h-3" />
+              </button>
+            </Tooltip>
+          </Label>
             <Input
               id="vatNumber"
               placeholder={t('company.vatNumberPlaceholder')}
@@ -408,25 +441,30 @@ export function CompanyForm({
         )}
       </div>
 
-      <div className="flex justify-end pt-4">
-        <Button type="submit" size="lg" disabled={isLoading} className="min-w-[140px]">
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {mode === 'onboarding' ? t('company.processing') : t('company.saving')}
-            </>
-          ) : (
-            mode === 'onboarding' ? (
+      {showSubmitButton && (
+        <div className="flex justify-end pt-4">
+          <Button
+            type="submit"
+            size="lg"
+            disabled={isLoading || isSubmitting}
+            className="min-w-[140px]"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {mode === 'onboarding' ? t('company.processing') : t('company.saving')}
+              </>
+            ) : mode === 'onboarding' ? (
               <>
                 {t('company.continue')}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </>
             ) : (
               t('company.saveChanges')
-            )
-          )}
-        </Button>
-      </div>
+            )}
+          </Button>
+        </div>
+      )}
     </form>
   )
 }

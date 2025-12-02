@@ -20,7 +20,7 @@
       "profile": "Profile",
       "billing": "Billing",
       "appearance": "Appearance",
-      "csvImport": "CSV Import",
+      "csvImport": "CSV Import Wizard",
       "logout": "Logout"
     },
     "header": {
@@ -361,26 +361,33 @@
       "profileSettings": "Profile Settings",
       "fullName": "Full Name",
       "fullNamePlaceholder": "John Doe",
+      "fullNameMinLength": "Full name must be at least 2 characters",
       "emailCannotBeChanged": "Email cannot be changed",
       "role": "Role",
       "updateProfile": "Update Profile",
-      "billingPayments": "Billing & Payments",
-      "stripeAccount": "Stripe Account",
-      "connected": "Connected",
-      "connectStripeAccount": "Connect your Stripe account to accept payments",
-      "connectStripe": "Connect Stripe",
-      "paymentMethods": "Payment Methods",
-      "noPaymentMethods": "No payment methods on file",
-      "appearance": "Appearance",
-      "darkMode": "Dark Mode",
-      "toggleTheme": "Toggle between light and dark theme",
-      "themePreview": "Theme Preview",
       "success": "Success",
-      "companyUpdated": "Company information updated successfully",
+      "companyUpdated": "Company details updated",
       "updateFailed": "Update failed",
       "failedToUpdate": "Failed to update company information",
       "error": "Error",
-      "mustBeLoggedIn": "You must be logged in and have a company"
+      "mustBeLoggedIn": "You must be logged in and have a company",
+      "profileDescription": "View your login email and securely update your password.",
+      "avatarAlt": "User avatar",
+      "changeAvatar": "Change avatar",
+      "changePassword": "Change Password",
+      "changePasswordDescription": "Choose a strong password that you don’t reuse on other sites.",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmNewPassword": "Confirm New Password",
+      "passwordsMustMatch": "Passwords must match",
+      "passwordUpdated": "Password updated successfully",
+      "passwordUpdateFailed": "Failed to update password",
+      "profileUpdated": "Profile updated successfully",
+      "profileUpdateFailed": "Failed to update profile",
+      "passwordNote": "After changing your password, you may be asked to log in again on other devices.",
+      "stickyProfileHint": "Unsaved profile changes and password updates are managed here.",
+      "saveProfile": "Save Profile",
+      "updatePasswordButton": "Update Password"
     },
     "general": {
       "loading": "Loading...",
@@ -673,7 +680,6 @@
     "company": {
       "companyName": "Company Name",
       "companyNamePlaceholder": "Acme Furniture Co.",
-      "catalogUrl": "Your catalog URL will be:",
       "eikBulstat": "ЕИК / BULSTAT",
       "eikBulstatPlaceholder": "123456789",
       "vatNumber": "VAT Number (ДДС №)",
@@ -709,7 +715,9 @@
       "vatRequired": "VAT Number (ДДС №) is required",
       "phoneRequired": "Company phone is required",
       "addressMinLength": "Address must be at least 10 characters",
-      "invalidUrl": "Please enter a valid URL"
+      "invalidUrl": "Please enter a valid URL",
+      "eikTooltip": "ЕИК/BULSTAT is the unique company identifier registered in Bulgaria.",
+      "vatTooltip": "VAT number used for tax reporting (e.g. BG123456789)."
     }
   }
 }

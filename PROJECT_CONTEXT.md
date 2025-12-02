@@ -4,7 +4,7 @@
 
 **Project Name:** FurniTrade (B2B Furniture Wholesale SaaS Platform)
 
-**Purpose:** A production-ready B2B wholesale platform that allows furniture wholesalers to manage their product catalog, handle quote requests, process orders, and provide a public-facing catalog for buyers. This is a **single-wholesaler platform** where stores place orders directly to the wholesaler.
+**Purpose:** A production-ready B2B wholesale platform that allows furniture wholesalers to manage their product catalog, handle quote requests, and process orders. This is a **single-wholesaler platform** where stores place orders directly to the wholesaler.
 
 **Current Status:** Active development - Core features implemented and functional
 
@@ -181,7 +181,6 @@ b2bplatform/
 - ✅ Batch insert with transaction support
 
 ### 4. Quote System
-- ✅ Quote request from public catalog
 - ✅ Quote approval/rejection workflow
 - ✅ Email notifications (Resend integration)
 - ✅ Quote expiration handling
@@ -209,16 +208,7 @@ b2bplatform/
 - ✅ SKU-based (survives product updates)
 - ✅ Add/remove from wishlist
 
-### 8. Public Catalog
-- ✅ SEO-optimized public catalog (`/catalog/:companySlug`)
-- ✅ Product search and filtering
-- ✅ Category navigation
-- ✅ Product detail views
-- ✅ Shopping cart functionality
-- ✅ Quote request submission
-- ✅ Responsive design
-
-### 9. Dashboard & Analytics
+### 8. Dashboard & Analytics
 - ✅ Overview dashboard with key metrics
 - ✅ Revenue charts (area charts, bar charts)
 - ✅ Order statistics
@@ -227,14 +217,14 @@ b2bplatform/
 - ✅ Recent orders list
 - ✅ Analytics page with detailed metrics
 
-### 10. Settings
+### 9. Settings
 - ✅ Company settings (name, logo, slug)
 - ✅ User profile management
 - ✅ Billing settings (Stripe integration)
 - ✅ Appearance settings (dark mode)
 - ✅ CSV import access
 
-### 11. UI/UX Features
+### 10. UI/UX Features
 - ✅ Glassmorphism design system
 - ✅ Dark mode support
 - ✅ Responsive mobile-first design
@@ -244,7 +234,7 @@ b2bplatform/
 - ✅ Modal dialogs and sheets
 - ✅ Accessible components (Radix UI)
 
-### 12. Integrations
+### 11. Integrations
 - ✅ Stripe payment processing
 - ✅ Resend email service
 - ✅ PostHog analytics
@@ -257,12 +247,12 @@ b2bplatform/
 ### Core Tables
 
 **companies**
-- `id` (UUID, PK)
-- `name` (TEXT)
-- `slug` (TEXT, UNIQUE) - Used for public catalog URLs
-- `logo_url` (TEXT)
-- `stripe_id` (TEXT)
-- `created_at`, `updated_at`
+-- `id` (UUID, PK)
+-- `name` (TEXT)
+-- `slug` (TEXT, UNIQUE)
+-- `logo_url` (TEXT)
+-- `stripe_id` (TEXT)
+-- `created_at`, `updated_at`
 
 **profiles**
 - `id` (UUID, PK, FK → auth.users)

@@ -48,7 +48,7 @@ export interface Product {
   main_image?: string
   images: string[]
   is_visible?: boolean
-  specs?: Record<string, any>
+  specs?: Record<string, unknown>
   created_at?: string
   updated_at?: string
   // Legacy/alias fields for compatibility
