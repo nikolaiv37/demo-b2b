@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSmartMapping } from '@/hooks/useSmartMapping'
+import { useAuth } from '@/hooks/useAuth'
 import { parseCSVFlexible } from '@/lib/csv/parser'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
@@ -61,6 +62,7 @@ export function CSVImportWizard() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { company } = useAuth()
 
   const WIZARD_STEPS = [
     { id: 1, name: t('csvImport.wizard.upload'), icon: Upload, description: t('csvImport.wizard.uploadDetect') },
@@ -77,6 +79,120 @@ export function CSVImportWizard() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const smartMapping = useSmartMapping()
+
+  /**
+   * Parse legacy text category into main/sub parts.
+   * Format: "Main Category > Subcategory" or just "Category"
+   */
+  const parseCategory = useCallback((category: string | null | undefined): {
+    mainCategory: string
+    subcategory: string | null
+  } => {
+    if (!category) {
+      return { mainCategory: 'Uncategorized', subcategory: null }
+    }
+
+    const parts = category.split('>').map((p) => p.trim())
+    if (parts.length > 1) {
+      return {
+        mainCategory: parts[0],
+        subcategory: parts.slice(1).join(' > '),
+      }
+    }
+
+    return { mainCategory: category, subcategory: null }
+  }, [])
+
+  /**
+   * Rebuild categories table from current products.category values
+   * so Manage Categories stays in sync after imports.
+   */
+  const rebuildCategoriesFromProducts = useCallback(async () => {
+    if (!company?.id) return
+
+    // Load all distinct categories from products
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('category')
+      .not('category', 'is', null)
+      .neq('category', '')
+
+    if (error) {
+      console.error('Error reading products for category rebuild', error)
+      return
+    }
+
+    // Clear existing categories for this company
+    const { error: clearError } = await supabase
+      .from('categories')
+      .delete()
+      .eq('company_id', company.id)
+
+    if (clearError) {
+      console.error('Error clearing categories for rebuild', clearError)
+      return
+    }
+
+    if (!products || products.length === 0) {
+      return
+    }
+
+    const mainSet = new Set<string>()
+    const subMap = new Map<string, { main: string; sub: string }>()
+
+    for (const row of products) {
+      const raw = (row as { category?: string }).category || ''
+      const { mainCategory, subcategory } = parseCategory(raw)
+
+      mainSet.add(mainCategory)
+      if (subcategory) {
+        const key = `${mainCategory}:::${subcategory}`
+        if (!subMap.has(key)) {
+          subMap.set(key, { main: mainCategory, sub: subcategory })
+        }
+      }
+    }
+
+    // Insert main categories
+    const mainsToInsert: { company_id: string; name: string; parent_id: null }[] = []
+    mainSet.forEach((name) => {
+      mainsToInsert.push({ company_id: company.id, name, parent_id: null })
+    })
+
+    const { data: insertedMains, error: insertMainError } = await supabase
+      .from('categories')
+      .insert(mainsToInsert)
+      .select('id,name,parent_id')
+
+    if (insertMainError) {
+      console.error('Error inserting main categories', insertMainError)
+      return
+    }
+
+    const mainNameToId = new Map<string, string>()
+    ;(insertedMains || []).forEach((cat) => {
+      const c = cat as { id: string; name: string }
+      mainNameToId.set(c.name, c.id)
+    })
+
+    // Insert subcategories
+    const subsToInsert: { company_id: string; name: string; parent_id: string }[] = []
+    subMap.forEach(({ main, sub }) => {
+      const mainId = mainNameToId.get(main)
+      if (!mainId) return
+      subsToInsert.push({ company_id: company.id, name: sub, parent_id: mainId })
+    })
+
+    if (subsToInsert.length > 0) {
+      const { error: insertSubError } = await supabase
+        .from('categories')
+        .insert(subsToInsert)
+
+      if (insertSubError) {
+        console.error('Error inserting subcategories', insertSubError)
+      }
+    }
+  }, [company?.id, parseCategory])
 
   /**
    * Handle file upload and trigger analysis
@@ -425,10 +541,19 @@ export function CSVImportWizard() {
 
       return result
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       setImportResult(result)
       smartMapping.goToStep(5)
-      
+
+      // Rebuild categories table from imported products so Manage Categories stays in sync
+      try {
+        await rebuildCategoriesFromProducts()
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
+        queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
+      } catch (e) {
+        console.error('Error rebuilding categories after import', e)
+      }
+
       queryClient.invalidateQueries({ queryKey: ['products'] })
 
       trackEvent(AnalyticsEvents.CSV_IMPORT_COMPLETED, {
@@ -472,13 +597,24 @@ export function CSVImportWizard() {
         throw new Error(error.message)
       }
 
-      // Note: Categories are stored in the products table, so they'll be deleted automatically
-      // category_synonyms table can be kept for future imports
+      // Also clear categories for this company so Manage Categories is reset
+      if (company?.id) {
+        const { error: catError } = await supabase
+          .from('categories')
+          .delete()
+          .eq('company_id', company.id)
+
+        if (catError) {
+          console.error('Error deleting categories with products', catError)
+        }
+      }
 
       return { deleted: count || 0 }
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
       setDeleteDialogOpen(false)
       
       toast({

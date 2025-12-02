@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Grid3X3,
   FileSpreadsheet,
+  FolderKanban,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useWishlist } from '@/hooks/useWishlist'
@@ -62,6 +63,12 @@ const catalogSubmenuItemsConfig = [
     icon: Grid3X3,
   },
   {
+    titleKey: 'nav.manageCategories',
+    href: '/dashboard/categories/manage',
+    icon: FolderKanban,
+    adminOnly: true,
+  },
+  {
     titleKey: 'nav.allProducts',
     href: '/dashboard/products',
     icon: Package,
@@ -101,10 +108,11 @@ export function SidebarNav() {
     ...item,
     title: t(item.titleKey),
   }))
-  const catalogSubmenuItems = catalogSubmenuItemsConfig.map(item => ({
-    ...item,
-    title: t(item.titleKey),
-  }))
+  const catalogSubmenuItems = catalogSubmenuItemsConfig
+    .map(item => ({
+      ...item,
+      title: t(item.titleKey),
+    }))
   const settingsSubmenuItems = settingsSubmenuItemsConfig.map(item => ({
     ...item,
     title: t(item.titleKey),
@@ -345,6 +353,9 @@ export function SidebarNav() {
                 <AccordionContent className="pt-1">
                   <div className="space-y-1 pl-6">
                     {catalogSubmenuItems.map((subItem) => {
+                      if ((subItem as { adminOnly?: boolean }).adminOnly && !isAdmin) {
+                        return null
+                      }
                       const isSubActive = isSubmenuItemActive(subItem.href)
                       const isWishlist = subItem.href === '/dashboard/wishlist'
                       return (

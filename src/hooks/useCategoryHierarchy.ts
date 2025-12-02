@@ -11,12 +11,15 @@ export interface CategoryInfo {
 }
 
 export interface CategoryHierarchy {
-  mainCategories: Map<string, {
-    name: string
-    imageUrl: string | null
-    subcategories: Map<string, CategoryInfo>
-    productCount: number
-  }>
+  mainCategories: Map<
+    string,
+    {
+      name: string
+      imageUrl: string | null
+      subcategories: Map<string, CategoryInfo>
+      productCount: number
+    }
+  >
 }
 
 /**
@@ -43,73 +46,62 @@ function parseCategory(category: string | null | undefined): {
 }
 
 /**
- * Hook to fetch and organize category hierarchy from products
+ * Hook to fetch and organize category hierarchy from products.
+ * Uses normalized categories table via products.category_id when available,
+ * with a graceful fallback to legacy text-based products.category.
  */
 export function useCategoryHierarchy(companyId?: string) {
   return useQuery({
     queryKey: ['category-hierarchy', companyId],
     queryFn: async (): Promise<CategoryHierarchy> => {
-      // First, get total count to know how many products we need to fetch
-      let countQuery = supabase
+      // Fetch all visible products with their linked category (if any)
+      const { data, error } = await supabase
         .from('products')
-        .select('*', { count: 'exact', head: true })
-        .not('category', 'is', null)
-        .neq('category', '')
+        .select(
+          `
+          category,
+          category_id,
+          main_image,
+          images,
+          quantity,
+          categories (
+            id,
+            name,
+            parent_id,
+            image_url
+          )
+        `
+        )
+        .eq('is_visible', true)
 
-      if (companyId) {
-        countQuery = countQuery.or(`supplier_id.eq.${companyId},company_id.eq.${companyId}`)
+      if (error) {
+        console.error('useCategoryHierarchy query error:', error)
+        throw error
       }
 
-      const { count: totalCount, error: countError } = await countQuery
-
-      if (countError) {
-        console.error('useCategoryHierarchy count error:', countError)
-        throw countError
-      }
-
-      const total = totalCount || 0
-      console.log('useCategoryHierarchy: Total products to fetch:', total)
-
-      // Fetch all products in batches (Supabase default limit is 1000)
-      const BATCH_SIZE = 1000
-      const allProducts: Pick<Product, 'category' | 'main_image' | 'images' | 'quantity'>[] = []
-
-      for (let offset = 0; offset < total; offset += BATCH_SIZE) {
-        let query = supabase
-          .from('products')
-          .select('category, main_image, images, quantity, supplier_id')
-          .not('category', 'is', null)
-          .neq('category', '')
-          .range(offset, offset + BATCH_SIZE - 1)
-
-        // Filter by company if provided
-        if (companyId) {
-          query = query.or(`supplier_id.eq.${companyId},company_id.eq.${companyId}`)
-        }
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('useCategoryHierarchy query error:', error)
-          throw error
-        }
-
-        if (data) {
-          allProducts.push(...(data as Pick<Product, 'category' | 'main_image' | 'images' | 'quantity'>[]))
-        }
-      }
-
-      console.log('useCategoryHierarchy: Fetched products:', allProducts.length)
-
-      const products = allProducts
+      const products = (data || []) as unknown as (Pick<
+        Product,
+        'category' | 'main_image' | 'images' | 'quantity'
+      > & {
+        category_id?: string | null
+        categories?: {
+          id: string
+          name: string
+          parent_id: string | null
+          image_url: string | null
+        } | null
+      })[]
 
       // Build hierarchy
-      const mainCategories = new Map<string, {
-        name: string
-        imageUrl: string | null
-        subcategories: Map<string, CategoryInfo>
-        productCount: number
-      }>()
+      const mainCategories = new Map<
+        string,
+        {
+          name: string
+          imageUrl: string | null
+          subcategories: Map<string, CategoryInfo>
+          productCount: number
+        }
+      >()
 
       // Helper function to score image quality (prefer white/transparent backgrounds)
       const scoreImage = (imageUrl: string | null, isMainImage: boolean, imageCount: number): number => {
@@ -139,8 +131,33 @@ export function useCategoryHierarchy(companyId?: string) {
 
       // Process each product
       products.forEach((product) => {
-        const { mainCategory, subcategory } = parseCategory(product.category)
-        const fullCategory = product.category || 'Uncategorized'
+        const linkedCategory = product.categories
+
+        let mainCategory: string
+        let subcategory: string | null
+        let fullCategory: string
+
+        if (linkedCategory) {
+          // If linked to a normalized category, prefer its name
+          if (!linkedCategory.parent_id) {
+            mainCategory = linkedCategory.name
+            subcategory = null
+            fullCategory = linkedCategory.name
+          } else {
+            // For leaf categories with a parent, use legacy text for splitting
+            const legacy = product.category || linkedCategory.name
+            const parsed = parseCategory(legacy)
+            mainCategory = parsed.mainCategory
+            subcategory = parsed.subcategory
+            fullCategory = legacy || linkedCategory.name
+          }
+        } else {
+          // Fallback entirely to legacy text-based category
+          const parsed = parseCategory(product.category)
+          mainCategory = parsed.mainCategory
+          subcategory = parsed.subcategory
+          fullCategory = product.category || 'Uncategorized'
+        }
         
         // Prioritize main_image (usually product photos on white background)
         const mainImageUrl = product.main_image || null
