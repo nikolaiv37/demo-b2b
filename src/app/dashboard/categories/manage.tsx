@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/table'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/use-toast'
-import { cn } from '@/lib/utils'
+import { cn, slugify } from '@/lib/utils'
 import {
   FolderKanban,
   Plus,
@@ -38,6 +38,7 @@ interface Category {
   name: string
   parent_id: string | null
   image_url: string | null
+  slug: string | null
 }
 
 interface CategoryWithChildren extends Category {
@@ -64,6 +65,7 @@ export function ManageCategoriesPage() {
   const [parentIdInput, setParentIdInput] = useState<string | 'none'>('none')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ['categories'],
@@ -72,7 +74,7 @@ export function ManageCategoriesPage() {
       // the Manage view in sync with the single-wholesaler catalog.
       const { data, error } = await supabase
         .from('categories')
-        .select('id,name,parent_id,image_url')
+        .select('id,name,parent_id,image_url,slug')
         .order('name', { ascending: true })
 
       if (error) {
@@ -150,6 +152,7 @@ export function ManageCategoriesPage() {
     setNameInput('')
     setParentIdInput('none')
     setImageFile(null)
+    setNameError(null)
     setEditModalOpen(true)
   }
 
@@ -158,6 +161,7 @@ export function ManageCategoriesPage() {
     setNameInput(category.name)
     setParentIdInput(category.parent_id || 'none')
     setImageFile(null)
+    setNameError(null)
     setEditModalOpen(true)
   }
 
@@ -172,14 +176,50 @@ export function ManageCategoriesPage() {
     setMergeModalOpen(true)
   }
 
-  const invalidateCategories = () => {
-    queryClient.invalidateQueries({ queryKey: ['categories'] })
-    queryClient.invalidateQueries({ queryKey: ['category-product-counts'] })
+  // Check if a category name already exists at the same level (same parent_id)
+  // Returns true if duplicate exists (excluding the currently edited category)
+  const checkDuplicateName = (name: string, parentId: string | null, excludeId?: string): boolean => {
+    const normalizedName = name.trim().toLowerCase()
+    return categories.some((cat) => {
+      // Skip the category being edited
+      if (excludeId && cat.id === excludeId) return false
+      // Check same level (same parent_id) and same name
+      const sameLevel = (cat.parent_id === parentId) || 
+        (cat.parent_id === null && parentId === null) ||
+        (parentId === 'none' && cat.parent_id === null)
+      const sameName = cat.name.trim().toLowerCase() === normalizedName
+      return sameLevel && sameName
+    })
+  }
+
+  // Validate category name
+  const validateName = (name: string): string | null => {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      return t('categories.nameRequired', 'Category name is required')
+    }
+    if (trimmed.length < 2) {
+      return t('categories.nameTooShort', 'Category name must be at least 2 characters')
+    }
+    if (trimmed.length > 100) {
+      return t('categories.nameTooLong', 'Category name must be less than 100 characters')
+    }
+    return null
   }
 
   // When a category is renamed, update legacy text-based product.category strings
   // so existing catalog views that still rely on that field stay in sync.
-  const propagateCategoryRename = async (oldCategory: Category, newName: string) => {
+  const propagateCategoryRename = async (
+    oldCategory: Category,
+    newName: string
+  ): Promise<string> => {
+    const newSlug = slugify(newName)
+
+    console.log('[propagateCategoryRename] Starting rename', {
+      oldName: oldCategory.name,
+      newName,
+    })
+
     // If this is a main category (no parent), update:
     // - Products directly in this main category
     // - Products in all its direct subcategories ("Main > Sub")
@@ -189,6 +229,15 @@ export function ManageCategoriesPage() {
         .from('products')
         .update({ category: newName })
         .eq('category_id', oldCategory.id)
+
+      // ALSO update legacy text-based products that don't have category_id
+      await supabase
+        .from('products')
+        .update({ category: newName })
+        .is('category_id', null)
+        .eq('category', oldCategory.name)
+
+      console.log('[propagateCategoryRename] Updated main category products')
 
       // Find direct subcategories
       const { data: children } = await supabase
@@ -202,6 +251,19 @@ export function ManageCategoriesPage() {
           .from('products')
           .update({ category: fullName })
           .eq('category_id', child.id)
+
+        // ALSO update legacy text-based products for this child
+        const oldChildFullName = `${oldCategory.name} > ${child.name}`
+        await supabase
+          .from('products')
+          .update({ category: fullName })
+          .is('category_id', null)
+          .eq('category', oldChildFullName)
+
+        console.log('[propagateCategoryRename] Updated subcategory', {
+          childName: child.name,
+          fullName,
+        })
       }
     } else {
       // Subcategory rename: update only products in this leaf category
@@ -214,7 +276,22 @@ export function ManageCategoriesPage() {
         .from('products')
         .update({ category: fullName })
         .eq('category_id', oldCategory.id)
+
+      // ALSO update legacy text-based products for this subcategory
+      const oldFullName = parentName
+        ? `${oldCategory.parent_id ? parentName : oldCategory.name} > ${oldCategory.name}`
+        : oldCategory.name
+
+      await supabase
+        .from('products')
+        .update({ category: fullName })
+        .is('category_id', null)
+        .eq('category', oldFullName)
     }
+
+    console.log('[propagateCategoryRename] Completed, returning slug', newSlug)
+
+    return newSlug
   }
 
   const uploadImageIfNeeded = async (): Promise<string | null> => {
@@ -248,6 +325,29 @@ export function ManageCategoriesPage() {
 
   const upsertCategoryMutation = useMutation({
     mutationFn: async () => {
+      // Clear any previous name error
+      setNameError(null)
+
+      // Validate name
+      const validationError = validateName(nameInput)
+      if (validationError) {
+        setNameError(validationError)
+        throw new Error(validationError)
+      }
+
+      // Check for duplicate name at the same level
+      const effectiveParentId = parentIdInput === 'none' ? null : parentIdInput
+      const isDuplicate = checkDuplicateName(
+        nameInput.trim(),
+        effectiveParentId,
+        selectedCategory?.id
+      )
+      if (isDuplicate) {
+        const errorMsg = t('categories.duplicateName', 'A category with this name already exists at this level')
+        setNameError(errorMsg)
+        throw new Error(errorMsg)
+      }
+
       setIsSubmitting(true)
       try {
         const imageUrl = await uploadImageIfNeeded()
@@ -256,50 +356,105 @@ export function ManageCategoriesPage() {
           throw new Error('Missing company context for category operation')
         }
 
+        // Generate slug from the new name
+        const newSlug = slugify(nameInput.trim())
+
         if (selectedCategory) {
+          // Check if name is actually changing (for proper toast message)
+          const isRenaming = selectedCategory.name.trim() !== nameInput.trim()
+
+          console.log('[upsertCategoryMutation] About to propagate rename', {
+            isRenaming,
+            selectedCategory,
+            newName: nameInput.trim(),
+          })
+
           const { error } = await supabase
             .from('categories')
             .update({
-              name: nameInput,
-              parent_id: parentIdInput === 'none' ? null : parentIdInput,
+              name: nameInput.trim(),
+              slug: newSlug,
+              parent_id: effectiveParentId,
               ...(imageUrl ? { image_url: imageUrl } : {}),
             })
             .eq('id', selectedCategory.id)
 
-          if (error) throw error
+          if (error) {
+            // Check for unique constraint violation
+            if (error.code === '23505') {
+              const duplicateError = t('categories.duplicateName', 'A category with this name already exists at this level')
+              setNameError(duplicateError)
+              throw new Error(duplicateError)
+            }
+            throw error
+          }
+
+          let newSlugFromRename: string | undefined
+
           // Keep legacy product.category text in sync with the new name
-          await propagateCategoryRename(selectedCategory, nameInput)
+          if (isRenaming) {
+            newSlugFromRename = await propagateCategoryRename(
+              selectedCategory,
+              nameInput.trim()
+            )
+          }
+
+          // Return context for onSuccess
+          return { isRenaming, isEdit: true, newSlug: newSlugFromRename }
         } else {
           const { error } = await supabase.from('categories').insert({
             company_id: company.id,
-            name: nameInput,
-            parent_id: parentIdInput === 'none' ? null : parentIdInput,
+            name: nameInput.trim(),
+            slug: newSlug,
+            parent_id: effectiveParentId,
             image_url: imageUrl,
           })
 
-          if (error) throw error
+          if (error) {
+            // Check for unique constraint violation
+            if (error.code === '23505') {
+              const duplicateError = t('categories.duplicateName', 'A category with this name already exists at this level')
+              setNameError(duplicateError)
+              throw new Error(duplicateError)
+            }
+            throw error
+          }
+
+          return { isRenaming: false, isEdit: false }
         }
       } finally {
         setIsSubmitting(false)
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Show appropriate success message
+      const message = result?.isEdit
+        ? result?.isRenaming
+          ? t('categories.categoryRenamed', 'Category renamed successfully')
+          : t('categories.categoryUpdated', 'Category updated successfully')
+        : t('categories.categoryCreated', 'Category created successfully')
+
       toast({
         title: t('general.success'),
-        description: t('categories.browseCategories'),
+        description: message,
       })
       setEditModalOpen(false)
-      invalidateCategories()
-      // Refresh buyer catalog / category hierarchy
+      setNameError(null)
+
+      // Properly invalidate category hierarchy and categories so buyer catalog picks up rename
       queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['category-products'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
     },
-    onError: () => {
-      toast({
-        title: t('general.error'),
-        description: t('settings.failedToUpdate'),
-        variant: 'destructive',
-      })
+    onError: (error: Error) => {
+      // Only show generic error toast if not a validation error
+      // (validation errors are shown inline via nameError state)
+      if (!nameError) {
+        toast({
+          title: t('general.error'),
+          description: error.message || t('settings.failedToUpdate'),
+          variant: 'destructive',
+        })
+      }
     },
   })
 
@@ -333,9 +488,9 @@ export function ManageCategoriesPage() {
         description: t('general.delete'),
       })
       setDeleteModalOpen(false)
-      invalidateCategories()
+
+      // Properly invalidate category hierarchy so buyer catalog reflects deletion
       queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['category-products'] })
     },
     onError: () => {
       toast({
@@ -381,9 +536,9 @@ export function ManageCategoriesPage() {
         description: t('general.apply'),
       })
       setMergeModalOpen(false)
-      invalidateCategories()
+
+      // Properly invalidate category hierarchy so buyer catalog reflects merge result
       queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['category-products'] })
     },
     onError: () => {
       toast({
@@ -617,9 +772,17 @@ export function ManageCategoriesPage() {
               </label>
               <Input
                 value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
+                onChange={(e) => {
+                  setNameInput(e.target.value)
+                  // Clear error when user starts typing
+                  if (nameError) setNameError(null)
+                }}
                 placeholder={t('categories.namePlaceholder', 'Category name')}
+                className={cn(nameError && 'border-destructive focus-visible:ring-destructive')}
               />
+              {nameError && (
+                <p className="text-sm text-destructive mt-1">{nameError}</p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">

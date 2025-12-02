@@ -54,6 +54,10 @@ export function useCategoryHierarchy(companyId?: string) {
   return useQuery({
     queryKey: ['category-hierarchy', companyId],
     queryFn: async (): Promise<CategoryHierarchy> => {
+      console.log('[useCategoryHierarchy] fetching category hierarchy', {
+        companyId,
+        at: new Date().toISOString(),
+      })
       // Fetch all visible products with their linked category (if any)
       const { data, error } = await supabase
         .from('products')
@@ -138,18 +142,41 @@ export function useCategoryHierarchy(companyId?: string) {
         let fullCategory: string
 
         if (linkedCategory) {
-          // If linked to a normalized category, prefer its name
-          if (!linkedCategory.parent_id) {
-            mainCategory = linkedCategory.name
-            subcategory = null
-            fullCategory = linkedCategory.name
-          } else {
-            // For leaf categories with a parent, use legacy text for splitting
-            const legacy = product.category || linkedCategory.name
-            const parsed = parseCategory(legacy)
+          const hasTextCategory =
+            typeof product.category === 'string' &&
+            product.category.trim().length > 0
+
+          if (hasTextCategory) {
+            // Prefer the updated legacy text-based category string when present
+            const parsed = parseCategory(product.category)
             mainCategory = parsed.mainCategory
             subcategory = parsed.subcategory
-            fullCategory = legacy || linkedCategory.name
+            fullCategory = product.category as string
+
+            console.log('[useCategoryHierarchy] Processing product', {
+              linkedCategoryName: linkedCategory?.name,
+              productCategoryText: product.category,
+              willUse: 'product.category',
+            })
+          } else {
+            // Fall back to normalized category name when no text category is present
+            if (!linkedCategory.parent_id) {
+              mainCategory = linkedCategory.name
+              subcategory = null
+              fullCategory = linkedCategory.name
+            } else {
+              const legacy = linkedCategory.name
+              const parsed = parseCategory(legacy)
+              mainCategory = parsed.mainCategory
+              subcategory = parsed.subcategory
+              fullCategory = legacy
+            }
+
+            console.log('[useCategoryHierarchy] Processing product', {
+              linkedCategoryName: linkedCategory?.name,
+              productCategoryText: product.category,
+              willUse: 'linkedCategory.name',
+            })
           }
         } else {
           // Fallback entirely to legacy text-based category
@@ -157,6 +184,12 @@ export function useCategoryHierarchy(companyId?: string) {
           mainCategory = parsed.mainCategory
           subcategory = parsed.subcategory
           fullCategory = product.category || 'Uncategorized'
+
+          console.log('[useCategoryHierarchy] Processing product', {
+            linkedCategoryName: null,
+            productCategoryText: product.category,
+            willUse: 'product.category (no linkedCategory)',
+          })
         }
         
         // Prioritize main_image (usually product photos on white background)
@@ -255,7 +288,7 @@ export function useCategoryHierarchy(companyId?: string) {
 
       return { mainCategories: sortedMainCategories }
     },
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+    staleTime: 0, // Always refetch on mount to ensure real-time sync with category renames
   })
 }
 

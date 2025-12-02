@@ -64,15 +64,37 @@ export function CategoriesPage() {
     }))
   }, [categoryHierarchy])
 
+  // Helper to normalize slug for comparison (same logic as categoryToSlug but decoded)
+  const normalizeSlug = (name: string): string => {
+    return name.toLowerCase().replace(/\s+/g, '-')
+  }
+
   // Get selected main category data
   const selectedMainCategoryData = useMemo(() => {
     if (!decodedMainCategory || !categoryHierarchy?.mainCategories) return null
-    // Find by exact match or slug match
-    for (const [categoryName, data] of categoryHierarchy.mainCategories.entries()) {
-      if (categoryName === decodedMainCategory || categoryName.toLowerCase().replace(/\s+/g, '-') === decodedMainCategory.toLowerCase()) {
-        return { ...data, name: categoryName }
-      }
+    const entries = Array.from(categoryHierarchy.mainCategories.entries())
+
+    // Normalize URL param (React Router already decoded it)
+    const normalizedUrlParam = normalizeSlug(decodedMainCategory)
+
+    // 1) Exact name match (case-insensitive)
+    let match = entries.find(
+      ([categoryName]) => categoryName.toLowerCase() === decodedMainCategory.toLowerCase()
+    )
+
+    // 2) Slug match - compare normalized slugs
+    if (!match) {
+      match = entries.find(([categoryName]) => {
+        const categorySlug = normalizeSlug(categoryName)
+        return categorySlug === normalizedUrlParam
+      })
     }
+
+    if (match) {
+      const [categoryName, data] = match
+      return { ...data, name: categoryName }
+    }
+
     return null
   }, [decodedMainCategory, categoryHierarchy])
 
