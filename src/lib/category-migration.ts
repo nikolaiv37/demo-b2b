@@ -1,3 +1,5 @@
+// LEGACY ONE-TIME MIGRATION – safe to delete after June 2025
+// Used only for the initial hybrid → normalized migration. Do NOT use in new code.
 /**
  * Category Migration Utility
  * 

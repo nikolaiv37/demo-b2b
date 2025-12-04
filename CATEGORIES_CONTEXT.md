@@ -175,13 +175,15 @@ Route: `/dashboard/categories/manage` (admin-only, via `SidebarNav`).
 ### 4.2 Data fetching
 
 - `useQuery(['categories'], ...)`:
-  - `select('id,name,parent_id,image_url') from categories order by name`.
+  - `select('id,name,parent_id,image_url,slug') from categories order by name`.
   - On error code `PGRST205` (table missing), returns an empty list.
   - Currently **does not** filter by `company_id` (see above note).
 
-- `useQuery(['category-product-counts'], ...)`:
-  - For each category, counts matching products:
-    - `.from('products').select('*', { count: 'exact', head: true }).ilike('category', `${cat.name}%`)`.
+- `useQuery(['category-product-counts'], ...)` (normalized):
+  - For each category, counts matching products **by `category_id`**:
+    - Main categories: count products whose `category_id` is the main category **or any of its subcategories**.
+    - Subcategories: count products whose `category_id` is exactly that subcategory.
+  - Only visible products (`is_visible = true`) are counted.
   - Returns a map `Record<categoryId, productCount>`.
   - Enabled only when there is at least one category.
 
