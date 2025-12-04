@@ -35,7 +35,8 @@ export interface Product {
   sku: string
   name: string
   description?: string
-  category?: string
+  category?: string // ← DEPRECATED – kept only for old CSV imports. Never use in queries.
+  category_id?: string | null // Normalized foreign key to categories table
   model?: string
   manufacturer?: string
   retail_price?: number

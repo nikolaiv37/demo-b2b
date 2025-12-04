@@ -1,115 +1,95 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
-import { Product } from '@/types'
 
 export interface CategoryInfo {
+  id: string // Category UUID from categories table
   mainCategory: string
   subcategory: string
   fullCategory: string
+  slug: string
   imageUrl: string | null
   productCount: number
 }
 
+export interface MainCategoryData {
+  id: string // Category UUID
+  name: string
+  slug: string
+  imageUrl: string | null
+  subcategories: Map<string, CategoryInfo>
+  productCount: number
+}
+
 export interface CategoryHierarchy {
-  mainCategories: Map<string, {
-    name: string
-    imageUrl: string | null
-    subcategories: Map<string, CategoryInfo>
-    productCount: number
-  }>
+  mainCategories: Map<string, MainCategoryData>
 }
 
 /**
- * Parse category string into main category and subcategory
- * Format: "Main Category > Subcategory" or just "Category"
- */
-function parseCategory(category: string | null | undefined): {
-  mainCategory: string
-  subcategory: string | null
-} {
-  if (!category) {
-    return { mainCategory: 'Uncategorized', subcategory: null }
-  }
-
-  const parts = category.split('>').map(p => p.trim())
-  if (parts.length > 1) {
-    return {
-      mainCategory: parts[0],
-      subcategory: parts.slice(1).join(' > '), // Handle nested subcategories
-    }
-  }
-
-  return { mainCategory: category, subcategory: null }
-}
-
-/**
- * Hook to fetch and organize category hierarchy from products
+ * Hook to fetch and organize category hierarchy from the normalized categories table.
+ * 
+ * NEW ARCHITECTURE:
+ * - Queries the `categories` table directly (single source of truth)
+ * - Products are counted via category_id foreign key relationship
+ * - No more parsing "Main > Sub" text strings
+ * - Main categories: parent_id IS NULL
+ * - Subcategories: parent_id points to parent category
  */
 export function useCategoryHierarchy(companyId?: string) {
   return useQuery({
     queryKey: ['category-hierarchy', companyId],
     queryFn: async (): Promise<CategoryHierarchy> => {
-      // First, get total count to know how many products we need to fetch
-      let countQuery = supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .not('category', 'is', null)
-        .neq('category', '')
+      console.log('[useCategoryHierarchy] Fetching category hierarchy from categories table', {
+        companyId,
+        at: new Date().toISOString(),
+      })
 
-      if (companyId) {
-        countQuery = countQuery.or(`supplier_id.eq.${companyId},company_id.eq.${companyId}`)
+      // Fetch all categories with their products (via category_id foreign key)
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select(`
+          id,
+          name,
+          slug,
+          parent_id,
+          image_url,
+          products!category_id (
+            id,
+            main_image,
+            images,
+            quantity,
+            is_visible
+          )
+        `)
+        .order('name')
+
+      if (categoriesError) {
+        console.error('[useCategoryHierarchy] Categories query error:', categoriesError)
+        throw categoriesError
       }
 
-      const { count: totalCount, error: countError } = await countQuery
-
-      if (countError) {
-        console.error('useCategoryHierarchy count error:', countError)
-        throw countError
-      }
-
-      const total = totalCount || 0
-      console.log('useCategoryHierarchy: Total products to fetch:', total)
-
-      // Fetch all products in batches (Supabase default limit is 1000)
-      const BATCH_SIZE = 1000
-      const allProducts: Pick<Product, 'category' | 'main_image' | 'images' | 'quantity'>[] = []
-
-      for (let offset = 0; offset < total; offset += BATCH_SIZE) {
-        let query = supabase
-          .from('products')
-          .select('category, main_image, images, quantity, supplier_id')
-          .not('category', 'is', null)
-          .neq('category', '')
-          .range(offset, offset + BATCH_SIZE - 1)
-
-        // Filter by company if provided
-        if (companyId) {
-          query = query.or(`supplier_id.eq.${companyId},company_id.eq.${companyId}`)
-        }
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('useCategoryHierarchy query error:', error)
-          throw error
-        }
-
-        if (data) {
-          allProducts.push(...(data as Pick<Product, 'category' | 'main_image' | 'images' | 'quantity'>[]))
-        }
-      }
-
-      console.log('useCategoryHierarchy: Fetched products:', allProducts.length)
-
-      const products = allProducts
-
-      // Build hierarchy
-      const mainCategories = new Map<string, {
+      // Type the response
+      type CategoryWithProducts = {
+        id: string
         name: string
-        imageUrl: string | null
-        subcategories: Map<string, CategoryInfo>
-        productCount: number
-      }>()
+        slug: string | null
+        parent_id: string | null
+        image_url: string | null
+        products: Array<{
+          id: string
+          main_image: string | null
+          images: string[] | null
+          quantity: number
+          is_visible: boolean
+        }>
+      }
+
+      const categories = (categoriesData || []) as CategoryWithProducts[]
+
+      // Build a lookup map by ID for parent resolution
+      const categoryById = new Map<string, CategoryWithProducts>()
+      categories.forEach((cat) => {
+        categoryById.set(cat.id, cat)
+      })
 
       // Helper function to score image quality (prefer white/transparent backgrounds)
       const scoreImage = (imageUrl: string | null, isMainImage: boolean, imageCount: number): number => {
@@ -137,108 +117,147 @@ export function useCategoryHierarchy(companyId?: string) {
         return score
       }
 
-      // Process each product
-      products.forEach((product) => {
-        const { mainCategory, subcategory } = parseCategory(product.category)
-        const fullCategory = product.category || 'Uncategorized'
-        
-        // Prioritize main_image (usually product photos on white background)
-        const mainImageUrl = product.main_image || null
-        const firstImageUrl = product.images?.[0] || null
-        const imageUrl = mainImageUrl || firstImageUrl
-        const imageCount = product.images?.length || 0
-        const isMainImage = !!mainImageUrl
+      // Get the best image from a category's products
+      const getBestProductImage = (products: CategoryWithProducts['products']): string | null => {
+        const visibleProducts = products.filter(p => p.is_visible)
+        if (visibleProducts.length === 0) return null
 
-        // Get or create main category
-        if (!mainCategories.has(mainCategory)) {
-          mainCategories.set(mainCategory, {
-            name: mainCategory,
-            imageUrl: null,
-            subcategories: new Map(),
-            productCount: 0,
-          })
+        let bestImage: string | null = null
+        let bestScore = 0
+
+        for (const product of visibleProducts) {
+          const mainImageUrl = product.main_image || null
+          const firstImageUrl = product.images?.[0] || null
+          const imageUrl = mainImageUrl || firstImageUrl
+          const imageCount = product.images?.length || 0
+          const isMainImage = !!mainImageUrl
+
+          const score = scoreImage(imageUrl, isMainImage, imageCount)
+          if (score > bestScore) {
+            bestScore = score
+            bestImage = imageUrl
+          }
         }
 
-        const mainCat = mainCategories.get(mainCategory)!
-        mainCat.productCount++
+        return bestImage
+      }
 
-        // Set main category image - prefer images with white/transparent backgrounds
-        if (imageUrl) {
-          const currentScore = mainCat.imageUrl ? scoreImage(mainCat.imageUrl, false, 0) : 0
-          const newScore = scoreImage(imageUrl, isMainImage, imageCount)
+      // Build main categories map
+      const mainCategories = new Map<string, MainCategoryData>()
+
+      // First pass: Create main categories (parent_id IS NULL)
+      categories
+        .filter((cat) => !cat.parent_id)
+        .forEach((mainCat) => {
+          const visibleProducts = mainCat.products.filter(p => p.is_visible)
           
-          if (!mainCat.imageUrl || newScore > currentScore) {
-            mainCat.imageUrl = imageUrl
+          mainCategories.set(mainCat.name, {
+            id: mainCat.id,
+            name: mainCat.name,
+            slug: mainCat.slug || mainCat.name.toLowerCase().replace(/\s+/g, '-'),
+            imageUrl: mainCat.image_url || getBestProductImage(mainCat.products),
+            subcategories: new Map(),
+            productCount: visibleProducts.length,
+          })
+        })
+
+      // Second pass: Add subcategories to their parents
+      categories
+        .filter((cat) => cat.parent_id)
+        .forEach((subCat) => {
+          const parent = categoryById.get(subCat.parent_id!)
+          if (!parent) {
+            console.warn(`[useCategoryHierarchy] Orphaned subcategory: ${subCat.name} (parent_id: ${subCat.parent_id})`)
+            return
           }
-        }
 
-        // Handle subcategories
-        if (subcategory) {
-          if (!mainCat.subcategories.has(subcategory)) {
-            mainCat.subcategories.set(subcategory, {
-              mainCategory,
-              subcategory,
-              fullCategory,
-              imageUrl: null,
-              productCount: 0,
-            })
+          const mainCatData = mainCategories.get(parent.name)
+          if (!mainCatData) {
+            console.warn(`[useCategoryHierarchy] Main category not found for subcategory: ${subCat.name}`)
+            return
           }
 
-          const subCat = mainCat.subcategories.get(subcategory)!
-          subCat.productCount++
+          const visibleProducts = subCat.products.filter(p => p.is_visible)
+          const fullCategory = `${parent.name} > ${subCat.name}`
 
-          // Set subcategory image - prefer images with white/transparent backgrounds
-          if (imageUrl) {
-            const currentScore = subCat.imageUrl ? scoreImage(subCat.imageUrl, false, 0) : 0
-            const newScore = scoreImage(imageUrl, isMainImage, imageCount)
-            
-            if (!subCat.imageUrl || newScore > currentScore) {
-              subCat.imageUrl = imageUrl
+          mainCatData.subcategories.set(subCat.name, {
+            id: subCat.id,
+            mainCategory: parent.name,
+            subcategory: subCat.name,
+            fullCategory,
+            slug: subCat.slug || subCat.name.toLowerCase().replace(/\s+/g, '-'),
+            imageUrl: subCat.image_url || getBestProductImage(subCat.products),
+            productCount: visibleProducts.length,
+          })
+
+          // Add subcategory products to main category total
+          mainCatData.productCount += visibleProducts.length
+
+          // Update main category image if it doesn't have one yet
+          if (!mainCatData.imageUrl) {
+            const subImage = subCat.image_url || getBestProductImage(subCat.products)
+            if (subImage) {
+              mainCatData.imageUrl = subImage
             }
           }
-        } else {
-          // If no subcategory, create a default one
-          if (!mainCat.subcategories.has('All')) {
-            mainCat.subcategories.set('All', {
-              mainCategory,
-              subcategory: 'All',
-              fullCategory,
-              imageUrl: null,
-              productCount: 0,
-            })
-          }
+        })
 
-          const defaultSub = mainCat.subcategories.get('All')!
-          defaultSub.productCount++
-
-          // Set default subcategory image - prefer images with white/transparent backgrounds
-          if (imageUrl) {
-            const currentScore = defaultSub.imageUrl ? scoreImage(defaultSub.imageUrl, false, 0) : 0
-            const newScore = scoreImage(imageUrl, isMainImage, imageCount)
-            
-            if (!defaultSub.imageUrl || newScore > currentScore) {
-              defaultSub.imageUrl = imageUrl
-            }
-          }
+      // For main categories without explicit subcategories, create an "All" subcategory
+      mainCategories.forEach((mainCat) => {
+        // Only add "All" if main category has products directly assigned to it
+        const mainCategoryRecord = categories.find(c => c.id === mainCat.id)
+        const directProducts = mainCategoryRecord?.products.filter(p => p.is_visible) || []
+        
+        if (directProducts.length > 0 && mainCat.subcategories.size > 0) {
+          // Main category has both direct products AND subcategories
+          // Add an "All" entry for direct products
+          mainCat.subcategories.set('All', {
+            id: mainCat.id, // Use main category ID for "All"
+            mainCategory: mainCat.name,
+            subcategory: 'All',
+            fullCategory: mainCat.name,
+            slug: 'all',
+            imageUrl: mainCat.imageUrl,
+            productCount: directProducts.length,
+          })
+        } else if (mainCat.subcategories.size === 0 && directProducts.length > 0) {
+          // Main category only has direct products, no subcategories
+          mainCat.subcategories.set('All', {
+            id: mainCat.id,
+            mainCategory: mainCat.name,
+            subcategory: 'All',
+            fullCategory: mainCat.name,
+            slug: 'all',
+            imageUrl: mainCat.imageUrl,
+            productCount: directProducts.length,
+          })
         }
       })
 
       // Sort main categories by product count (descending)
       const sortedMainCategories = new Map(
-        Array.from(mainCategories.entries()).sort((a, b) => b[1].productCount - a[1].productCount)
+        Array.from(mainCategories.entries())
+          .filter(([_, data]) => data.productCount > 0) // Only show categories with products
+          .sort((a, b) => b[1].productCount - a[1].productCount)
       )
 
       // Sort subcategories within each main category
       sortedMainCategories.forEach((mainCat) => {
         const sortedSubs = new Map(
-          Array.from(mainCat.subcategories.entries()).sort((a, b) => b[1].productCount - a[1].productCount)
+          Array.from(mainCat.subcategories.entries())
+            .filter(([_, data]) => data.productCount > 0) // Only show subcategories with products
+            .sort((a, b) => b[1].productCount - a[1].productCount)
         )
         mainCat.subcategories = sortedSubs
       })
 
+      console.log('[useCategoryHierarchy] Built hierarchy:', {
+        mainCategoriesCount: sortedMainCategories.size,
+        totalProducts: Array.from(sortedMainCategories.values()).reduce((sum, c) => sum + c.productCount, 0),
+      })
+
       return { mainCategories: sortedMainCategories }
     },
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+    staleTime: 0, // Always refetch on mount to ensure real-time sync with category renames
   })
 }
-

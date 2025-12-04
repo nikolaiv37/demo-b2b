@@ -53,26 +53,62 @@ export function CategoriesPage() {
   // Fetch category hierarchy
   const { data: categoryHierarchy, isLoading: categoriesLoading } = useCategoryHierarchy()
 
-  // Transform main categories for grid
+  // Transform main categories for grid (using normalized data with slugs)
   const mainCategories = useMemo(() => {
     if (!categoryHierarchy?.mainCategories) return []
     return Array.from(categoryHierarchy.mainCategories.entries()).map(([name, data]) => ({
+      id: data.id,
       name,
-      slug: categoryToSlug(name),
+      slug: data.slug || categoryToSlug(name),
       imageUrl: data.imageUrl,
       productCount: data.productCount,
     }))
   }, [categoryHierarchy])
 
-  // Get selected main category data
+  // Helper to normalize slug for comparison (same logic as categoryToSlug but decoded)
+  const normalizeSlug = (name: string): string => {
+    return name.toLowerCase().replace(/\s+/g, '-')
+  }
+
+  // Get selected main category data (using normalized slug matching)
   const selectedMainCategoryData = useMemo(() => {
     if (!decodedMainCategory || !categoryHierarchy?.mainCategories) return null
-    // Find by exact match or slug match
-    for (const [categoryName, data] of categoryHierarchy.mainCategories.entries()) {
-      if (categoryName === decodedMainCategory || categoryName.toLowerCase().replace(/\s+/g, '-') === decodedMainCategory.toLowerCase()) {
-        return { ...data, name: categoryName }
-      }
+    const entries = Array.from(categoryHierarchy.mainCategories.entries())
+
+    // Normalize URL param (React Router already decoded it)
+    const normalizedUrlParam = normalizeSlug(decodedMainCategory)
+
+    // 1) Exact slug match (from categories table)
+    let match = entries.find(([, data]) => data.slug === decodedMainCategory)
+
+    // 2) Normalized slug match
+    if (!match) {
+      match = entries.find(([, data]) => {
+        const normalizedCategorySlug = normalizeSlug(data.slug || data.name)
+        return normalizedCategorySlug === normalizedUrlParam
+      })
     }
+
+    // 3) Fallback: Exact name match (case-insensitive)
+    if (!match) {
+      match = entries.find(
+        ([categoryName]) => categoryName.toLowerCase() === decodedMainCategory.toLowerCase()
+      )
+    }
+
+    // 4) Fallback: Name-based slug match
+    if (!match) {
+      match = entries.find(([categoryName]) => {
+        const categorySlug = normalizeSlug(categoryName)
+        return categorySlug === normalizedUrlParam
+      })
+    }
+
+    if (match) {
+      const [categoryName, data] = match
+      return { ...data, name: categoryName }
+    }
+
     return null
   }, [decodedMainCategory, categoryHierarchy])
 
@@ -87,10 +123,22 @@ export function CategoriesPage() {
     }))
   }, [selectedMainCategoryData])
 
-  // Get selected subcategory data
+  // Get selected subcategory data (using normalized slug matching)
   const selectedSubcategoryData = useMemo(() => {
     if (!decodedSubCategory || !selectedMainCategoryData) return null
+    const normalizedUrlParam = normalizeSlug(decodedSubCategory)
+
     for (const [subCatName, data] of selectedMainCategoryData.subcategories.entries()) {
+      // 1) Exact slug match
+      if (data.slug === decodedSubCategory) {
+        return { ...data, name: subCatName }
+      }
+      // 2) Normalized slug match
+      const normalizedCategorySlug = normalizeSlug(data.slug || subCatName)
+      if (normalizedCategorySlug === normalizedUrlParam) {
+        return { ...data, name: subCatName }
+      }
+      // 3) Fallback: Name match
       if (subCatName === decodedSubCategory || subCatName.toLowerCase().replace(/\s+/g, '-') === decodedSubCategory.toLowerCase()) {
         return { ...data, name: subCatName }
       }
@@ -105,38 +153,44 @@ export function CategoriesPage() {
     return 'main'
   }, [decodedMainCategory, decodedSubCategory, selectedMainCategoryData, selectedSubcategoryData])
 
-  // Build category filter for product query
-  const categoryFilter = useMemo(() => {
+  // Build category ID filter for product query (normalized architecture)
+  // For subcategory view: filter by that specific category_id
+  // For main category view: filter by main category ID + all subcategory IDs
+  const categoryIds = useMemo((): string[] => {
     if (viewLevel === 'products' && selectedSubcategoryData) {
-      return selectedSubcategoryData.fullCategory
+      return [selectedSubcategoryData.id]
     }
     if (viewLevel === 'subcategories' && selectedMainCategoryData) {
-      return selectedMainCategoryData.name
+      // Include main category ID and all subcategory IDs
+      const ids = [selectedMainCategoryData.id]
+      for (const [, subData] of selectedMainCategoryData.subcategories.entries()) {
+        ids.push(subData.id)
+      }
+      return ids
     }
-    return null
+    return []
   }, [viewLevel, selectedMainCategoryData, selectedSubcategoryData])
 
-  // Fetch products when viewing product level
+  // Fetch products when viewing product level (using normalized category_id)
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: [
       'category-products',
-      categoryFilter,
+      categoryIds,
       searchQuery,
       selectedManufacturer,
       stockFilter,
       currentPage,
     ],
     queryFn: async () => {
-      if (!categoryFilter) return { products: [], count: 0 }
+      if (categoryIds.length === 0) return { products: [], count: 0 }
 
       let query = supabase.from('products').select('*', { count: 'exact' })
 
-      // Category filter
-      if (viewLevel === 'products') {
-        query = query.eq('category', categoryFilter)
-      } else {
-        query = query.ilike('category', `${categoryFilter}%`)
-      }
+      // Category filter using category_id (normalized architecture)
+      query = query.in('category_id', categoryIds)
+
+      // Only visible products
+      query = query.eq('is_visible', true)
 
       // Search filter
       if (searchQuery) {
@@ -170,24 +224,21 @@ export function CategoriesPage() {
       if (error) throw error
       return { products: data as Product[], count: count || 0 }
     },
-    enabled: viewLevel === 'products' || viewLevel === 'subcategories',
+    enabled: categoryIds.length > 0,
   })
 
-  // Fetch manufacturers for filter
+  // Fetch manufacturers for filter (using normalized category_id)
   const { data: manufacturers = [] } = useQuery({
-    queryKey: ['category-manufacturers', categoryFilter],
+    queryKey: ['category-manufacturers', categoryIds],
     queryFn: async () => {
-      if (!categoryFilter) return []
+      if (categoryIds.length === 0) return []
       
-      let query = supabase.from('products').select('manufacturer')
-      
-      if (viewLevel === 'products') {
-        query = query.eq('category', categoryFilter)
-      } else {
-        query = query.ilike('category', `${categoryFilter}%`)
-      }
+      const { data, error } = await supabase
+        .from('products')
+        .select('manufacturer')
+        .in('category_id', categoryIds)
+        .eq('is_visible', true)
 
-      const { data, error } = await query
       if (error) throw error
       
       const uniqueManufacturers = Array.from(
@@ -196,7 +247,7 @@ export function CategoriesPage() {
       
       return uniqueManufacturers
     },
-    enabled: viewLevel === 'products',
+    enabled: categoryIds.length > 0 && viewLevel === 'products',
   })
 
   const products = productsData?.products || []
@@ -239,15 +290,17 @@ export function CategoriesPage() {
 
   const hasActiveFilters = searchQuery || selectedManufacturer !== 'all' || stockFilter !== 'all'
 
-  // Build breadcrumbs
+  // Build breadcrumbs (using slugs for URLs)
   const breadcrumbs = useMemo(() => {
     const items: { label: string; href?: string }[] = []
     
     if (selectedMainCategoryData) {
+      const mainSlug = selectedMainCategoryData.slug || encodeURIComponent(selectedMainCategoryData.name)
+      
       if (selectedSubcategoryData) {
         items.push({
           label: selectedMainCategoryData.name,
-          href: `/dashboard/categories/${encodeURIComponent(selectedMainCategoryData.name)}`,
+          href: `/dashboard/categories/${mainSlug}`,
         })
         items.push({ label: selectedSubcategoryData.name })
       } else {
@@ -306,10 +359,16 @@ export function CategoriesPage() {
           selectedSubcategory={null}
           onSubcategorySelect={(fullCategory) => {
             if (fullCategory) {
-              // Extract subcategory name from full category
-              const parts = fullCategory.split(' > ')
-              const subName = parts.length > 1 ? parts.slice(1).join(' > ') : parts[0]
-              navigate(`/dashboard/categories/${encodeURIComponent(selectedMainCategoryData.name)}/${encodeURIComponent(subName)}`)
+              // Find the subcategory data to get its slug
+              const subData = Array.from(selectedMainCategoryData.subcategories.entries())
+                .find(([, data]) => data.fullCategory === fullCategory)
+              
+              if (subData) {
+                const [subName, data] = subData
+                const mainSlug = selectedMainCategoryData.slug || encodeURIComponent(selectedMainCategoryData.name)
+                const subSlug = data.slug || encodeURIComponent(subName)
+                navigate(`/dashboard/categories/${mainSlug}/${subSlug}`)
+              }
             }
           }}
           mainCategoryName={selectedMainCategoryData.name}

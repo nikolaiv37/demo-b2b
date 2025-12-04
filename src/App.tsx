@@ -26,6 +26,7 @@ import { AnalyticsPage } from '@/app/dashboard/analytics'
 import { ComplaintsPage } from '@/app/dashboard/complaints'
 import { UnpaidBalancesPage } from '@/app/dashboard/unpaid-balances'
 import { CategoriesPage } from '@/app/dashboard/categories'
+import { ManageCategoriesPage } from '@/app/dashboard/categories/manage'
 
 import { NotFound } from '@/pages/NotFound'
 
@@ -78,6 +79,7 @@ function App() {
                 <Route path="categories" element={<CategoriesPage />} />
                 <Route path="categories/:mainCategory" element={<CategoriesPage />} />
                 <Route path="categories/:mainCategory/:subCategory" element={<CategoriesPage />} />
+                <Route path="categories/manage" element={<ManageCategoriesPage />} />
                 <Route path="products" element={<ProductsPage />} />
                 <Route path="products/:sku" element={<ProductDetailPage />} />
                 <Route path="wishlist" element={<WishlistPage />} />

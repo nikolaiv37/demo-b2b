@@ -24,6 +24,43 @@ import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
 const ITEMS_PER_PAGE = 24
 const INITIAL_LOAD_SIZE = 150 // Load 150 products initially for fast render
 
+// Type for category data used in filters
+type CategoryFilterItem = { id: string; name: string; displayName: string }
+
+// Helper function to get category IDs for filtering (main category + subcategories)
+function getCategoryIdsForFilter(
+  selectedCategoryId: string,
+  categoriesData: CategoryFilterItem[]
+): string[] {
+  if (selectedCategoryId === 'all') return []
+
+  const selectedCat = categoriesData.find(c => c.id === selectedCategoryId)
+  if (!selectedCat) return [selectedCategoryId]
+
+  // Check if this is a main category (doesn't start with indentation)
+  const isMainCategory = !selectedCat.displayName.startsWith('  └')
+
+  if (isMainCategory) {
+    // Include main category and all its subcategories
+    const categoryIds = [selectedCategoryId]
+    const mainIdx = categoriesData.findIndex(cat => cat.id === selectedCategoryId)
+    
+    // Find all subcategories (they appear after the main category until the next main category)
+    for (let i = mainIdx + 1; i < categoriesData.length; i++) {
+      if (categoriesData[i].displayName.startsWith('  └')) {
+        categoryIds.push(categoriesData[i].id)
+      } else {
+        // Hit the next main category, stop
+        break
+      }
+    }
+    return categoryIds
+  }
+
+  // Just filter by this specific subcategory
+  return [selectedCategoryId]
+}
+
 export function ProductsPage() {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
@@ -40,20 +77,53 @@ export function ProductsPage() {
   const queryClient = useQueryClient()
   const isAdmin = profile?.role === 'admin'
 
+  // Fetch categories from normalized categories table FIRST
+  // (needed for category filtering in other queries)
+  const { data: categoriesData = [] } = useQuery({
+    queryKey: ['products', 'categories-for-filter'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, parent_id')
+        .order('name')
+
+      if (error) throw error
+
+      // Build hierarchical category list with indentation for subcategories
+      const mainCategories = data.filter(c => !c.parent_id)
+      const result: CategoryFilterItem[] = []
+
+      for (const main of mainCategories) {
+        result.push({ id: main.id, name: main.name, displayName: main.name })
+        const subs = data.filter(c => c.parent_id === main.id)
+        for (const sub of subs) {
+          result.push({ id: sub.id, name: sub.name, displayName: `  └ ${sub.name}` })
+        }
+      }
+
+      return result
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  })
+
   // Build base query with filters (for both count and data queries)
+  // Using normalized category_id instead of legacy text-based category
   const buildBaseQuery = () => {
     let query = supabase.from('products').select('*', { count: 'exact' })
 
-    // Search filter (server-side)
+    // Search filter (server-side) - still search legacy category text for UX
     if (searchQuery) {
       query = query.or(
         `name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`
       )
     }
 
-    // Category filter
+    // Category filter using normalized category_id
     if (selectedCategory !== 'all') {
-      query = query.eq('category', selectedCategory)
+      const categoryIds = getCategoryIdsForFilter(selectedCategory, categoriesData)
+      if (categoryIds.length > 0) {
+        query = query.in('category_id', categoryIds)
+      }
     }
 
     // Manufacturer filter
@@ -109,6 +179,7 @@ export function ProductsPage() {
       selectedAvailability,
       stockFilter,
       currentPage,
+      categoriesData, // Include categories in key since buildBaseQuery depends on it
     ],
     queryFn: async () => {
       if (!range) {
@@ -136,9 +207,10 @@ export function ProductsPage() {
     selectedAvailability,
     stockFilter,
     1,
+    categoriesData,
   ])
 
-  // Fetch total count with same filters
+  // Fetch total count with same filters (using normalized category_id)
   const { data: totalCount } = useQuery({
     queryKey: [
       'products',
@@ -148,6 +220,7 @@ export function ProductsPage() {
       selectedManufacturer,
       selectedAvailability,
       stockFilter,
+      categoriesData, // Include categories data in query key since we use it for hierarchy
     ],
     queryFn: async () => {
       // Build count query - use head: true to get only count
@@ -159,9 +232,15 @@ export function ProductsPage() {
           `name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`
         )
       }
+      
+      // Category filter using normalized category_id
       if (selectedCategory !== 'all') {
-        countQuery = countQuery.eq('category', selectedCategory)
+        const categoryIds = getCategoryIdsForFilter(selectedCategory, categoriesData)
+        if (categoryIds.length > 0) {
+          countQuery = countQuery.in('category_id', categoryIds)
+        }
       }
+      
       if (selectedManufacturer !== 'all') {
         countQuery = countQuery.eq('manufacturer', selectedManufacturer)
       }
@@ -184,20 +263,17 @@ export function ProductsPage() {
     enabled: true,
   })
 
-  // Fetch filter options (categories, manufacturers, availability) - cached separately
+  // Fetch filter options (manufacturers, availability) from products
   const { data: filterOptions } = useQuery({
     queryKey: ['products', 'filter-options'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('category, manufacturer, availability')
+        .select('manufacturer, availability')
         .limit(10000) // Get enough to extract unique values
 
       if (error) throw error
 
-      const categories = Array.from(
-        new Set(data.map((p) => p.category).filter(Boolean))
-      ).sort() as string[]
       const manufacturers = Array.from(
         new Set(data.map((p) => p.manufacturer).filter(Boolean))
       ).sort() as string[]
@@ -205,12 +281,12 @@ export function ProductsPage() {
         new Set(data.map((p) => p.availability).filter(Boolean))
       ).sort() as string[]
 
-      return { categories, manufacturers, availabilityOptions }
+      return { manufacturers, availabilityOptions }
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
 
-  const { categories = [], manufacturers = [], availabilityOptions = [] } = filterOptions || {}
+  const { manufacturers = [], availabilityOptions = [] } = filterOptions || {}
 
   // Calculate paginated products for display
   const paginatedProducts = useMemo(() => {
@@ -346,9 +422,9 @@ export function ProductsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('products.allCategories')}</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
+                {categoriesData.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.displayName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -441,7 +517,7 @@ export function ProductsPage() {
               )}
               {selectedCategory !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  {t('products.category')}: {selectedCategory}
+                  {t('products.category')}: {categoriesData.find(c => c.id === selectedCategory)?.name || selectedCategory}
                   <button
                     onClick={() => setSelectedCategory('all')}
                     className="ml-1 hover:text-destructive"

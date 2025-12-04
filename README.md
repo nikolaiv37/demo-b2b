@@ -277,6 +277,14 @@ CHAIR-001,Modern Dining Chair,Comfortable dining chair,Chairs,10,299.99,199.99,5
 - MOQ must be a positive integer
 - Stock must be a non-negative integer
 
+### Category System (2025 Refactor) – Fully Normalized
+
+- **Single source of truth**: `categories` table + `products.category_id`.
+- Legacy `products.category` text field is **DEPRECATED** and kept only for legacy/old CSV imports and compatibility.
+- CSV Import is now **non-destructive** – it never deletes existing categories and always links products via `category_id`.
+- Admin actions (create, rename, move, merge, delete) operate on the normalized categories and are reflected instantly in the catalog.
+- The old `rebuildCategoriesFromProducts` helper has been removed and must never be used again.
+
 ## 📱 Mobile Support
 
 The application is fully responsive with:

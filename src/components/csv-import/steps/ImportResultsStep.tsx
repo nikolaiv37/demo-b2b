@@ -15,6 +15,7 @@ import {
   RefreshCw,
   FileSpreadsheet,
   Zap,
+  Link2,
 } from 'lucide-react'
 import type { ImportResult } from '../CSVImportWizard'
 
@@ -74,7 +75,7 @@ export function ImportResultsStep({
       </GlassCard>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <GlassCard className="p-4 text-center">
           <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-2">
             <Package className="w-5 h-5 text-green-600" />
@@ -88,9 +89,23 @@ export function ImportResultsStep({
             <FolderTree className="w-5 h-5 text-blue-600" />
           </div>
           <p className="text-3xl font-bold">
-            {result.categoriesCreated}/{result.categoriesMapped}
+            {result.categoriesCreated}
+            <span className="text-lg text-muted-foreground font-normal">
+              {result.categoriesReused ? ` +${result.categoriesReused}` : ''}
+            </span>
           </p>
-          <p className="text-sm text-muted-foreground">{t('csvImport.results.categoriesMapped')}</p>
+          <p className="text-sm text-muted-foreground">
+            {result.categoriesCreated > 0 ? 'New' : ''} Categories
+            {result.categoriesReused ? ' (reused)' : ''}
+          </p>
+        </GlassCard>
+
+        <GlassCard className="p-4 text-center">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto mb-2">
+            <Link2 className="w-5 h-5 text-purple-600" />
+          </div>
+          <p className="text-3xl font-bold">{(result.productsLinkedToCategories || 0).toLocaleString()}</p>
+          <p className="text-sm text-muted-foreground">Products Linked</p>
         </GlassCard>
 
         <GlassCard className="p-4 text-center">
@@ -206,6 +221,49 @@ export function ImportResultsStep({
           </div>
         </GlassCard>
       )}
+
+      {/* Category Sync Status */}
+      <GlassCard className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+            <FolderTree className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-semibold text-purple-700 dark:text-purple-300 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              Categories Synchronized
+            </h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              All products are now linked to categories via <code className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded">category_id</code>.
+              {result.categoriesCreated > 0 && (
+                <span className="block mt-1">
+                  <strong>{result.categoriesCreated}</strong> new {result.categoriesCreated === 1 ? 'category' : 'categories'} created.
+                </span>
+              )}
+              {(result.categoriesReused || 0) > 0 && (
+                <span className="block">
+                  <strong>{result.categoriesReused}</strong> existing {result.categoriesReused === 1 ? 'category' : 'categories'} reused.
+                </span>
+              )}
+            </p>
+            {result.categorySyncDetails && result.categorySyncDetails.length > 0 && (
+              <details className="mt-2">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                  Show sync details
+                </summary>
+                <ul className="text-xs text-muted-foreground mt-1 space-y-0.5 ml-4 list-disc">
+                  {result.categorySyncDetails.slice(0, 5).map((detail, i) => (
+                    <li key={i}>{detail}</li>
+                  ))}
+                  {result.categorySyncDetails.length > 5 && (
+                    <li>...and {result.categorySyncDetails.length - 5} more</li>
+                  )}
+                </ul>
+              </details>
+            )}
+          </div>
+        </div>
+      </GlassCard>
 
       {/* Mapping Saved Info */}
       <GlassCard className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/30">
