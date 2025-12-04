@@ -35,7 +35,8 @@ export interface Product {
   sku: string
   name: string
   description?: string
-  category?: string
+  category?: string // Legacy text field - deprecated, use category_id
+  category_id?: string | null // Normalized foreign key to categories table
   model?: string
   manufacturer?: string
   retail_price?: number

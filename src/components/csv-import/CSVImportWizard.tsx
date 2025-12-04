@@ -8,6 +8,7 @@ import { parseCSVFlexible } from '@/lib/csv/parser'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
+import { prepareProductsWithCategoryId, type CategorySyncResult } from '@/lib/category-sync-from-import'
 
 // Step Components
 import { UploadStep } from './steps/UploadStep'
@@ -50,11 +51,14 @@ export interface ImportResult {
   failed: number
   total: number
   categoriesCreated: number
+  categoriesReused: number
   categoriesMapped: number
+  productsLinkedToCategories: number
   imagesProcessed: number
   distributor: string
   duration: number
   errors: Array<{ row: number; error: string }>
+  categorySyncDetails?: string[]
 }
 
 export function CSVImportWizard() {
@@ -77,122 +81,13 @@ export function CSVImportWizard() {
   const [importProgress, setImportProgress] = useState(0)
   const [importStatus, setImportStatus] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [preserveCategoriesOnDelete, setPreserveCategoriesOnDelete] = useState(true)
 
   const smartMapping = useSmartMapping()
 
-  /**
-   * Parse legacy text category into main/sub parts.
-   * Format: "Main Category > Subcategory" or just "Category"
-   */
-  const parseCategory = useCallback((category: string | null | undefined): {
-    mainCategory: string
-    subcategory: string | null
-  } => {
-    if (!category) {
-      return { mainCategory: 'Uncategorized', subcategory: null }
-    }
-
-    const parts = category.split('>').map((p) => p.trim())
-    if (parts.length > 1) {
-      return {
-        mainCategory: parts[0],
-        subcategory: parts.slice(1).join(' > '),
-      }
-    }
-
-    return { mainCategory: category, subcategory: null }
-  }, [])
-
-  /**
-   * Rebuild categories table from current products.category values
-   * so Manage Categories stays in sync after imports.
-   */
-  const rebuildCategoriesFromProducts = useCallback(async () => {
-    if (!company?.id) return
-
-    // Load all distinct categories from products
-    const { data: products, error } = await supabase
-      .from('products')
-      .select('category')
-      .not('category', 'is', null)
-      .neq('category', '')
-
-    if (error) {
-      console.error('Error reading products for category rebuild', error)
-      return
-    }
-
-    // Clear existing categories for this company
-    const { error: clearError } = await supabase
-      .from('categories')
-      .delete()
-      .eq('company_id', company.id)
-
-    if (clearError) {
-      console.error('Error clearing categories for rebuild', clearError)
-      return
-    }
-
-    if (!products || products.length === 0) {
-      return
-    }
-
-    const mainSet = new Set<string>()
-    const subMap = new Map<string, { main: string; sub: string }>()
-
-    for (const row of products) {
-      const raw = (row as { category?: string }).category || ''
-      const { mainCategory, subcategory } = parseCategory(raw)
-
-      mainSet.add(mainCategory)
-      if (subcategory) {
-        const key = `${mainCategory}:::${subcategory}`
-        if (!subMap.has(key)) {
-          subMap.set(key, { main: mainCategory, sub: subcategory })
-        }
-      }
-    }
-
-    // Insert main categories
-    const mainsToInsert: { company_id: string; name: string; parent_id: null }[] = []
-    mainSet.forEach((name) => {
-      mainsToInsert.push({ company_id: company.id, name, parent_id: null })
-    })
-
-    const { data: insertedMains, error: insertMainError } = await supabase
-      .from('categories')
-      .insert(mainsToInsert)
-      .select('id,name,parent_id')
-
-    if (insertMainError) {
-      console.error('Error inserting main categories', insertMainError)
-      return
-    }
-
-    const mainNameToId = new Map<string, string>()
-    ;(insertedMains || []).forEach((cat) => {
-      const c = cat as { id: string; name: string }
-      mainNameToId.set(c.name, c.id)
-    })
-
-    // Insert subcategories
-    const subsToInsert: { company_id: string; name: string; parent_id: string }[] = []
-    subMap.forEach(({ main, sub }) => {
-      const mainId = mainNameToId.get(main)
-      if (!mainId) return
-      subsToInsert.push({ company_id: company.id, name: sub, parent_id: mainId })
-    })
-
-    if (subsToInsert.length > 0) {
-      const { error: insertSubError } = await supabase
-        .from('categories')
-        .insert(subsToInsert)
-
-      if (insertSubError) {
-        console.error('Error inserting subcategories', insertSubError)
-      }
-    }
-  }, [company?.id, parseCategory])
+  // Category sync result stored for use in import results
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_categorySyncResult, setCategorySyncResult] = useState<CategorySyncResult | null>(null)
 
   /**
    * Handle file upload and trigger analysis
@@ -264,7 +159,7 @@ export function CSVImportWizard() {
       // Only include columns that actually exist in the products table
       const validDbColumns = new Set([
         'id', 'supplier_id', 'model', 'sku', 'retail_price', 'weboffer_price',
-        'name', 'name_bg', 'category', 'manufacturer', 'description', 'description_bg',
+        'name', 'name_bg', 'category', 'category_id', 'manufacturer', 'description', 'description_bg',
         'availability', 'quantity', 'weight', 'transportational_weight',
         'date_expected', 'main_image', 'images', 'is_visible', 'created_at', 'updated_at'
         // Note: moq, stock, wholesale_price, subcategory are NOT in the actual schema
@@ -272,7 +167,7 @@ export function CSVImportWizard() {
       ])
       
       // Clean and prepare products for database insertion
-      const products = transformedData
+      const productsWithoutCategoryId = transformedData
         .map(row => {
           // Ensure required fields exist
           const sku = row.sku ? String(row.sku).trim() : ''
@@ -387,6 +282,34 @@ export function CSVImportWizard() {
           return cleaned
         })
         .filter((product): product is Record<string, unknown> => product !== null)
+
+      // NORMALIZED CATEGORIES: Sync categories and add category_id BEFORE upsert
+      setImportStatus('Syncing categories...')
+      setImportProgress(5)
+
+      let products = productsWithoutCategoryId
+      let syncResult: CategorySyncResult | null = null
+
+      if (company?.id) {
+        try {
+          const prepResult = await prepareProductsWithCategoryId(
+            productsWithoutCategoryId as Array<{ sku: string; category?: string }>,
+            company.id
+          )
+          products = prepResult.products as Record<string, unknown>[]
+          syncResult = prepResult.syncResult
+          setCategorySyncResult(syncResult)
+
+          console.log('[CSVImportWizard] Category sync complete:', {
+            categoriesCreated: syncResult.categoriesCreated,
+            categoriesReused: syncResult.categoriesReused,
+            productsWithCategoryId: products.filter(p => p.category_id).length,
+          })
+        } catch (syncError) {
+          console.error('[CSVImportWizard] Category sync error:', syncError)
+          // Continue with import even if category sync fails
+        }
+      }
 
       if (products.length === 0) {
         throw new Error(
@@ -528,12 +451,16 @@ export function CSVImportWizard() {
         skipped: duplicateCount.count,
         failed: failedCount,
         total: products.length,
-        categoriesCreated: smartMapping.categoryStats.newCategories,
-        categoriesMapped: smartMapping.categoryMappings.length,
+        // Use syncResult for accurate category counts (normalized architecture)
+        categoriesCreated: syncResult?.categoriesCreated ?? smartMapping.categoryStats.newCategories,
+        categoriesReused: syncResult?.categoriesReused ?? 0,
+        categoriesMapped: syncResult?.categoryMap.size ?? smartMapping.categoryMappings.length,
+        productsLinkedToCategories: products.filter(p => p.category_id).length,
         imagesProcessed,
         distributor: smartMapping.detectedDistributor?.displayName || 'Unknown',
         duration,
         errors,
+        categorySyncDetails: syncResult?.details,
       }
 
       setImportProgress(100)
@@ -545,27 +472,25 @@ export function CSVImportWizard() {
       setImportResult(result)
       smartMapping.goToStep(5)
 
-      // Rebuild categories table from imported products so Manage Categories stays in sync
-      try {
-        await rebuildCategoriesFromProducts()
-        queryClient.invalidateQueries({ queryKey: ['categories'] })
-        queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      } catch (e) {
-        console.error('Error rebuilding categories after import', e)
-      }
-
+      // Categories are already synced during import (non-destructive sync)
+      // Just invalidate caches to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'categories-for-filter'] })
 
       trackEvent(AnalyticsEvents.CSV_IMPORT_COMPLETED, {
         productsImported: result.imported,
         totalRows: result.total,
         distributor: result.distributor,
         duration: result.duration,
+        categoriesCreated: result.categoriesCreated,
+        productsLinkedToCategories: result.productsLinkedToCategories,
       })
 
       toast({
         title: 'Import Complete! 🎉',
-        description: `Successfully imported ${result.imported} products.`,
+        description: `Successfully imported ${result.imported} products with ${result.categoriesCreated} new categories.`,
       })
     },
     onError: (error) => {
@@ -583,43 +508,68 @@ export function CSVImportWizard() {
 
   /**
    * Delete all products mutation
+   * With option to preserve categories (default: true)
    */
   const deleteAllMutation = useMutation({
     mutationFn: async () => {
+      // First, unlink all products from categories (set category_id to null)
+      // This ensures foreign key constraints don't block deletion
+      const { error: unlinkError } = await supabase
+        .from('products')
+        .update({ category_id: null })
+        .not('category_id', 'is', null)
+
+      if (unlinkError) {
+        console.error('Error unlinking products from categories', unlinkError)
+      }
+
       // Delete all products from the database
-      // Using a condition that matches all rows (id is always >= 0 for SERIAL/bigint)
+      // Using neq with empty string to match all rows with non-null id
       const { error, count } = await supabase
         .from('products')
         .delete()
-        .gte('id', 0) // This matches all rows since id is always >= 0 for SERIAL/bigint
+        .not('id', 'is', null)
 
       if (error) {
         throw new Error(error.message)
       }
 
-      // Also clear categories for this company so Manage Categories is reset
-      if (company?.id) {
-        const { error: catError } = await supabase
+      let categoriesDeleted = 0
+
+      // Only delete categories if preserveCategoriesOnDelete is false
+      if (!preserveCategoriesOnDelete && company?.id) {
+        const { error: catError, count: catCount } = await supabase
           .from('categories')
           .delete()
           .eq('company_id', company.id)
 
         if (catError) {
           console.error('Error deleting categories with products', catError)
+        } else {
+          categoriesDeleted = catCount || 0
         }
       }
 
-      return { deleted: count || 0 }
+      return { deleted: count || 0, categoriesDeleted, categoriesPreserved: preserveCategoriesOnDelete }
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
       queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'categories-for-filter'] })
+      
+      if (!result.categoriesPreserved) {
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
+      }
+      
       setDeleteDialogOpen(false)
+      
+      const categoryMsg = result.categoriesPreserved 
+        ? 'Categories were preserved.' 
+        : `${result.categoriesDeleted} categories deleted.`
       
       toast({
         title: 'All Products Deleted',
-        description: `Successfully deleted ${result.deleted || 'all'} products from the database.`,
+        description: `Successfully deleted ${result.deleted || 'all'} products. ${categoryMsg}`,
       })
     },
     onError: (error) => {
@@ -938,10 +888,28 @@ export function CSVImportWizard() {
               <span className="font-semibold text-amber-600 dark:text-amber-400">
                 This action cannot be undone!
               </span>
-              <br /><br />
-              Categories stored in products will also be removed. This is useful for testing and resetting your catalog.
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Preserve Categories Checkbox */}
+          <div className="flex items-start gap-3 py-3 px-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <input
+              type="checkbox"
+              id="preserveCategories"
+              checked={preserveCategoriesOnDelete}
+              onChange={(e) => setPreserveCategoriesOnDelete(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-slate-600 focus:ring-slate-500"
+            />
+            <label htmlFor="preserveCategories" className="text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                Preserve categories
+              </span>
+              <p className="text-muted-foreground mt-0.5">
+                Keep your category hierarchy intact. Useful when re-importing products with the same categories.
+              </p>
+            </label>
+          </div>
+          
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"

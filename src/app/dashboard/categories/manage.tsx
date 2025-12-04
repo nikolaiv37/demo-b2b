@@ -90,16 +90,38 @@ export function ManageCategoriesPage() {
     },
   })
 
+  // Query product counts using category_id (normalized architecture)
   const { data: productCounts = {} } = useQuery<Record<string, number>>({
     queryKey: ['category-product-counts'],
     queryFn: async () => {
       const result: Record<string, number> = {}
 
+      // Build a map of parent categories to their children for hierarchical counting
+      const childrenByParent = new Map<string, string[]>()
+      categories.forEach((cat) => {
+        if (cat.parent_id) {
+          const children = childrenByParent.get(cat.parent_id) || []
+          children.push(cat.id)
+          childrenByParent.set(cat.parent_id, children)
+        }
+      })
+
       for (const cat of categories) {
+        // For main categories, count products in this category AND all subcategories
+        // For subcategories, count only products directly in this category
+        const categoryIds = [cat.id]
+        
+        // If this is a main category, include all subcategory IDs
+        if (!cat.parent_id) {
+          const children = childrenByParent.get(cat.id) || []
+          categoryIds.push(...children)
+        }
+
         const { count, error } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
-          .ilike('category', `${cat.name}%`)
+          .in('category_id', categoryIds)
+          .eq('is_visible', true)
 
         if (!error && typeof count === 'number') {
           result[cat.id] = count
@@ -207,93 +229,6 @@ export function ManageCategoriesPage() {
     return null
   }
 
-  // When a category is renamed, update legacy text-based product.category strings
-  // so existing catalog views that still rely on that field stay in sync.
-  const propagateCategoryRename = async (
-    oldCategory: Category,
-    newName: string
-  ): Promise<string> => {
-    const newSlug = slugify(newName)
-
-    console.log('[propagateCategoryRename] Starting rename', {
-      oldName: oldCategory.name,
-      newName,
-    })
-
-    // If this is a main category (no parent), update:
-    // - Products directly in this main category
-    // - Products in all its direct subcategories ("Main > Sub")
-    if (!oldCategory.parent_id) {
-      // Update products directly assigned to this main category
-      await supabase
-        .from('products')
-        .update({ category: newName })
-        .eq('category_id', oldCategory.id)
-
-      // ALSO update legacy text-based products that don't have category_id
-      await supabase
-        .from('products')
-        .update({ category: newName })
-        .is('category_id', null)
-        .eq('category', oldCategory.name)
-
-      console.log('[propagateCategoryRename] Updated main category products')
-
-      // Find direct subcategories
-      const { data: children } = await supabase
-        .from('categories')
-        .select('id,name,parent_id')
-        .eq('parent_id', oldCategory.id)
-
-      for (const child of (children || []) as { id: string; name: string; parent_id: string | null }[]) {
-        const fullName = `${newName} > ${child.name}`
-        await supabase
-          .from('products')
-          .update({ category: fullName })
-          .eq('category_id', child.id)
-
-        // ALSO update legacy text-based products for this child
-        const oldChildFullName = `${oldCategory.name} > ${child.name}`
-        await supabase
-          .from('products')
-          .update({ category: fullName })
-          .is('category_id', null)
-          .eq('category', oldChildFullName)
-
-        console.log('[propagateCategoryRename] Updated subcategory', {
-          childName: child.name,
-          fullName,
-        })
-      }
-    } else {
-      // Subcategory rename: update only products in this leaf category
-      // Text format: "ParentName > SubName"
-      const parent = categories.find((c) => c.id === oldCategory.parent_id)
-      const parentName = parent?.name || ''
-      const fullName = parentName ? `${parentName} > ${newName}` : newName
-
-      await supabase
-        .from('products')
-        .update({ category: fullName })
-        .eq('category_id', oldCategory.id)
-
-      // ALSO update legacy text-based products for this subcategory
-      const oldFullName = parentName
-        ? `${oldCategory.parent_id ? parentName : oldCategory.name} > ${oldCategory.name}`
-        : oldCategory.name
-
-      await supabase
-        .from('products')
-        .update({ category: fullName })
-        .is('category_id', null)
-        .eq('category', oldFullName)
-    }
-
-    console.log('[propagateCategoryRename] Completed, returning slug', newSlug)
-
-    return newSlug
-  }
-
   const uploadImageIfNeeded = async (): Promise<string | null> => {
     if (!imageFile) return null
 
@@ -363,10 +298,12 @@ export function ManageCategoriesPage() {
           // Check if name is actually changing (for proper toast message)
           const isRenaming = selectedCategory.name.trim() !== nameInput.trim()
 
-          console.log('[upsertCategoryMutation] About to propagate rename', {
+          console.log('[upsertCategoryMutation] Updating category', {
             isRenaming,
-            selectedCategory,
+            categoryId: selectedCategory.id,
+            oldName: selectedCategory.name,
             newName: nameInput.trim(),
+            newSlug,
           })
 
           const { error } = await supabase
@@ -389,18 +326,12 @@ export function ManageCategoriesPage() {
             throw error
           }
 
-          let newSlugFromRename: string | undefined
-
-          // Keep legacy product.category text in sync with the new name
-          if (isRenaming) {
-            newSlugFromRename = await propagateCategoryRename(
-              selectedCategory,
-              nameInput.trim()
-            )
-          }
+          // No need to update product.category text anymore!
+          // Products link via category_id foreign key to the categories table.
+          // The rename is automatically reflected everywhere.
 
           // Return context for onSuccess
-          return { isRenaming, isEdit: true, newSlug: newSlugFromRename }
+          return { isRenaming, isEdit: true, newSlug }
         } else {
           const { error } = await supabase.from('categories').insert({
             company_id: company.id,
@@ -464,14 +395,41 @@ export function ManageCategoriesPage() {
 
       setIsSubmitting(true)
       try {
-        // Reassign products to Uncategorized before deleting
+        // Get all category IDs to unassign (this category + subcategories if main category)
+        const categoryIdsToUnassign = [selectedCategory.id]
+        
+        if (!selectedCategory.parent_id) {
+          // This is a main category - also get all subcategory IDs
+          const { data: subcategories } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('parent_id', selectedCategory.id)
+
+          if (subcategories) {
+            categoryIdsToUnassign.push(...subcategories.map(c => c.id))
+          }
+        }
+
+        // Set category_id to NULL for all affected products
+        // The foreign key has ON DELETE SET NULL, but let's be explicit
         const { error: updateError } = await supabase
           .from('products')
-          .update({ category: t('overview.uncategorized') })
-          .ilike('category', `${selectedCategory.name}%`)
+          .update({ category_id: null })
+          .in('category_id', categoryIdsToUnassign)
 
         if (updateError) throw updateError
 
+        // Delete subcategories first if this is a main category
+        if (!selectedCategory.parent_id) {
+          const { error: subDeleteError } = await supabase
+            .from('categories')
+            .delete()
+            .eq('parent_id', selectedCategory.id)
+
+          if (subDeleteError) throw subDeleteError
+        }
+
+        // Delete the category itself
         const { error } = await supabase
           .from('categories')
           .delete()
@@ -489,8 +447,10 @@ export function ManageCategoriesPage() {
       })
       setDeleteModalOpen(false)
 
-      // Properly invalidate category hierarchy so buyer catalog reflects deletion
+      // Invalidate all category-related queries
       queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['category-product-counts'] })
     },
     onError: () => {
       toast({
@@ -511,13 +471,38 @@ export function ManageCategoriesPage() {
 
       setIsSubmitting(true)
       try {
-        // Move products to target category
+        // Get all category IDs to merge (source + subcategories if main category)
+        const sourceCategoryIds = [selectedCategory.id]
+        
+        if (!selectedCategory.parent_id) {
+          // This is a main category - also get all subcategory IDs
+          const { data: subcategories } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('parent_id', selectedCategory.id)
+
+          if (subcategories) {
+            sourceCategoryIds.push(...subcategories.map(c => c.id))
+          }
+        }
+
+        // Move products to target category by updating category_id
         const { error: updateError } = await supabase
           .from('products')
-          .update({ category: target.name })
-          .ilike('category', `${selectedCategory.name}%`)
+          .update({ category_id: targetCategoryId })
+          .in('category_id', sourceCategoryIds)
 
         if (updateError) throw updateError
+
+        // Delete subcategories first if this is a main category
+        if (!selectedCategory.parent_id) {
+          const { error: subDeleteError } = await supabase
+            .from('categories')
+            .delete()
+            .eq('parent_id', selectedCategory.id)
+
+          if (subDeleteError) throw subDeleteError
+        }
 
         // Delete source category
         const { error } = await supabase
@@ -537,8 +522,10 @@ export function ManageCategoriesPage() {
       })
       setMergeModalOpen(false)
 
-      // Properly invalidate category hierarchy so buyer catalog reflects merge result
+      // Invalidate all category-related queries
       queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['category-product-counts'] })
     },
     onError: () => {
       toast({
