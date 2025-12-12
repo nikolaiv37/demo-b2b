@@ -10,6 +10,11 @@ interface OrderStatusBadgeProps {
 
 // Map legacy database status values to new UI statuses
 function mapLegacyStatus(status: string): string {
+  // Normalize status by removing "complaints." prefix if present
+  const normalizedStatus = status.startsWith('complaints.')
+    ? status.replace('complaints.', '')
+    : status
+
   const legacyMap: Record<string, string> = {
     // Old DB values -> New UI values
     new: 'processing',
@@ -27,7 +32,7 @@ function mapLegacyStatus(status: string): string {
     expired: 'expired',
     cancelled: 'cancelled',
   }
-  return legacyMap[status] || status
+  return legacyMap[normalizedStatus] || normalizedStatus
 }
 
 export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
