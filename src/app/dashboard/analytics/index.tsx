@@ -37,6 +37,7 @@ import {
 } from 'recharts'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, calculatePercentageChange } from '@/lib/utils'
+import { OrderStatusBadge } from '@/components/OrderStatusBadge'
 import {
   DollarSign,
   ShoppingCart,
@@ -844,48 +845,102 @@ export function AnalyticsPage() {
         )}
       </GlassCard>
 
-      {/* Top 10 Products by Revenue */}
-      <GlassCard className="p-6 bg-white/80 backdrop-blur border-border/50">
-        <h3 className="text-lg font-semibold mb-4">{t('analytics.top10Products')}</h3>
+      {/* Top 10 Products by Revenue - Modern Redesign */}
+      <GlassCard className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold mb-1">{t('analytics.top10Products')}</h3>
+            <p className="text-sm text-muted-foreground">
+              Best performing products by revenue
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-gradient-to-br from-white/90 via-gray-50/80 to-white/70 dark:from-gray-800/90 dark:via-gray-700/80 dark:to-gray-800/70 border border-gray-200/60 dark:border-gray-600/40 backdrop-blur-md shadow-md">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-600 border border-gray-200/50 dark:border-gray-600/50">
+              <Package className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+            </div>
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+              {displayData.topProducts.length} {displayData.topProducts.length === 1 ? 'product' : 'products'}
+            </span>
+          </div>
+        </div>
         {displayData.topProducts.length > 0 ? (
-          <ResponsiveContainer width="100%" height={400}>
-              <BarChart
-                data={displayData.topProducts}
-              layout="vertical"
-              margin={{ left: 100, right: 20, top: 20, bottom: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-              <XAxis
-                type="number"
-                className="text-xs"
-                stroke="currentColor"
-                tick={{ fill: 'currentColor' }}
-                tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                className="text-xs"
-                stroke="currentColor"
-                tick={{ fill: 'currentColor' }}
-                width={90}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-                formatter={(value: number, _name: string, props: any) => [
-                  `${formatCurrency(value)} (${props.payload.quantity} sold)`,
-                  'Revenue',
-                ]}
-              />
-              <Bar dataKey="revenue" fill="#3b82f6" radius={[0, 8, 8, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-3">
+            {displayData.topProducts.map((product, index) => {
+              const maxRevenue = Math.max(...displayData.topProducts.map(p => p.revenue))
+              const percentage = (product.revenue / maxRevenue) * 100
+              const colors = [
+                'hsl(var(--primary))',
+                '#8b5cf6',
+                '#ec4899',
+                '#f59e0b',
+                '#10b981',
+                '#3b82f6',
+              ]
+              const color = colors[index % colors.length]
+              
+              return (
+                <div
+                  key={product.sku}
+                  className="group relative p-5 rounded-2xl border border-border/30 bg-background/40 hover:bg-background/70 hover:border-border/60 transition-all duration-200"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Rank Badge */}
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-muted/60 to-muted/40 dark:from-muted/40 dark:to-muted/30 flex items-center justify-center border border-border/40 shadow-sm">
+                      <span className="text-sm font-bold text-foreground">#{index + 1}</span>
+                    </div>
+                    
+                    {/* Product Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-base text-foreground leading-tight mb-1.5">
+                            {product.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground/70 font-mono mb-2">
+                            {product.sku}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <p className="text-lg font-bold text-foreground">
+                            {formatCurrency(product.revenue, 'EUR')}
+                          </p>
+                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-cyan-500/15 border border-emerald-400/30 backdrop-blur-sm shadow-sm">
+                            <div className="p-1 rounded-md bg-emerald-500/20">
+                              <ShoppingCart className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                              {product.quantity} {product.quantity === 1 ? t('products.item') : t('products.items')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="h-2 bg-muted/40 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500 ease-out relative"
+                          style={{
+                            width: `${percentage}%`,
+                            backgroundColor: color,
+                            opacity: 0.75,
+                          }}
+                        >
+                          <div
+                            className="absolute inset-0 rounded-full"
+                            style={{
+                              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         ) : (
-          <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
             {t('analytics.noProductSalesData')}
           </div>
         )}
@@ -1103,17 +1158,7 @@ export function AnalyticsPage() {
                           {formatCurrency(quote.total)}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              quote.status === 'approved'
-                                ? 'default'
-                                : quote.status === 'rejected'
-                                ? 'destructive'
-                                : 'secondary'
-                            }
-                          >
-                            {quote.status}
-                          </Badge>
+                          <OrderStatusBadge status={quote.status} />
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(quote.created_at).toLocaleDateString()}

@@ -719,18 +719,6 @@ export function OrdersPage() {
         />
       )}
 
-      {/* Floating Action Button */}
-      <Button
-        size="lg"
-        className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg z-50 hover:scale-110 transition-transform"
-        onClick={() => {
-          // TODO: Open new order dialog
-          console.log('New order clicked')
-        }}
-      >
-        <Plus className="h-6 w-6" />
-        <span className="sr-only">{t('orders.newOrder')}</span>
-      </Button>
     </div>
   )
 }

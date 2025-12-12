@@ -29,8 +29,9 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Eye, Image as ImageIcon, Search } from 'lucide-react'
+import { Eye, Image as ImageIcon, Search, Filter, Building2 } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 interface ComplaintItem {
   sku: string
@@ -56,13 +57,18 @@ interface Complaint {
 
 // Map old status values to new ones
 function mapStatus(status: string): Complaint['status'] {
+  // Normalize status by removing "complaints." prefix if present
+  const normalizedStatus = status.startsWith('complaints.')
+    ? status.replace('complaints.', '')
+    : status
+
   const statusMap: Record<string, Complaint['status']> = {
     pending: 'new',
     'in-review': 'in-progress',
     approved: 'resolved',
     rejected: 'closed',
   }
-  return statusMap[status] || 'new'
+  return statusMap[normalizedStatus] || 'new'
 }
 
 // Map new status values to old ones for database
@@ -105,6 +111,7 @@ export function AdminComplaintsView() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [companyFilter, setCompanyFilter] = useState<string>('all')
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -128,26 +135,51 @@ export function AdminComplaintsView() {
           let orderNumber = null
           let companyName = null
 
-          // Get user profile to get company name
+          // Get user profile to get company_id, then fetch company name
           const { data: profile } = await supabase
             .from('profiles')
-            .select('company_name')
+            .select('company_id')
             .eq('id', complaint.user_id)
             .single()
 
-          if (profile?.company_name) {
-            companyName = profile.company_name
+          // If profile has company_id, fetch company name from companies table
+          if (profile?.company_id) {
+            const { data: company } = await supabase
+              .from('companies')
+              .select('name')
+              .eq('id', profile.company_id)
+              .single()
+
+            if (company?.name) {
+              companyName = company.name
+            }
           }
 
-          // Try quotes table to get order number
-          const { data: quote } = await supabase
-            .from('quotes')
-            .select('order_number')
-            .eq('id', complaint.order_id)
-            .single()
+          // Also try to get company name from quotes table as fallback
+          if (!companyName) {
+            const { data: quote } = await supabase
+              .from('quotes')
+              .select('company_name, order_number')
+              .eq('id', complaint.order_id)
+              .single()
 
-          if (quote?.order_number) {
-            orderNumber = quote.order_number
+            if (quote?.company_name) {
+              companyName = quote.company_name
+            }
+            if (quote?.order_number) {
+              orderNumber = quote.order_number
+            }
+          } else {
+            // Still get order number from quotes
+            const { data: quote } = await supabase
+              .from('quotes')
+              .select('order_number')
+              .eq('id', complaint.order_id)
+              .single()
+
+            if (quote?.order_number) {
+              orderNumber = quote.order_number
+            }
           }
 
           return {
@@ -240,6 +272,30 @@ export function AdminComplaintsView() {
     },
   })
 
+  // Get unique companies and status counts
+  const companies = useMemo(() => {
+    if (!complaints) return []
+    const uniqueCompanies = new Set<string>()
+    complaints.forEach(c => {
+      if (c.company_name) {
+        uniqueCompanies.add(c.company_name)
+      }
+    })
+    return Array.from(uniqueCompanies).sort()
+  }, [complaints])
+
+  // Calculate status counts
+  const statusCounts = useMemo(() => {
+    if (!complaints) return { new: 0, 'in-progress': 0, resolved: 0, closed: 0 }
+    
+    return {
+      new: complaints.filter(c => c.status === 'new').length,
+      'in-progress': complaints.filter(c => c.status === 'in-progress').length,
+      resolved: complaints.filter(c => c.status === 'resolved').length,
+      closed: complaints.filter(c => c.status === 'closed').length,
+    }
+  }, [complaints])
+
   // Filter complaints
   const filteredComplaints = useMemo(() => {
     let filtered = complaints || []
@@ -261,8 +317,13 @@ export function AdminComplaintsView() {
       filtered = filtered.filter((complaint) => complaint.status === statusFilter)
     }
 
+    // Company filter
+    if (companyFilter !== 'all') {
+      filtered = filtered.filter((complaint) => complaint.company_name === companyFilter)
+    }
+
     return filtered
-  }, [complaints, searchQuery, statusFilter])
+  }, [complaints, searchQuery, statusFilter, companyFilter])
 
   const handleViewDetails = (complaint: Complaint) => {
     setSelectedComplaint(complaint)
@@ -289,6 +350,44 @@ export function AdminComplaintsView() {
           </p>
         </div>
 
+        {/* Status Count Badges */}
+        {complaints && complaints.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            {statusCounts.new > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 shadow-sm hover:bg-blue-500/15 transition-colors cursor-pointer" onClick={() => setStatusFilter(statusFilter === 'new' ? 'all' : 'new')}>
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></div>
+                <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">
+                  {t('complaints.new')}: {statusCounts.new}
+                </span>
+              </div>
+            )}
+            {statusCounts['in-progress'] > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 shadow-sm hover:bg-yellow-500/15 transition-colors cursor-pointer" onClick={() => setStatusFilter(statusFilter === 'in-progress' ? 'all' : 'in-progress')}>
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-sm"></div>
+                <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">
+                  {t('complaints.inProgress')}: {statusCounts['in-progress']}
+                </span>
+              </div>
+            )}
+            {statusCounts.resolved > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 shadow-sm hover:bg-green-500/15 transition-colors cursor-pointer" onClick={() => setStatusFilter(statusFilter === 'resolved' ? 'all' : 'resolved')}>
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm"></div>
+                <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+                  {t('complaints.resolved')}: {statusCounts.resolved}
+                </span>
+              </div>
+            )}
+            {statusCounts.closed > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-sm hover:bg-red-500/15 transition-colors cursor-pointer" onClick={() => setStatusFilter(statusFilter === 'closed' ? 'all' : 'closed')}>
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></div>
+                <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+                  {t('complaints.closed')}: {statusCounts.closed}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Top Bar: Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
@@ -304,7 +403,7 @@ export function AdminComplaintsView() {
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder={t('complaints.allStatuses')} />
             </SelectTrigger>
             <SelectContent>
@@ -313,6 +412,21 @@ export function AdminComplaintsView() {
               <SelectItem value="in-progress">{t('complaints.inProgress')}</SelectItem>
               <SelectItem value="resolved">{t('complaints.resolved')}</SelectItem>
               <SelectItem value="closed">{t('complaints.closed')}</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Company Filter */}
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder={t('complaints.allCompanies')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('complaints.allCompanies')}</SelectItem>
+              {companies.map((company) => (
+                <SelectItem key={company} value={company}>
+                  {company}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -343,13 +457,14 @@ export function AdminComplaintsView() {
                   <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-muted-foreground">{t('complaints.noComplaints')}</p>
-                      {searchQuery || statusFilter !== 'all' ? (
+                      {(searchQuery || statusFilter !== 'all' || companyFilter !== 'all') ? (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
                             setSearchQuery('')
                             setStatusFilter('all')
+                            setCompanyFilter('all')
                           }}
                         >
                           {t('products.clearFilters')}
@@ -368,8 +483,11 @@ export function AdminComplaintsView() {
                       {formatComplaintDate(complaint.created_at)}
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">
-                        {complaint.company_name || 'Unknown Company'}
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
+                        <div className="font-medium">
+                          {complaint.company_name || t('overview.unknownCompany')}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-sm">
