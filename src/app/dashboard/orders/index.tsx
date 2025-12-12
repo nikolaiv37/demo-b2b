@@ -34,7 +34,6 @@ import { AdminOrdersView } from './AdminOrdersView'
 import {
   Eye,
   MoreVertical,
-  Plus,
   Search,
   FileText,
   Mail,

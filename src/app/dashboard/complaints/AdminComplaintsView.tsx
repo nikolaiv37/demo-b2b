@@ -29,9 +29,8 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Eye, Image as ImageIcon, Search, Filter, Building2 } from 'lucide-react'
+import { Eye, Image as ImageIcon, Search, Building2 } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
-import { cn } from '@/lib/utils'
 
 interface ComplaintItem {
   sku: string
