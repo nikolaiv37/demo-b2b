@@ -21,12 +21,20 @@ export interface Profile {
   role: UserRole
   company_id?: string | null
   company_name?: string | null
+  full_name?: string | null
   phone?: string | null
-  email?: string // May not exist in DB, but we use it from auth.users
-  full_name?: string // May not exist in DB, but we might use it
-  avatar_url?: string // May not exist in DB, but we might use it
+  email?: string | null
+  avatar_url?: string | null
+  commission_rate?: number | null
   created_at: string
   updated_at?: string // May not exist in DB
+}
+
+// Client is a Profile with role='company' - used for admin B2B client management
+export interface Client extends Profile {
+  role: 'company'
+  // Optional aggregated stats used on admin clients page
+  orders_count?: number
 }
 
 export interface Product {

@@ -17,6 +17,7 @@ import {
   Grid3X3,
   FileSpreadsheet,
   FolderKanban,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useWishlist } from '@/hooks/useWishlist'
@@ -81,11 +82,11 @@ const catalogSubmenuItemsConfig = [
 ]
 
 const settingsSubmenuItemsConfig = [
-  {
-    titleKey: 'nav.company',
-    href: '/dashboard/settings#company',
-    icon: Building2,
-  },
+      {
+        titleKey: 'nav.company',
+        href: '/dashboard/settings#company',
+        icon: Building2,
+      },
   {
     titleKey: 'nav.profile',
     href: '/dashboard/settings#profile',
@@ -401,6 +402,22 @@ export function SidebarNav() {
             {t('nav.toolsAndAccount')}
           </h3>
           <nav className="space-y-1">
+            {/* Clients Management - admin only */}
+            {isAdmin && (
+              <Link
+                to="/dashboard/clients"
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
+                  isItemActive('/dashboard/clients')
+                    ? 'bg-[#0f172a] dark:bg-[#0f172a] text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                )}
+              >
+                <Users className="w-5 h-5 flex-shrink-0" />
+                <span className="font-medium flex-1">{t('nav.distributors')}</span>
+              </Link>
+            )}
+
             {/* CSV Import Wizard - promoted as top-level item */}
             {isAdmin && (
               <Link
