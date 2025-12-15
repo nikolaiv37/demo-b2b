@@ -27,6 +27,7 @@ import { ComplaintsPage } from '@/app/dashboard/complaints'
 import { UnpaidBalancesPage } from '@/app/dashboard/unpaid-balances'
 import { CategoriesPage } from '@/app/dashboard/categories'
 import { ManageCategoriesPage } from '@/app/dashboard/categories/manage'
+import { ClientsPage } from '@/app/dashboard/clients'
 
 import { NotFound } from '@/pages/NotFound'
 
@@ -90,6 +91,7 @@ function App() {
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
+                <Route path="clients" element={<ClientsPage />} />
               </Route>
 
               {/* Redirect root to dashboard or login */}

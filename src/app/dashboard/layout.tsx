@@ -43,6 +43,7 @@ const pageTitleKeys: Record<string, string> = {
   '/dashboard/settings': 'settings.title',
   '/dashboard/analytics': 'nav.analytics',
   '/dashboard/unpaid-balances': 'orders.title',
+  '/dashboard/clients': 'distributors.title',
 }
 
 export function DashboardLayout() {
