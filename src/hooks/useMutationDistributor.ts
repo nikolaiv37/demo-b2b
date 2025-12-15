@@ -86,7 +86,7 @@ export function useMutationCreateDistributor() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (data: CreateDistributorData) => {
+    mutationFn: async (_data: CreateDistributorData) => {
       // Note: In a full implementation, you would:
       // 1. Create the auth user via Supabase Admin API
       // 2. Send an invite email
@@ -100,6 +100,7 @@ export function useMutationCreateDistributor() {
     },
   })
 }
+
 
 
 

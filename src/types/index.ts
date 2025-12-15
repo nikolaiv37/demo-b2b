@@ -39,6 +39,10 @@ export interface Client extends Profile {
   unpaid_amount?: number
 }
 
+// Legacy alias: in older code we referred to B2B clients as "distributors"
+// Keep this for backwards compatibility with existing hooks.
+export type Distributor = Client
+
 export interface Product {
   id: string
   supplier_id: string
