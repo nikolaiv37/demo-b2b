@@ -35,6 +35,8 @@ export interface Client extends Profile {
   role: 'company'
   // Optional aggregated stats used on admin clients page
   orders_count?: number
+  // Optional aggregated unpaid balance (from quotes with unpaid statuses)
+  unpaid_amount?: number
 }
 
 export interface Product {

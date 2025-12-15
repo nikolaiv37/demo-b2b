@@ -795,7 +795,31 @@
       "noEmail": "No email",
       "addDistributor": "Add Client",
       "addDistributorInfo": "To add a new client, have them sign up through the platform. They will appear here once registered.",
-      "addDistributorTooltip": "New clients sign up through the platform"
+      "addDistributorTooltip": "New clients sign up through the platform",
+      "infoBanner": "New clients sign up through the platform and will appear here automatically.",
+      "commissionInfoTitle": "How client commissions work",
+      "commissionInfoBody": "For each client you can set a personal commission rate (0–50%). This acts as a permanent discount in their catalog views – for example, a 15% commission means they always see prices 15% lower than your base wholesale price, and this price is used for their quotes and orders.",
+      "clientsCount": "{{count}} client",
+      "clientsCount_plural": "{{count}} clients",
+      "sortBy": "Sort by",
+      "sortNewestFirst": "Newest first",
+      "sortOldestFirst": "Oldest first",
+      "sortHighestRate": "Highest rate",
+      "sortLowestRate": "Lowest rate",
+      "emptyTitle": "No clients yet",
+      "emptyDescription": "Invite them to sign up via the platform! Clients will appear here automatically once they complete signup.",
+      "inviteToastTitle": "Invite clients",
+      "inviteToastDescription": "Share your platform URL with potential clients to let them sign up.",
+      "inviteCta": "Invite Now",
+      "commissionLabel": "Commission",
+      "joinedLabel": "Joined",
+      "ordersLabel": "Orders",
+      "unpaidLabel": "Unpaid balance",
+      "noUnpaid": "All paid",
+      "discountedBadge": "Discounted",
+      "commissionBadge": "{{rate}}% discount",
+      "noDiscount": "No discount",
+      "deleteConfirmBody": "Are you sure you want to delete {{name}}? This action cannot be undone."
     }
   }
 }
