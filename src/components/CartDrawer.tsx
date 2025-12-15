@@ -8,8 +8,9 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Minus, Plus, Trash2, ShoppingCart, FileText } from 'lucide-react'
+import { Minus, Plus, Trash2, ShoppingCart, FileText, Percent } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
+import { useCommissionRate } from '@/hooks/useCommissionRate'
 
 interface CartDrawerProps {
   open: boolean
@@ -19,6 +20,7 @@ interface CartDrawerProps {
 
 export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, getTotal, getItemCount } = useCartStore()
+  const { hasDiscount, commissionRate } = useCommissionRate()
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     const item = items.find((i) => i.product.id === productId)
@@ -38,6 +40,14 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
 
   const total = getTotal()
   const itemCount = getItemCount()
+  
+  // Check if item has a commission discount applied
+  const hasItemDiscount = (item: typeof items[0]) => {
+    const product = item.product
+    return hasDiscount && 
+           product.adjusted_price !== undefined && 
+           product.adjusted_price < product.weboffer_price
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -106,8 +116,19 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
                       <p className="text-xs text-muted-foreground font-mono mb-2">
                         SKU: {product.sku}
                       </p>
-                      <div className="text-sm font-bold text-primary mb-2">
-                        {formatPrice(item.price)} each
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="text-sm font-bold text-primary">
+                          {formatPrice(item.price)} each
+                        </div>
+                        {hasItemDiscount(item) && (
+                          <Badge 
+                            variant="secondary" 
+                            className="gap-0.5 px-1.5 py-0 text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                          >
+                            <Percent className="w-2.5 h-2.5" />
+                            {Math.round(commissionRate * 100)}%
+                          </Badge>
+                        )}
                       </div>
 
                       {/* Quantity Controls */}
@@ -162,6 +183,16 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
 
             {/* Cart Footer */}
             <div className="border-t border-border pt-4 space-y-4 mt-4">
+              {/* Discount Banner */}
+              {hasDiscount && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm text-emerald-700 dark:text-emerald-300">
+                    Your {Math.round(commissionRate * 100)}% discount is applied
+                  </span>
+                </div>
+              )}
+
               {/* Grand Total */}
               <div className="flex items-center justify-between text-lg font-bold">
                 <span>Total</span>

@@ -35,6 +35,8 @@ export interface Client extends Profile {
   role: 'company'
   // Optional aggregated stats used on admin clients page
   orders_count?: number
+  // Optional aggregated unpaid balance (from quotes with unpaid statuses)
+  unpaid_amount?: number
 }
 
 export interface Product {
@@ -65,6 +67,9 @@ export interface Product {
   moq?: number
   wholesale_price?: number
   stock?: number
+  // Computed field for personalized commission discounts (set at runtime, not stored in DB)
+  // adjusted_price = weboffer_price * (1 - commission_rate) for company users
+  adjusted_price?: number
 }
 
 export interface QuoteItem {

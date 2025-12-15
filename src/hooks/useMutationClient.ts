@@ -25,10 +25,22 @@ export function useMutationUpdateClient() {
       if (error) throw error
       return client as Client
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      // Invalidate client queries
       queryClient.invalidateQueries({ queryKey: ['clients'] })
       queryClient.invalidateQueries({ queryKey: ['clients', data.id] })
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      
+      // If commission_rate was updated, invalidate product queries
+      // This ensures catalog views update with new adjusted prices
+      if (variables.commission_rate !== undefined) {
+        // Invalidate all product queries so adjusted prices are recalculated
+        queryClient.invalidateQueries({ queryKey: ['products'] })
+        queryClient.invalidateQueries({ queryKey: ['public-products'] })
+        queryClient.invalidateQueries({ queryKey: ['product'] })
+        // Also invalidate quotes so they show updated pricing
+        queryClient.invalidateQueries({ queryKey: ['quotes'] })
+      }
     },
   })
 }

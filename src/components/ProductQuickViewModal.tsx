@@ -9,11 +9,12 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Package, ChevronLeft, ChevronRight, ShoppingCart, ExternalLink } from 'lucide-react'
+import { Package, ChevronLeft, ChevronRight, ShoppingCart, ExternalLink, Percent } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
+import { useCommissionRate } from '@/hooks/useCommissionRate'
 
 interface ProductQuickViewModalProps {
   product: Product | null
@@ -37,6 +38,7 @@ export function ProductQuickViewModal({
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const { addItem } = useCartStore()
   const { toast } = useToast()
+  const { hasDiscount, commissionRate } = useCommissionRate()
 
   if (!product) return null
 
@@ -50,6 +52,10 @@ export function ProductQuickViewModal({
   const isOutOfStock = quantity === 0
   const hasSku = product.sku && product.sku.trim() !== ''
   const detailUrl = hasSku ? `/dashboard/products/${product.sku}` : '#'
+  
+  // Use adjusted_price if available, otherwise fall back to weboffer_price
+  const displayPrice = product.adjusted_price ?? product.weboffer_price
+  const hasCommissionDiscount = hasDiscount && product.adjusted_price !== undefined && product.adjusted_price < product.weboffer_price
 
   // Handle add to cart
   const handleAddToCart = () => {
@@ -169,10 +175,28 @@ export function ProductQuickViewModal({
           <div className="space-y-4">
             {/* Price */}
             <div>
-              <div className="text-3xl font-bold text-primary mb-1">
-                {formatPrice(product.weboffer_price)}
+              <div className="flex items-center gap-2 mb-1">
+                <div className="text-3xl font-bold text-primary">
+                  {formatPrice(displayPrice)}
+                </div>
+                {hasCommissionDiscount && (
+                  <Badge 
+                    variant="secondary" 
+                    className="gap-1 px-2 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                  >
+                    <Percent className="w-3 h-3" />
+                    {Math.round(commissionRate * 100)}% OFF
+                  </Badge>
+                )}
               </div>
-              {product.retail_price && product.retail_price > (product.weboffer_price || 0) && (
+              {/* Show base wholesale price as strikethrough when commission discount applies */}
+              {hasCommissionDiscount && (
+                <div className="text-lg text-muted-foreground line-through">
+                  {formatPrice(product.weboffer_price)}
+                </div>
+              )}
+              {/* Show retail price strikethrough only if no commission discount and retail > wholesale */}
+              {!hasCommissionDiscount && product.retail_price && product.retail_price > (product.weboffer_price || 0) && (
                 <div className="text-lg text-muted-foreground line-through">
                   {formatPrice(product.retail_price)}
                 </div>

@@ -20,6 +20,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { Product } from '@/types'
 import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { applyCommissionRate, shouldApplyCommission } from '@/lib/priceUtils'
 
 const ITEMS_PER_PAGE = 24
 const INITIAL_LOAD_SIZE = 150 // Load 150 products initially for fast render
@@ -59,6 +60,31 @@ function getCategoryIdsForFilter(
 
   // Just filter by this specific subcategory
   return [selectedCategoryId]
+}
+
+/**
+ * Apply commission-based price adjustments to products.
+ * Only company users with a commission_rate > 0 get adjusted prices.
+ */
+function applyCommissionToProducts(
+  products: Product[],
+  role: string | null | undefined,
+  commissionRate: number | null | undefined
+): Product[] {
+  // Check if we should apply commission
+  if (!shouldApplyCommission(role, commissionRate)) {
+    // Return products with adjusted_price = weboffer_price (no discount)
+    return products.map((p) => ({
+      ...p,
+      adjusted_price: p.weboffer_price,
+    }))
+  }
+
+  // Apply commission rate to each product
+  return products.map((p) => ({
+    ...p,
+    adjusted_price: applyCommissionRate(p.weboffer_price, commissionRate),
+  }))
 }
 
 export function ProductsPage() {
@@ -180,6 +206,8 @@ export function ProductsPage() {
       stockFilter,
       currentPage,
       categoriesData, // Include categories in key since buildBaseQuery depends on it
+      profile?.id,
+      profile?.commission_rate, // Include commission rate to refetch when it changes
     ],
     queryFn: async () => {
       if (!range) {
@@ -191,7 +219,9 @@ export function ProductsPage() {
       const { data, error } = await query
 
       if (error) throw error
-      return data as Product[]
+      
+      // Apply commission-based pricing
+      return applyCommissionToProducts(data as Product[], profile?.role, profile?.commission_rate)
     },
     enabled: true,
     placeholderData: (previousData) => previousData, // Keep previous data while loading

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuth } from '@/hooks/useAuth'
+import { useCommissionRate } from '@/hooks/useCommissionRate'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import {
@@ -11,11 +12,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
-import { FileText, Loader2, Warehouse, Truck, Package, Store } from 'lucide-react'
+import { FileText, Loader2, Warehouse, Truck, Package, Store, Percent } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { ShippingMethod, SHIPPING_METHOD_CONFIG } from '@/types'
 import { cn } from '@/lib/utils'
@@ -33,6 +35,7 @@ export function OrderRequestModal({
 }: OrderRequestModalProps) {
   const { items, getTotal, clearCart } = useCartStore()
   const { user, profile, company } = useAuth()
+  const { hasDiscount, commissionRate } = useCommissionRate()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [notes, setNotes] = useState('')
@@ -262,10 +265,36 @@ export function OrderRequestModal({
             </div>
           </div>
 
+          {/* Discount Banner */}
+          {hasDiscount && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <Percent className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <div>
+                <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                  Your {Math.round(commissionRate * 100)}% discount is applied
+                </p>
+                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">
+                  Commission discount applied to all items
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Total */}
           <div className="flex items-center justify-between text-lg font-bold pt-4 border-t">
             <span>Total Amount</span>
-            <span className="text-2xl text-primary">{formatPrice(total)}</span>
+            <div className="text-right">
+              <span className="text-2xl text-primary">{formatPrice(total)}</span>
+              {hasDiscount && (
+                <Badge 
+                  variant="secondary" 
+                  className="ml-2 gap-1 px-2 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                >
+                  <Percent className="w-3 h-3" />
+                  {Math.round(commissionRate * 100)}% OFF
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Actions */}

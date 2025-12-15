@@ -26,7 +26,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tooltip } from '@/components/ui/tooltip'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClients } from '@/hooks/useQueryClients'
@@ -301,16 +300,42 @@ export function ClientsPage() {
       </div>
 
       {/* Info Banner */}
-      <Alert className="border border-sky-500/20 bg-sky-500/5 dark:bg-sky-900/20 backdrop-blur-md rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/10 shrink-0">
-            <Info className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+      <GlassCard className="border border-sky-500/15 bg-gradient-to-br from-sky-50/80 via-white/80 to-emerald-50/80 dark:from-sky-900/30 dark:via-slate-900/80 dark:to-emerald-900/20 backdrop-blur-md shadow-sm">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+          {/* Left: Signup info */}
+          <div className="flex items-start gap-3 flex-1">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 border border-sky-500/20 shrink-0">
+              <Users className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                {t('nav.distributors')}
+              </div>
+              <p className="text-sm text-sky-900/80 dark:text-sky-50/90 leading-relaxed">
+                {t('distributors.infoBanner')}
+              </p>
+            </div>
           </div>
-          <AlertDescription className="text-sm text-sky-900/80 dark:text-sky-50/90">
-            New clients sign up through the platform and will appear here automatically.
-          </AlertDescription>
+
+          {/* Divider on large screens */}
+          <div className="hidden lg:block w-px bg-gradient-to-b from-sky-500/20 via-slate-300/40 to-emerald-500/20" />
+
+          {/* Right: Commission info */}
+          <div className="flex items-start gap-3 flex-1">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/25 shrink-0">
+              <Percent className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                {t('distributors.commissionInfoTitle')}
+              </div>
+              <p className="text-[13px] md:text-sm text-emerald-900/90 dark:text-emerald-50/90 leading-relaxed">
+                {t('distributors.commissionInfoBody')}
+              </p>
+            </div>
+          </div>
         </div>
-      </Alert>
+      </GlassCard>
 
       {/* Search & Filter Bar */}
       <GlassCard>
@@ -329,24 +354,34 @@ export function ClientsPage() {
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
               <Users className="w-3.5 h-3.5" />
               <span className="font-medium tabular-nums">
-                {clientsCount} {clientsCount === 1 ? 'client' : 'clients'}
+                {t('distributors.clientsCount', { count: clientsCount })}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground sr-only">Sort by</Label>
+              <Label className="text-xs text-muted-foreground sr-only">
+                {t('distributors.sortBy')}
+              </Label>
               <Select
                 value={sortBy}
                 onValueChange={(value) => setSortBy(value as typeof sortBy)}
               >
                 <SelectTrigger className="h-9 w-[160px] text-xs bg-background/60 backdrop-blur-sm border-border/60">
-                  <SelectValue placeholder="Newest first" />
+                  <SelectValue placeholder={t('distributors.sortNewestFirst')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="joinDateDesc">Newest first</SelectItem>
-                  <SelectItem value="joinDateAsc">Oldest first</SelectItem>
-                  <SelectItem value="commissionDesc">Highest rate</SelectItem>
-                  <SelectItem value="commissionAsc">Lowest rate</SelectItem>
+                  <SelectItem value="joinDateDesc">
+                    {t('distributors.sortNewestFirst')}
+                  </SelectItem>
+                  <SelectItem value="joinDateAsc">
+                    {t('distributors.sortOldestFirst')}
+                  </SelectItem>
+                  <SelectItem value="commissionDesc">
+                    {t('distributors.sortHighestRate')}
+                  </SelectItem>
+                  <SelectItem value="commissionAsc">
+                    {t('distributors.sortLowestRate')}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -419,12 +454,12 @@ export function ClientsPage() {
                     
                     <div className="space-y-2">
                       <h3 className="text-lg font-semibold text-foreground">
-                        {searchQuery ? t('distributors.noResults') : 'No clients yet'}
+                        {searchQuery ? t('distributors.noResults') : t('distributors.emptyTitle')}
                       </h3>
                       <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
                         {searchQuery
                           ? t('distributors.noResultsDesc')
-                          : 'Invite them to sign up via the platform! Clients will appear here automatically once they complete signup.'}
+                          : t('distributors.emptyDescription')}
                       </p>
                     </div>
 
@@ -434,13 +469,13 @@ export function ClientsPage() {
                         className="mt-2 gap-2 rounded-full px-5 border-sky-500/30 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10 hover:border-sky-500/50"
                         onClick={() => {
                           toast({
-                            title: 'Invite clients',
-                            description: 'Share your platform URL with potential clients to let them sign up.',
+                            title: t('distributors.inviteToastTitle'),
+                            description: t('distributors.inviteToastDescription'),
                           })
                         }}
                       >
                         <UserPlus className="w-4 h-4" />
-                        Invite Now
+                        {t('distributors.inviteCta')}
                       </Button>
                     )}
                   </div>
@@ -456,6 +491,8 @@ export function ClientsPage() {
                 const hasCommission = commissionDisplay !== null
                 const joinedAgo = getJoinedAgo(client.created_at)
                 const ordersCount = client.orders_count ?? 0
+                const unpaidAmount = client.unpaid_amount ?? 0
+                const hasUnpaid = unpaidAmount > 0
                 
                 return (
                   <Card
@@ -493,7 +530,7 @@ export function ClientsPage() {
                         {/* Commission Rate Row */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <span>Commission</span>
+                            <span>{t('distributors.commissionLabel')}</span>
                             <Tooltip content={t('distributors.commissionRateTooltip')} side="top">
                               <button
                                 type="button"
@@ -519,7 +556,7 @@ export function ClientsPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Calendar className="w-3 h-3" />
-                            <span>Joined</span>
+                            <span>{t('distributors.joinedLabel')}</span>
                           </div>
                           <Tooltip content={joinedAgo || ''} side="top">
                             <span className="text-xs font-medium text-foreground/80 tabular-nums cursor-default">
@@ -530,22 +567,44 @@ export function ClientsPage() {
                           </Tooltip>
                         </div>
 
+                        {/* Email Row (for scan + searchability) */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Mail className="w-3 h-3 shrink-0" />
+                            <span>{t('general.email')}</span>
+                          </div>
+                          <span className="text-xs font-medium text-foreground/80 truncate max-w-[55%] text-right">
+                            {getEmailDisplay(client)}
+                          </span>
+                        </div>
+
                         {/* Orders Row */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <ShoppingBag className="w-3 h-3" />
-                            <span>Orders</span>
+                            <span>{t('distributors.ordersLabel')}</span>
                           </div>
                           <span className="text-xs font-medium text-foreground/80 tabular-nums">
                             {ordersCount}
                           </span>
                         </div>
 
-                        {/* Email Row (for scan + searchability) */}
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
-                          <Mail className="w-3 h-3 shrink-0" />
-                          <span className="truncate leading-relaxed">
-                            {getEmailDisplay(client)}
+                        {/* Unpaid Balance Row */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <AlertCircle className="w-3 h-3 text-amber-500" />
+                            <span>{t('distributors.unpaidLabel')}</span>
+                          </div>
+                          <span
+                            className={`text-xs font-medium tabular-nums px-1.5 py-0.5 rounded-full ${
+                              hasUnpaid
+                                ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30'
+                                : 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                            }`}
+                          >
+                            {hasUnpaid
+                              ? `€${unpaidAmount.toFixed(2)}`
+                              : t('distributors.noUnpaid')}
                           </span>
                         </div>
                       </div>
@@ -559,7 +618,7 @@ export function ClientsPage() {
                               className="text-[10px] uppercase tracking-wider px-2 py-0.5 font-medium border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5"
                             >
                               <ShoppingBag className="w-2.5 h-2.5 mr-1" />
-                              Discounted
+                              {t('distributors.discountedBadge')}
                             </Badge>
                           )}
                         </div>
@@ -595,7 +654,11 @@ export function ClientsPage() {
             {totalPages > 1 && (
               <div className="mt-6 flex flex-col items-center gap-3">
                 <div className="text-xs text-muted-foreground">
-                  Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, clientsCount)} of {clientsCount} clients
+                  {t('products.showing')}{' '}
+                  {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–
+                  {Math.min(currentPage * ITEMS_PER_PAGE, clientsCount)}{' '}
+                  {t('products.of')}{' '}
+                  {clientsCount} {t('distributors.distributors')}
                 </div>
                 <Pagination
                   currentPage={currentPage}
@@ -614,10 +677,13 @@ export function ClientsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-sky-500" />
-              Edit Client Commission
+              {t('distributors.editDistributor')}
             </DialogTitle>
             <DialogDescription>
-              Set the commission rate for <span className="font-medium">{editingClient ? getCompanyName(editingClient) : 'this client'}</span>.
+              {t('distributors.editDistributorDesc')}{' '}
+              <span className="font-medium">
+                {editingClient ? getCompanyName(editingClient) : t('distributors.thisDistributor')}
+              </span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 py-4">
@@ -637,7 +703,9 @@ export function ClientsPage() {
                   variant={editForm.commission_rate > 0 ? 'default' : 'secondary'}
                   className="text-xs"
                 >
-                  {editForm.commission_rate > 0 ? `${editForm.commission_rate}% discount` : 'No discount'}
+                  {editForm.commission_rate > 0
+                    ? t('distributors.commissionBadge', { rate: editForm.commission_rate })
+                    : t('distributors.noDiscount')}
                 </Badge>
               </div>
               <div className="relative">
@@ -677,7 +745,7 @@ export function ClientsPage() {
               {updateMutation.isPending && (
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
-              Save Changes
+              {t('general.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -692,7 +760,9 @@ export function ClientsPage() {
               {t('distributors.deleteConfirmTitle')}
             </DialogTitle>
             <DialogDescription className="pt-2">
-              Are you sure you want to delete <span className="font-medium">{deletingClient ? getCompanyName(deletingClient) : 'this client'}</span>? This action cannot be undone.
+              {t('distributors.deleteConfirmBody', {
+                name: deletingClient ? getCompanyName(deletingClient) : t('distributors.thisDistributor'),
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 mt-4">

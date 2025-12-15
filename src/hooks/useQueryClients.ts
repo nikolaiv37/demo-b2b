@@ -24,7 +24,7 @@ export function useQueryClients() {
       // Enrich with latest company_name/email from quotes (same source as Orders page)
       const { data: quoteCompanies, error: quotesError } = await supabase
         .from('quotes')
-        .select('user_id, company_name, email, created_at')
+        .select('user_id, company_name, email, created_at, status, total')
         .not('user_id', 'is', null)
         .order('created_at', { ascending: false })
 
@@ -36,12 +36,20 @@ export function useQueryClients() {
 
       const companyByUserId = new Map<
         string,
-        { company_name?: string | null; email?: string | null; orders_count: number }
+        {
+          company_name?: string | null
+          email?: string | null
+          orders_count: number
+          unpaid_amount: number
+        }
       >()
 
       ;(quoteCompanies || []).forEach((quote: any) => {
         const userId = quote.user_id as string | null
         if (!userId) return
+
+        const isUnpaid = ['new', 'pending'].includes(quote.status)
+        const total = Number(quote.total || 0)
 
         const existing = companyByUserId.get(userId)
 
@@ -51,9 +59,13 @@ export function useQueryClients() {
             company_name: quote.company_name || null,
             email: quote.email || null,
             orders_count: 1,
+            unpaid_amount: isUnpaid ? total : 0,
           })
         } else {
           existing.orders_count += 1
+          if (isUnpaid) {
+            existing.unpaid_amount += total
+          }
         }
       })
 
@@ -66,6 +78,7 @@ export function useQueryClients() {
           company_name: client.company_name || hint.company_name || null,
           email: client.email || hint.email || null,
           orders_count: hint.orders_count,
+          unpaid_amount: hint.unpaid_amount,
         }
       })
 

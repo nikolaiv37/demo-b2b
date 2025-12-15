@@ -1,10 +1,39 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Product } from '@/types'
+import { useAuthStore } from '@/stores/authStore'
+import { applyCommissionRate, shouldApplyCommission } from '@/lib/priceUtils'
+
+/**
+ * Apply commission-based price adjustments to products.
+ * Only company users with a commission_rate > 0 get adjusted prices.
+ */
+function applyCommissionToProducts(
+  products: Product[],
+  role: string | null | undefined,
+  commissionRate: number | null | undefined
+): Product[] {
+  // Check if we should apply commission
+  if (!shouldApplyCommission(role, commissionRate)) {
+    // Return products with adjusted_price = weboffer_price (no discount)
+    return products.map((p) => ({
+      ...p,
+      adjusted_price: p.weboffer_price,
+    }))
+  }
+
+  // Apply commission rate to each product
+  return products.map((p) => ({
+    ...p,
+    adjusted_price: applyCommissionRate(p.weboffer_price, commissionRate),
+  }))
+}
 
 export function useQueryProducts(supplierId?: string) {
+  const profile = useAuthStore((state) => state.profile)
+
   return useQuery({
-    queryKey: ['products', supplierId],
+    queryKey: ['products', supplierId, profile?.id, profile?.commission_rate],
     queryFn: async () => {
       let query = supabase.from('products').select('*').order('created_at', { ascending: false })
 
@@ -15,7 +44,9 @@ export function useQueryProducts(supplierId?: string) {
       const { data, error } = await query
 
       if (error) throw error
-      return data as Product[]
+      
+      // Apply commission-based pricing
+      return applyCommissionToProducts(data as Product[], profile?.role, profile?.commission_rate)
     },
     // For dev mode, always enable to show all products
     enabled: true,
@@ -23,8 +54,10 @@ export function useQueryProducts(supplierId?: string) {
 }
 
 export function useQueryProduct(productId: string) {
+  const profile = useAuthStore((state) => state.profile)
+
   return useQuery({
-    queryKey: ['product', productId],
+    queryKey: ['product', productId, profile?.id, profile?.commission_rate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
@@ -33,7 +66,10 @@ export function useQueryProduct(productId: string) {
         .single()
 
       if (error) throw error
-      return data as Product
+      
+      // Apply commission-based pricing
+      const products = applyCommissionToProducts([data as Product], profile?.role, profile?.commission_rate)
+      return products[0]
     },
     enabled: !!productId,
   })
@@ -45,8 +81,10 @@ export function useQueryPublicProducts(companySlug: string, filters?: {
   minPrice?: number
   maxPrice?: number
 }) {
+  const profile = useAuthStore((state) => state.profile)
+
   return useQuery({
-    queryKey: ['public-products', companySlug, filters],
+    queryKey: ['public-products', companySlug, filters, profile?.id, profile?.commission_rate],
     queryFn: async () => {
       // For MVP: Show all visible products
       // TODO: Later filter by company if needed
@@ -77,9 +115,45 @@ export function useQueryPublicProducts(companySlug: string, filters?: {
       const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) throw error
-      return data as Product[]
+      
+      // Apply commission-based pricing
+      return applyCommissionToProducts(data as Product[], profile?.role, profile?.commission_rate)
     },
     enabled: !!companySlug,
+  })
+}
+
+/**
+ * Hook to fetch a product by SKU with commission-adjusted pricing.
+ */
+export function useQueryProductBySku(sku: string) {
+  const profile = useAuthStore((state) => state.profile)
+
+  return useQuery({
+    queryKey: ['product', 'sku', sku, profile?.id, profile?.commission_rate],
+    queryFn: async () => {
+      if (!sku) throw new Error('SKU is required')
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('sku', sku)
+        .single()
+
+      if (error) {
+        // If product not found, return null
+        if (error.code === 'PGRST116') {
+          return null
+        }
+        throw error
+      }
+
+      // Apply commission-based pricing
+      const products = applyCommissionToProducts([data as Product], profile?.role, profile?.commission_rate)
+      return products[0]
+    },
+    enabled: !!sku,
+    retry: false,
   })
 }
 
