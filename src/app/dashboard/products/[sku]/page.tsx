@@ -1,9 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { supabase } from '@/lib/supabase/client'
-import { Product } from '@/types'
 import { GlassCard } from '@/components/GlassCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlist } from '@/hooks/useWishlist'
+import { useQueryProductBySku } from '@/hooks/useQueryProducts'
+import { useCommissionRate } from '@/hooks/useCommissionRate'
 import {
   Package,
   ChevronLeft,
@@ -21,6 +20,7 @@ import {
   Home,
   ChevronRight as ChevronRightIcon,
   Heart,
+  Percent,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn, formatPrice as formatPriceUtil } from '@/lib/utils'
@@ -49,35 +49,13 @@ export function ProductDetailPage() {
   const { toast } = useToast()
   const { addItem } = useCartStore()
   const { isInWishlist, toggleWishlist } = useWishlist()
+  const { hasDiscount, commissionRate } = useCommissionRate()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [addToOrderOpen, setAddToOrderOpen] = useState(false)
   const [isPulsing, setIsPulsing] = useState(false)
 
-  // Fetch product by SKU (not id - see comment above)
-  const { data: product, isLoading, error } = useQuery({
-    queryKey: ['product', 'sku', sku],
-    queryFn: async () => {
-      if (!sku) throw new Error('SKU is required')
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('sku', sku)
-        .single()
-
-      if (error) {
-        // If product not found, return null (we'll show 404 UI)
-        if (error.code === 'PGRST116') {
-          return null
-        }
-        throw error
-      }
-
-      return data as Product
-    },
-    enabled: !!sku,
-    retry: false,
-  })
+  // Fetch product by SKU using the new hook that applies commission pricing
+  const { data: product, isLoading, error } = useQueryProductBySku(sku || '')
 
   // Handle 404 - product not found
   if (!isLoading && (!product || error)) {
@@ -145,6 +123,10 @@ export function ProductDetailPage() {
   const quantity = product.quantity ?? 0
   const isOutOfStock = quantity === 0
   const isLowStock = quantity > 0 && quantity < 20
+
+  // Use adjusted_price if available, otherwise fall back to weboffer_price
+  const displayPrice = product.adjusted_price ?? product.weboffer_price
+  const hasCommissionDiscount = hasDiscount && product.adjusted_price !== undefined && product.adjusted_price < product.weboffer_price
 
   // Format price helper
   const formatPrice = (price: number | null | undefined): string => {
@@ -343,10 +325,28 @@ export function ProductDetailPage() {
 
             {/* Price */}
             <div>
-              <div className="text-5xl font-bold text-primary mb-2">
-                {formatPrice(product.weboffer_price)}
+              <div className="flex items-center gap-3 mb-2">
+                <div className="text-5xl font-bold text-primary">
+                  {formatPrice(displayPrice)}
+                </div>
+                {hasCommissionDiscount && (
+                  <Badge 
+                    variant="secondary" 
+                    className="gap-1 px-2.5 py-1 text-sm font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                  >
+                    <Percent className="w-4 h-4" />
+                    {Math.round(commissionRate * 100)}% OFF
+                  </Badge>
+                )}
               </div>
-              {product.retail_price && product.retail_price > (product.weboffer_price || 0) && (
+              {/* Show base wholesale price as strikethrough when commission discount applies */}
+              {hasCommissionDiscount && (
+                <div className="text-xl text-muted-foreground line-through">
+                  {formatPrice(product.weboffer_price)}
+                </div>
+              )}
+              {/* Show retail price strikethrough only if no commission discount and retail > wholesale */}
+              {!hasCommissionDiscount && product.retail_price && product.retail_price > (product.weboffer_price || 0) && (
                 <div className="text-xl text-muted-foreground line-through">
                   {formatPrice(product.retail_price)}
                 </div>

@@ -65,6 +65,9 @@ export interface Product {
   moq?: number
   wholesale_price?: number
   stock?: number
+  // Computed field for personalized commission discounts (set at runtime, not stored in DB)
+  // adjusted_price = weboffer_price * (1 - commission_rate) for company users
+  adjusted_price?: number
 }
 
 export interface QuoteItem {

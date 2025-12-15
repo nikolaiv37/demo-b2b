@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
 import { useWishlist } from '@/hooks/useWishlist'
-import { Eye, Package, ShoppingCart, Plus, Minus, Heart } from 'lucide-react'
+import { useCommissionRate } from '@/hooks/useCommissionRate'
+import { Eye, Package, ShoppingCart, Plus, Minus, Heart, Percent } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 
@@ -49,6 +50,7 @@ export function ProductGridCard({
   const { addItem } = useCartStore()
   const { toast } = useToast()
   const { isInWishlist, toggleWishlist } = useWishlist()
+  const { hasDiscount, commissionRate } = useCommissionRate()
   
   const quantity = product.quantity ?? 0
   const mainImage = product.main_image || product.images?.[0]
@@ -56,6 +58,10 @@ export function ProductGridCard({
   const isOutOfStock = quantity === 0
   const maxQuantity = quantity
   const inWishlist = product.sku ? isInWishlist(product.sku) : false
+  
+  // Use adjusted_price if available, otherwise fall back to weboffer_price
+  const displayPrice = product.adjusted_price ?? product.weboffer_price
+  const hasCommissionDiscount = hasDiscount && product.adjusted_price !== undefined && product.adjusted_price < product.weboffer_price
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -239,10 +245,28 @@ export function ProductGridCard({
 
         {/* Price */}
         <div className="mb-3">
-          <div className="text-2xl font-bold text-primary">
-            {formatPrice(product.weboffer_price)}
+          <div className="flex items-center gap-2">
+            <div className="text-2xl font-bold text-primary">
+              {formatPrice(displayPrice)}
+            </div>
+            {hasCommissionDiscount && (
+              <Badge 
+                variant="secondary" 
+                className="gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+              >
+                <Percent className="w-2.5 h-2.5" />
+                {Math.round(commissionRate * 100)}% OFF
+              </Badge>
+            )}
           </div>
-          {product.retail_price && product.retail_price > (product.weboffer_price || 0) && (
+          {/* Show base wholesale price as strikethrough when commission discount applies */}
+          {hasCommissionDiscount && (
+            <div className="text-sm text-muted-foreground line-through">
+              {formatPrice(product.weboffer_price)}
+            </div>
+          )}
+          {/* Show retail price strikethrough only if no commission discount and retail > wholesale */}
+          {!hasCommissionDiscount && product.retail_price && product.retail_price > (product.weboffer_price || 0) && (
             <div className="text-sm text-muted-foreground line-through">
               {formatPrice(product.retail_price)}
             </div>

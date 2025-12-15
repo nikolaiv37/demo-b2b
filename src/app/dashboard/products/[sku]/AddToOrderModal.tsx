@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Product } from '@/types'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
+import { useCommissionRate } from '@/hooks/useCommissionRate'
 import {
   Dialog,
   DialogContent,
@@ -10,9 +11,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ShoppingCart, Plus, Minus, Loader2 } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, Loader2, Percent } from 'lucide-react'
 import { formatPrice as formatPriceUtil } from '@/lib/utils'
 
 interface AddToOrderModalProps {
@@ -34,12 +36,18 @@ interface AddToOrderModalProps {
 export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps) {
   const { addItem } = useCartStore()
   const { toast } = useToast()
+  const { hasDiscount, commissionRate } = useCommissionRate()
   const [quantity, setQuantity] = useState(1)
   const [isAdding, setIsAdding] = useState(false)
 
   const maxQuantity = product.quantity ?? 0
   const isOutOfStock = maxQuantity === 0
-  const unitPrice = product.weboffer_price || 0
+  
+  // Use adjusted_price if available, otherwise fall back to weboffer_price
+  const unitPrice = product.adjusted_price ?? product.weboffer_price ?? 0
+  const basePrice = product.weboffer_price ?? 0
+  const hasCommissionDiscount = hasDiscount && product.adjusted_price !== undefined && product.adjusted_price < basePrice
+  
   const total = unitPrice * quantity
 
   // Format price helper
@@ -130,9 +138,25 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
               <p className="text-xs text-muted-foreground font-mono mb-1">
                 SKU: {product.sku}
               </p>
-              <p className="text-lg font-bold text-primary">
-                {formatPrice(unitPrice)}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-bold text-primary">
+                  {formatPrice(unitPrice)}
+                </p>
+                {hasCommissionDiscount && (
+                  <Badge 
+                    variant="secondary" 
+                    className="gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                  >
+                    <Percent className="w-2.5 h-2.5" />
+                    {Math.round(commissionRate * 100)}% OFF
+                  </Badge>
+                )}
+              </div>
+              {hasCommissionDiscount && (
+                <p className="text-sm text-muted-foreground line-through">
+                  {formatPrice(basePrice)}
+                </p>
+              )}
             </div>
           </div>
 

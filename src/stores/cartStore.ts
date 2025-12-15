@@ -2,6 +2,15 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Product, CartItem } from '@/types'
 
+/**
+ * Get the effective price for a product.
+ * Uses adjusted_price if available (for commission discounts), otherwise weboffer_price.
+ */
+function getEffectivePrice(product: Product): number {
+  // Use adjusted_price if set (commission-based discount), otherwise weboffer_price
+  return product.adjusted_price ?? product.weboffer_price ?? 0
+}
+
 interface CartState {
   items: CartItem[]
   addItem: (product: Product, quantity: number, userRole?: 'admin' | 'sales' | 'buyer' | 'company') => {
@@ -55,11 +64,12 @@ export const useCartStore = create<CartState>()(
             }
           }
 
-          // Use weboffer_price (wholesale price)
-          const unitPrice = product.weboffer_price || 0
+          // Use effective price (adjusted_price if commission discount applies, else weboffer_price)
+          const unitPrice = getEffectivePrice(product)
           const updatedItems = [...items]
           updatedItems[existingItemIndex] = {
             ...updatedItems[existingItemIndex],
+            product, // Update product to store latest adjusted_price
             quantity: newQuantity,
             price: unitPrice,
             total: unitPrice * newQuantity,
@@ -67,8 +77,8 @@ export const useCartStore = create<CartState>()(
 
           set({ items: updatedItems })
         } else {
-          // Add new item - use weboffer_price (wholesale price)
-          const unitPrice = product.weboffer_price || 0
+          // Add new item - use effective price (adjusted_price or weboffer_price)
+          const unitPrice = getEffectivePrice(product)
           const newItem: CartItem = {
             product,
             quantity,
@@ -115,8 +125,8 @@ export const useCartStore = create<CartState>()(
           }
         }
 
-        // Use weboffer_price (wholesale price)
-        const unitPrice = item.product.weboffer_price || 0
+        // Use effective price (adjusted_price if commission discount applies, else weboffer_price)
+        const unitPrice = getEffectivePrice(item.product)
         const updatedItems = [...items]
         updatedItems[itemIndex] = {
           ...item,
