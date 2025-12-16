@@ -93,10 +93,10 @@ export interface QuoteItem {
 }
 
 // New order workflow statuses
-export type QuoteStatus = 'processing' | 'awaiting_payment' | 'shipped' | 'completed'
+export type QuoteStatus = 'processing' | 'awaiting_payment' | 'shipped' | 'completed' | 'rejected'
 
 // Legacy status mapping for database compatibility
-// DB values: 'new' -> 'processing', 'pending' -> 'awaiting_payment', 'approved' -> 'completed', 'shipped' -> 'shipped'
+// DB values: 'new' -> 'processing', 'pending' -> 'awaiting_payment', 'approved' -> 'completed', 'shipped' -> 'shipped', 'rejected' -> 'rejected'
 
 export interface Quote {
   id: string
@@ -117,7 +117,7 @@ export interface Quote {
 }
 
 // New simplified order statuses workflow
-export type OrderStatus = 'processing' | 'awaiting_payment' | 'shipped' | 'completed'
+export type OrderStatus = 'processing' | 'awaiting_payment' | 'shipped' | 'completed' | 'rejected'
 
 // Shipping method options
 export type ShippingMethod = 

@@ -54,6 +54,7 @@ type OrderStatus =
   | 'awaiting_payment'
   | 'shipped'
   | 'completed'
+  | 'rejected'
 
 interface OrderItem {
   product_id: string
@@ -253,6 +254,10 @@ function getStatusBadge(status: OrderStatus, t: (key: string) => string) {
       label: t('orders.completedSent'),
       className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
+    rejected: {
+      label: t('orders.rejected'),
+      className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    },
   }
 
   const config = configs[status]
@@ -273,6 +278,33 @@ function formatOrderDate(dateString: string): string {
   return `${day} ${month} ${year}, ${hours}:${minutes}`
 }
 
+function isToday(dateString: string): boolean {
+  const date = new Date(dateString)
+  const today = new Date()
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  )
+}
+
+function isThisWeek(dateString: string): boolean {
+  const date = new Date(dateString)
+  const today = new Date()
+  const weekAgo = new Date(today)
+  weekAgo.setDate(today.getDate() - 7)
+  return date >= weekAgo
+}
+
+function isThisMonth(dateString: string): boolean {
+  const date = new Date(dateString)
+  const today = new Date()
+  return (
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  )
+}
+
 export function OrdersPage() {
   const { t } = useTranslation()
   const { user, isAdmin, company, profile } = useAuth()
@@ -288,6 +320,8 @@ export function OrdersPage() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [shippingFilter, setShippingFilter] = useState<string>('all')
+  const [dateFilter, setDateFilter] = useState<string>('all')
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
   const [quickFilter, setQuickFilter] = useState<string | null>(null)
   const [isGeneratingBulkPdfs, setIsGeneratingBulkPdfs] = useState(false)
@@ -333,7 +367,7 @@ export function OrdersPage() {
           paid: 'completed',           // Completed & Sent
           delivered: 'completed',      // Completed & Sent
           completed: 'completed',      // Completed & Sent
-          rejected: 'awaiting_payment', // Treat rejected as awaiting payment
+          rejected: 'rejected',        // Rejected
           expired: 'awaiting_payment',  // Treat expired as awaiting payment
         }
 
@@ -403,18 +437,34 @@ export function OrdersPage() {
       filtered = filtered.filter((order) => order.status === statusFilter)
     }
 
-    // Quick filters
-    if (quickFilter === 'dropshipping') {
-      filtered = filtered.filter((order) => order.shipping_method === 'dropshipping')
-    } else if (quickFilter === 'ready_today') {
-      filtered = filtered.filter((order) => order.status === 'shipped')
-    } else if (quickFilter === 'low_stock') {
-      // TODO: Implement low stock logic based on inventory
-      filtered = filtered.filter((order) => order.id === 3) // Dummy filter
+    // Shipping method filter
+    if (shippingFilter !== 'all') {
+      filtered = filtered.filter((order) => order.shipping_method === shippingFilter)
+    }
+
+    // Date filter
+    if (dateFilter === 'today') {
+      filtered = filtered.filter((order) => isToday(order.created_at))
+    } else if (dateFilter === 'this_week') {
+      filtered = filtered.filter((order) => isThisWeek(order.created_at))
+    } else if (dateFilter === 'this_month') {
+      filtered = filtered.filter((order) => isThisMonth(order.created_at))
     }
 
     return filtered
-  }, [orders, searchQuery, statusFilter, quickFilter])
+  }, [orders, searchQuery, statusFilter, shippingFilter, dateFilter, quickFilter])
+
+  // Status counts for filter badges (similar to returns/complaints page)
+  const statusCounts = useMemo(
+    () => ({
+      processing: orders.filter((o) => o.status === 'processing').length,
+      awaiting_payment: orders.filter((o) => o.status === 'awaiting_payment').length,
+      shipped: orders.filter((o) => o.status === 'shipped').length,
+      completed: orders.filter((o) => o.status === 'completed').length,
+      rejected: orders.filter((o) => o.status === 'rejected').length,
+    }),
+    [orders],
+  )
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -623,9 +673,9 @@ export function OrdersPage() {
         </p>
       </div>
 
-      {/* Top Bar: Search, Filters, Quick Filters */}
+      {/* Top Bar: Search + Dropdown Filters */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-center">
           {/* Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -637,63 +687,118 @@ export function OrdersPage() {
             />
           </div>
 
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder={t('orders.allStatuses')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('orders.allStatuses')}</SelectItem>
-              <SelectItem value="processing">{t('orders.processing')}</SelectItem>
-              <SelectItem value="awaiting_payment">{t('orders.awaitingPayment')}</SelectItem>
-              <SelectItem value="shipped">{t('orders.shipped')}</SelectItem>
-              <SelectItem value="completed">{t('orders.completedSent')}</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Dropdown Filters: Status, Shipping, Date */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder={t('orders.allStatuses')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('orders.allStatuses')}</SelectItem>
+                <SelectItem value="processing">{t('orders.processing')}</SelectItem>
+                <SelectItem value="awaiting_payment">{t('orders.awaitingPayment')}</SelectItem>
+                <SelectItem value="shipped">{t('orders.shipped')}</SelectItem>
+                <SelectItem value="completed">{t('orders.completedSent')}</SelectItem>
+                <SelectItem value="rejected">{t('orders.rejected')}</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Shipping Method Filter */}
+            <Select value={shippingFilter} onValueChange={setShippingFilter}>
+              <SelectTrigger className="w-full sm:w-[190px]">
+                <SelectValue placeholder={t('orders.shippingMethodFilter')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('orders.allShippingMethods')}</SelectItem>
+                <SelectItem value="shop_delivery">{t('shipping.shopDeliveryShort')}</SelectItem>
+                <SelectItem value="warehouse_pickup">{t('shipping.warehousePickupShort')}</SelectItem>
+                <SelectItem value="transport_company">{t('shipping.transportCompanyShort')}</SelectItem>
+                <SelectItem value="dropshipping">{t('shipping.dropshippingShort')}</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Date Range Filter */}
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-full sm:w-[170px]">
+                <SelectValue placeholder={t('orders.dateFilter')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('orders.allDates')}</SelectItem>
+                <SelectItem value="today">{t('orders.today')}</SelectItem>
+                <SelectItem value="this_week">{t('orders.thisWeek')}</SelectItem>
+                <SelectItem value="this_month">{t('orders.thisMonth')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* Quick Filter Chips */}
+        {/* Status Count Badges (clickable filters, similar to returns page) */}
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant={quickFilter === 'dropshipping' ? 'default' : 'outline'}
-            size="sm"
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 shadow-sm hover:bg-blue-500/15 transition-colors cursor-pointer"
             onClick={() =>
-              setQuickFilter(quickFilter === 'dropshipping' ? null : 'dropshipping')
+              setStatusFilter(statusFilter === 'processing' ? 'all' : 'processing')
             }
-            className={cn(
-              quickFilter === 'dropshipping' &&
-                'bg-purple-500 text-white hover:bg-purple-600'
-            )}
           >
-            {t('orders.dropshipping')}
-          </Button>
-          <Button
-            variant={quickFilter === 'ready_today' ? 'default' : 'outline'}
-            size="sm"
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />
+            <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">
+              {t('orders.processing')}: {statusCounts.processing}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 shadow-sm hover:bg-orange-500/15 transition-colors cursor-pointer"
             onClick={() =>
-              setQuickFilter(quickFilter === 'ready_today' ? null : 'ready_today')
+              setStatusFilter(
+                statusFilter === 'awaiting_payment' ? 'all' : 'awaiting_payment',
+              )
             }
-            className={cn(
-              quickFilter === 'ready_today' &&
-                'bg-blue-500 text-white hover:bg-blue-600'
-            )}
           >
-            {t('orders.readyToday')}
-          </Button>
-          <Button
-            variant={quickFilter === 'low_stock' ? 'default' : 'outline'}
-            size="sm"
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm" />
+            <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
+              {t('orders.awaitingPayment')}: {statusCounts.awaiting_payment}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 shadow-sm hover:bg-purple-500/15 transition-colors cursor-pointer"
             onClick={() =>
-              setQuickFilter(quickFilter === 'low_stock' ? null : 'low_stock')
+              setStatusFilter(statusFilter === 'shipped' ? 'all' : 'shipped')
             }
-            className={cn(
-              quickFilter === 'low_stock' &&
-                'bg-red-500 text-white hover:bg-red-600'
-            )}
           >
-            {t('orders.lowStockItems')}
-          </Button>
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-sm" />
+            <span className="text-xs font-semibold text-purple-700 dark:text-purple-400">
+              {t('orders.shipped')}: {statusCounts.shipped}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 shadow-sm hover:bg-green-500/15 transition-colors cursor-pointer"
+            onClick={() =>
+              setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')
+            }
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm" />
+            <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+              {t('orders.completedSent')}: {statusCounts.completed}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-sm hover:bg-red-500/15 transition-colors cursor-pointer"
+            onClick={() =>
+              setStatusFilter(statusFilter === 'rejected' ? 'all' : 'rejected')
+            }
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm" />
+            <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+              {t('orders.rejected')}: {statusCounts.rejected}
+            </span>
+          </button>
         </div>
+
       </div>
 
       {/* Bulk Action Bar */}
@@ -752,7 +857,6 @@ export function OrdersPage() {
               </TableHead>
               <TableHead>{t('orders.orderNumber')}</TableHead>
               <TableHead>{t('orders.date')}</TableHead>
-              <TableHead>{t('orders.companyName')}</TableHead>
               <TableHead>{t('orders.items')}</TableHead>
               <TableHead>{t('orders.total')}</TableHead>
               <TableHead>{t('orders.shipping')}</TableHead>
@@ -813,9 +917,6 @@ export function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatOrderDate(order.created_at)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{order.company_name}</div>
                   </TableCell>
                   <TableCell>
                     <span className="text-sm">
