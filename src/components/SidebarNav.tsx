@@ -45,6 +45,13 @@ const mainNavItemsConfig = [
     icon: FileText,
     badge: 0, // TODO: Calculate from orders with awaiting_payment status
   },
+  // Admin-only: Clients (Distributors), shown under Orders in main navigation
+  {
+    titleKey: 'nav.distributors',
+    href: '/dashboard/clients',
+    icon: Users,
+    adminOnly: true,
+  },
   {
     titleKey: 'nav.complaintsReturns',
     href: '/dashboard/complaints',
@@ -105,10 +112,12 @@ export function SidebarNav() {
   const [catalogOpen, setCatalogOpen] = useState<string>('catalog')
 
   // Translate navigation items
-  const mainNavItems = mainNavItemsConfig.map(item => ({
-    ...item,
-    title: t(item.titleKey),
-  }))
+  const mainNavItems = mainNavItemsConfig
+    .filter((item) => !(item as { adminOnly?: boolean }).adminOnly || isAdmin)
+    .map((item) => ({
+      ...item,
+      title: t(item.titleKey),
+    }))
   const catalogSubmenuItems = catalogSubmenuItemsConfig
     .map(item => ({
       ...item,
@@ -262,7 +271,7 @@ export function SidebarNav() {
                   )}
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium flex-1">{item.title}</span>
+                  <span className="font-medium flex-1 text-xs uppercase tracking-wide">{item.title}</span>
                   {item.badge !== undefined && item.badge > 0 && (
                     <Badge
                       variant="destructive"
@@ -311,7 +320,7 @@ export function SidebarNav() {
                       'w-5 h-5 flex-shrink-0',
                       isCatalogActive() ? 'text-white' : 'text-gray-700 dark:text-gray-300'
                     )} />
-                    <span className="font-medium flex-1">{t('nav.catalog')}</span>
+                    <span className="font-medium flex-1 text-xs uppercase tracking-wide">{t('nav.catalog')}</span>
                   </div>
                   <button
                     type="button"
@@ -364,7 +373,7 @@ export function SidebarNav() {
                           key={subItem.href}
                           to={subItem.href}
                           className={cn(
-                            'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
+                            'flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors duration-150',
                             isSubActive
                               ? 'bg-[#0f172a]/10 dark:bg-[#0f172a]/20 text-[#0f172a] dark:text-white font-semibold'
                               : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
@@ -374,7 +383,7 @@ export function SidebarNav() {
                             'w-4 h-4',
                             isWishlist && wishlistCount > 0 && 'text-red-500 fill-red-500'
                           )} />
-                          <span>{subItem.title}</span>
+                          <span className="text-xs uppercase tracking-wide">{subItem.title}</span>
                           {isWishlist && wishlistCount > 0 && (
                             <Badge
                               variant="destructive"
@@ -402,22 +411,6 @@ export function SidebarNav() {
             {t('nav.toolsAndAccount')}
           </h3>
           <nav className="space-y-1">
-            {/* Clients Management - admin only */}
-            {isAdmin && (
-              <Link
-                to="/dashboard/clients"
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
-                  isItemActive('/dashboard/clients')
-                    ? 'bg-[#0f172a] dark:bg-[#0f172a] text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
-                )}
-              >
-                <Users className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium flex-1">{t('nav.distributors')}</span>
-              </Link>
-            )}
-
             {/* CSV Import Wizard - promoted as top-level item */}
             {isAdmin && (
               <Link
@@ -430,7 +423,7 @@ export function SidebarNav() {
                 )}
               >
                 <FileSpreadsheet className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium flex-1">{t('nav.csvImport')}</span>
+                <span className="font-medium flex-1 text-xs uppercase tracking-wide">{t('nav.csvImport')}</span>
               </Link>
             )}
 
@@ -474,7 +467,7 @@ export function SidebarNav() {
                       'w-5 h-5 flex-shrink-0',
                       isSettingsActive() ? 'text-white' : 'text-gray-700 dark:text-gray-300'
                     )} />
-                    <span className="font-medium flex-1">{t('nav.settings')}</span>
+                    <span className="font-medium flex-1 text-xs uppercase tracking-wide">{t('nav.settings')}</span>
                   </div>
                   {/* Custom chevron button - always visible, good looking, and rotates */}
                   <button
@@ -540,7 +533,7 @@ export function SidebarNav() {
                             )}
                           >
                             <subItem.icon className="w-4 h-4" />
-                            <span>{subItem.title}</span>
+                            <span className="text-xs uppercase tracking-wide">{subItem.title}</span>
                           </Link>
                         )
                       })}
@@ -556,7 +549,7 @@ export function SidebarNav() {
               onClick={signOut}
             >
               <LogOut className="w-5 h-5 mr-3" />
-              <span className="font-medium">{t('nav.logout')}</span>
+              <span className="font-medium text-xs uppercase tracking-wide">{t('nav.logout')}</span>
             </Button>
           </nav>
         </div>
