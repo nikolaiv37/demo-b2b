@@ -58,8 +58,14 @@ export function SettingsPage() {
           eik_bulstat: data.eikBulstat,
           vat_number: data.vatNumber,
           phone: data.phone,
+          city: data.city,
           address: data.address,
           website: data.website || null,
+          // Invoice-related fields
+          mol: data.mol,
+          bank_name: data.bankName,
+          iban: data.iban,
+          bic: data.bic,
         })
         .eq('id', company.id)
         .select()

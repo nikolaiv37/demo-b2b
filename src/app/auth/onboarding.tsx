@@ -83,8 +83,14 @@ export function OnboardingPage() {
         eik_bulstat: formData.eikBulstat,
         vat_number: formData.vatNumber,
         phone: formData.phone,
+        city: formData.city,
         address: formData.address,
         website: formData.website || null,
+        // Invoice-related fields
+        mol: formData.mol,
+        bank_name: formData.bankName,
+        iban: formData.iban,
+        bic: formData.bic,
         onboarding_completed: true,
       }
 
