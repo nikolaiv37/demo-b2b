@@ -70,3 +70,4 @@ CREATE POLICY "Admins can delete company profiles"
 
 
 
+
