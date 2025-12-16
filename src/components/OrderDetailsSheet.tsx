@@ -45,6 +45,7 @@ type OrderStatus =
   | 'awaiting_payment'
   | 'shipped'
   | 'completed'
+  | 'rejected'
 
 interface OrderItem {
   product_id: string
@@ -106,6 +107,10 @@ function getStatusBadge(status: OrderStatus | string) {
     completed: {
       label: 'Completed & Sent',
       className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    },
+    rejected: {
+      label: 'Rejected',
+      className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     },
     // Legacy status fallbacks (for backwards compatibility)
     new: {

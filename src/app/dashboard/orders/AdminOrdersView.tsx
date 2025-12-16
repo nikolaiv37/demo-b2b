@@ -58,7 +58,7 @@ interface Order {
   items: OrderItem[]
   total: number
   shipping_method: 'warehouse_pickup' | 'transport_company' | 'dropshipping' | 'shop_delivery'
-  status: 'processing' | 'awaiting_payment' | 'shipped' | 'completed'
+  status: 'processing' | 'awaiting_payment' | 'shipped' | 'completed' | 'rejected'
   created_at: string
   updated_at: string
 }
@@ -78,8 +78,8 @@ function mapStatus(status: string): Order['status'] {
     awaiting_payment: 'awaiting_payment',
     shipped: 'shipped',
     completed: 'completed',
+    rejected: 'rejected',
     // Edge cases
-    rejected: 'awaiting_payment',
     expired: 'awaiting_payment',
     partially_paid: 'awaiting_payment',
     ready_to_ship: 'shipped',
@@ -94,6 +94,7 @@ function mapStatusToDb(status: Order['status']): string {
     awaiting_payment: 'pending',
     shipped: 'shipped',
     completed: 'approved',
+    rejected: 'rejected',
   }
   return statusMap[status]
 }
@@ -128,6 +129,15 @@ function isThisWeek(dateString: string): boolean {
   return date >= weekAgo
 }
 
+function isThisMonth(dateString: string): boolean {
+  const date = new Date(dateString)
+  const today = new Date()
+  return (
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  )
+}
+
 export function AdminOrdersView() {
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -136,7 +146,8 @@ export function AdminOrdersView() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
-  const [quickFilter, setQuickFilter] = useState<string | null>(null)
+  const [shippingFilter, setShippingFilter] = useState<string>('all')
+  const [dateFilter, setDateFilter] = useState<string>('all')
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -300,6 +311,17 @@ export function AdminOrdersView() {
     return Array.from(companies).sort((a, b) => a.localeCompare(b))
   }, [orders])
 
+  // Company order counts for summary badges
+  const companyOrderCounts = useMemo(() => {
+    if (!orders) return []
+    const counts = new Map<string, number>()
+    orders.forEach((order) => {
+      const name = order.company_name || t('overview.unknownCompany')
+      counts.set(name, (counts.get(name) || 0) + 1)
+    })
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+  }, [orders, t])
+
   // Filter orders
   const filteredOrders = useMemo(() => {
     let filtered = orders || []
@@ -329,15 +351,22 @@ export function AdminOrdersView() {
       )
     }
 
-    // Quick filters
-    if (quickFilter === 'today') {
+    // Shipping method filter
+    if (shippingFilter !== 'all') {
+      filtered = filtered.filter((order) => order.shipping_method === shippingFilter)
+    }
+
+    // Date filter
+    if (dateFilter === 'today') {
       filtered = filtered.filter((order) => isToday(order.created_at))
-    } else if (quickFilter === 'this_week') {
+    } else if (dateFilter === 'this_week') {
       filtered = filtered.filter((order) => isThisWeek(order.created_at))
+    } else if (dateFilter === 'this_month') {
+      filtered = filtered.filter((order) => isThisMonth(order.created_at))
     }
 
     return filtered
-  }, [orders, searchQuery, statusFilter, companyFilter, quickFilter])
+  }, [orders, searchQuery, statusFilter, companyFilter, shippingFilter, dateFilter])
 
   const handleViewDetails = (order: Order) => {
     setSelectedOrder(order)
@@ -364,9 +393,60 @@ export function AdminOrdersView() {
           </p>
         </div>
 
+        {/* Company summary badges */}
+        {companyOrderCounts.length > 0 && (
+          <div className="space-y-3 rounded-xl bg-muted/40 border border-border/60 px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-muted-foreground tracking-wide">
+                {t('overview.company')} · {t('overview.orders')}
+              </p>
+              <span className="text-[11px] text-muted-foreground">
+                {companyOrderCounts.length} companies
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {companyOrderCounts.map(([name, count]) => {
+                const isActive = companyFilter === name
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    className={cn(
+                      'flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-medium shadow-sm transition-all duration-150',
+                      isActive
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-[1.02]'
+                        : 'bg-slate-50/90 text-slate-700 border-slate-200/80 hover:bg-slate-100 dark:bg-slate-800/80 dark:text-slate-100 dark:border-slate-700/80 dark:hover:bg-slate-700'
+                    )}
+                    onClick={() => {
+                      const next = isActive ? 'all' : name
+                      setCompanyFilter(next)
+                      if (searchParams.has('company')) {
+                        searchParams.delete('company')
+                        setSearchParams(searchParams)
+                      }
+                    }}
+                  >
+                    <span className="truncate max-w-[180px]">{name}</span>
+                    <span
+                      className={cn(
+                        'inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-50'
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Top Bar: Search and Filters */}
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4 lg:items-center">
             {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -378,138 +458,94 @@ export function AdminOrdersView() {
               />
             </div>
 
-            {/* Company Filter */}
-            <div className="relative">
-              <Select 
-                value={companyFilter} 
-                onValueChange={(value) => {
-                  setCompanyFilter(value)
-                  // Clear URL params when manually changing filter
-                  if (searchParams.has('company')) {
-                    searchParams.delete('company')
-                    setSearchParams(searchParams)
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-[220px]">
-                  <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder={t('adminOrders.allCompanies')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('adminOrders.allCompanies')}</SelectItem>
-                  {uniqueCompanies.map((company) => (
-                    <SelectItem key={company} value={company}>
-                      {company}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {companyFilter !== 'all' && (
-                <button
-                  onClick={() => {
-                    setCompanyFilter('all')
+            {/* Company + Status + Shipping + Date filters */}
+            <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+              {/* Company Filter */}
+              <div className="relative">
+                <Select 
+                  value={companyFilter} 
+                  onValueChange={(value) => {
+                    setCompanyFilter(value)
+                    // Clear URL params when manually changing filter
                     if (searchParams.has('company')) {
                       searchParams.delete('company')
                       setSearchParams(searchParams)
                     }
                   }}
-                  className="absolute right-8 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
                 >
-                  <X className="w-3 h-3 text-muted-foreground" />
-                </button>
-              )}
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder={t('adminOrders.allCompanies')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('adminOrders.allCompanies')}</SelectItem>
+                    {uniqueCompanies.map((company) => (
+                      <SelectItem key={company} value={company}>
+                        {company}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {companyFilter !== 'all' && (
+                  <button
+                    onClick={() => {
+                      setCompanyFilter('all')
+                      if (searchParams.has('company')) {
+                        searchParams.delete('company')
+                        setSearchParams(searchParams)
+                      }
+                    }}
+                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
+                  >
+                    <X className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder={t('adminOrders.allStatuses')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('adminOrders.allStatuses')}</SelectItem>
+                  <SelectItem value="processing">{t('adminOrders.processing')}</SelectItem>
+                  <SelectItem value="awaiting_payment">{t('adminOrders.awaitingPayment')}</SelectItem>
+                  <SelectItem value="shipped">{t('adminOrders.shipped')}</SelectItem>
+                  <SelectItem value="completed">{t('adminOrders.completedSent')}</SelectItem>
+                  <SelectItem value="rejected">{t('adminOrders.rejected')}</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Shipping Method Filter */}
+              <Select value={shippingFilter} onValueChange={setShippingFilter}>
+                <SelectTrigger className="w-full sm:w-[190px]">
+                  <SelectValue placeholder={t('orders.shippingMethodFilter')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('orders.allShippingMethods')}</SelectItem>
+                  <SelectItem value="shop_delivery">{t('shipping.shopDeliveryShort')}</SelectItem>
+                  <SelectItem value="warehouse_pickup">{t('shipping.warehousePickupShort')}</SelectItem>
+                  <SelectItem value="transport_company">{t('shipping.transportCompanyShort')}</SelectItem>
+                  <SelectItem value="dropshipping">{t('shipping.dropshippingShort')}</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Date Range Filter */}
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-full sm:w-[170px]">
+                  <SelectValue placeholder={t('orders.dateFilter')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('orders.allDates')}</SelectItem>
+                  <SelectItem value="today">{t('orders.today')}</SelectItem>
+                  <SelectItem value="this_week">{t('orders.thisWeek')}</SelectItem>
+                  <SelectItem value="this_month">{t('orders.thisMonth')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder={t('adminOrders.allStatuses')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('adminOrders.allStatuses')}</SelectItem>
-                <SelectItem value="processing">{t('adminOrders.processing')}</SelectItem>
-                <SelectItem value="awaiting_payment">{t('adminOrders.awaitingPayment')}</SelectItem>
-                <SelectItem value="shipped">{t('adminOrders.shipped')}</SelectItem>
-                <SelectItem value="completed">{t('adminOrders.completedSent')}</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
-          {/* Quick Filter Chips */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={quickFilter === 'today' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() =>
-                setQuickFilter(quickFilter === 'today' ? null : 'today')
-              }
-              className={cn(
-                quickFilter === 'today' &&
-                  'bg-gray-700 text-white hover:bg-gray-800'
-              )}
-            >
-              {t('adminOrders.today')}
-            </Button>
-            <Button
-              variant={quickFilter === 'this_week' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() =>
-                setQuickFilter(quickFilter === 'this_week' ? null : 'this_week')
-              }
-              className={cn(
-                quickFilter === 'this_week' &&
-                  'bg-gray-700 text-white hover:bg-gray-800'
-              )}
-            >
-              {t('adminOrders.thisWeek')}
-            </Button>
-            
-            {/* Status Filter Buttons - New Workflow */}
-            <Button
-              variant={statusFilter === 'processing' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'processing' ? 'all' : 'processing')}
-              className={cn(
-                statusFilter === 'processing' &&
-                  'bg-blue-500 text-white hover:bg-blue-600'
-              )}
-            >
-              {t('adminOrders.processing')}
-            </Button>
-            <Button
-              variant={statusFilter === 'awaiting_payment' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'awaiting_payment' ? 'all' : 'awaiting_payment')}
-              className={cn(
-                statusFilter === 'awaiting_payment' &&
-                  'bg-orange-500 text-white hover:bg-orange-600'
-              )}
-            >
-              {t('adminOrders.awaitingPayment')}
-            </Button>
-            <Button
-              variant={statusFilter === 'shipped' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'shipped' ? 'all' : 'shipped')}
-              className={cn(
-                statusFilter === 'shipped' &&
-                  'bg-purple-500 text-white hover:bg-purple-600'
-              )}
-            >
-              {t('adminOrders.shipped')}
-            </Button>
-            <Button
-              variant={statusFilter === 'completed' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
-              className={cn(
-                statusFilter === 'completed' &&
-                  'bg-green-500 text-white hover:bg-green-600'
-              )}
-            >
-              {t('adminOrders.completedSent')}
-            </Button>
-          </div>
         </div>
 
         {/* Orders Table */}
@@ -539,7 +575,7 @@ export function AdminOrdersView() {
                   <TableCell colSpan={8} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-muted-foreground">{t('orders.noOrdersFound')}</p>
-                      {searchQuery || statusFilter !== 'all' || companyFilter !== 'all' || quickFilter ? (
+                      {searchQuery || statusFilter !== 'all' || companyFilter !== 'all' || shippingFilter !== 'all' || dateFilter !== 'all' ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -547,7 +583,8 @@ export function AdminOrdersView() {
                             setSearchQuery('')
                             setStatusFilter('all')
                             setCompanyFilter('all')
-                            setQuickFilter(null)
+                            setShippingFilter('all')
+                            setDateFilter('all')
                             // Clear URL params
                             if (searchParams.has('company') || searchParams.has('filter')) {
                               searchParams.delete('company')
@@ -603,6 +640,7 @@ export function AdminOrdersView() {
                           <SelectItem value="awaiting_payment">{t('adminOrders.awaitingPayment')}</SelectItem>
                           <SelectItem value="shipped">{t('adminOrders.shipped')}</SelectItem>
                           <SelectItem value="completed">{t('adminOrders.completedSent')}</SelectItem>
+                          <SelectItem value="rejected">{t('adminOrders.rejected')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -657,6 +695,7 @@ export function AdminOrdersView() {
                         <SelectItem value="awaiting_payment">{t('orders.awaitingPayment')}</SelectItem>
                         <SelectItem value="shipped">{t('orders.shipped')}</SelectItem>
                         <SelectItem value="completed">{t('orders.completedSent')}</SelectItem>
+                        <SelectItem value="rejected">{t('orders.rejected')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

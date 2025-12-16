@@ -118,6 +118,7 @@
       "awaitingPayment": "Awaiting Payment",
       "shipped": "Shipped",
       "completedSent": "Completed & Sent",
+      "rejected": "Rejected",
       "dropshipping": "Dropshipping",
       "readyToday": "Ready Today",
       "lowStockItems": "Low Stock Items",
@@ -142,7 +143,14 @@
       "duplicateAsNewOrder": "Duplicate as New Order",
       "generateProformaInvoice": "Generate Proforma Invoice",
       "sendByEmail": "Send by Email",
-      "newOrder": "New Order"
+      "newOrder": "New Order",
+      "allShippingMethods": "All shipping methods",
+      "shippingMethodFilter": "Shipping method",
+      "allDates": "All dates",
+      "today": "Today",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "dateFilter": "Date range"
     },
     "auth": {
       "welcomeToFurniTrade": "Welcome to FurniTrade",
@@ -246,7 +254,6 @@
         "alreadyUsed": "(already used)",
         "mapped": "Mapped",
         "reviewSuggested": "Review Suggested",
-        "notMapped": "Not Mapped",
         "ignored": "Ignored",
         "categorySubCat": "Category/Sub-Cat",
         "smartMatchingActive": "Smart Matching Active",
@@ -659,6 +666,7 @@
       "awaitingPayment": "Awaiting Payment",
       "shipped": "Shipped",
       "completedSent": "Completed & Sent",
+      "rejected": "Rejected",
       "today": "Today",
       "thisWeek": "This Week"
     },
@@ -696,14 +704,12 @@
       "searchPlaceholder": "Search by company name or email...",
       "showing": "Showing",
       "of": "of",
-      "companies": "companies",
       "company": "Company",
       "unpaidAmount": "Unpaid Amount",
       "lastOrder": "Last Order",
       "actions": "Actions",
       "unknownCompany": "Unknown Company",
       "order": "order",
-      "orders": "orders",
       "viewOrders": "View Orders",
       "unpaid": "Unpaid",
       "noResultsFound": "No results found",
@@ -881,4 +887,3 @@
     }
   }
 }
-
