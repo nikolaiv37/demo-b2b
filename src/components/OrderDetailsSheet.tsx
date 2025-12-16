@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -18,7 +19,6 @@ import {
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import {
-  FileText,
   Mail,
   Copy,
   Printer,
@@ -29,8 +29,15 @@ import {
   Truck,
   Package,
   Store,
+  Loader2,
+  Download,
 } from 'lucide-react'
 import { SHIPPING_METHOD_CONFIG } from '@/types'
+import { useAuth } from '@/hooks/useAuth'
+import { pdf } from '@react-pdf/renderer'
+import { ProformaInvoicePDF, type ProformaInvoicePDFProps } from './ProformaInvoicePDF'
+import { supabase } from '@/lib/supabase/client'
+import { Company } from '@/types'
 
 // Order status types - new simplified workflow
 type OrderStatus =
@@ -132,13 +139,146 @@ export function OrderDetailsSheet({
   open,
   onOpenChange,
 }: OrderDetailsSheetProps) {
+  const { company, profile } = useAuth()
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+
+  // Check if current user is a company user (not admin)
+  const isCompanyUser = profile?.role === 'company'
+
+  // Generate and download proforma invoice PDF
+  // Only available for company users - PDF shows:
+  // - Доставчик (Supplier) = Admin's company (the platform/seller)
+  // - Получател (Buyer) = Logged-in company user's company
+  const handleGenerateProforma = async () => {
+    if (!company || !isCompanyUser) {
+      console.error('PDF generation only available for company users')
+      return
+    }
+
+    setIsGeneratingPdf(true)
+
+    try {
+      // Helper: parse city from address if not stored separately
+      const parseCityFromAddress = (address: string | undefined | null): string | undefined => {
+        if (!address) return undefined
+        const parts = address.split(',').map(p => p.trim())
+        if (parts.length >= 2) {
+          return parts[parts.length - 2] || parts[parts.length - 1]
+        }
+        return parts[0] || undefined
+      }
+
+      // Fetch ADMIN's company data (Доставчик/Supplier - the platform owner)
+      // Find admin profile first, then get their company
+      const { data: adminProfile, error: adminProfileError } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('role', 'admin')
+        .single()
+
+      if (adminProfileError) {
+        console.error('Could not find admin profile:', adminProfileError)
+      }
+
+      let adminCompany: Company | null = null
+      if (adminProfile?.company_id) {
+        const { data: adminCompanyData, error: adminCompanyError } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', adminProfile.company_id)
+          .single()
+
+        if (adminCompanyError) {
+          console.error('Could not fetch admin company:', adminCompanyError)
+        }
+
+        if (adminCompanyData) {
+          adminCompany = adminCompanyData as Company
+        }
+      }
+
+      // Refresh logged-in company's data (Получател/Buyer - the current company user)
+      const { data: freshCompany, error: companyRefreshError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', company.id)
+        .single()
+
+      if (companyRefreshError) {
+        console.error('Could not refresh company data:', companyRefreshError)
+      }
+
+      const buyerCompany = (freshCompany as Company) || company
+
+      // Доставчик (Supplier) = Admin's company (the platform/seller)
+      const supplierCity = adminCompany?.city || parseCityFromAddress(adminCompany?.address)
+      const supplier: ProformaInvoicePDFProps['supplier'] = {
+        name: adminCompany?.name || '—',
+        address: adminCompany?.address || '',
+        city: supplierCity,
+        phone: adminCompany?.phone,
+        eik: adminCompany?.eik_bulstat,
+        vatNumber: adminCompany?.vat_number,
+        mol: adminCompany?.mol,
+        bankName: adminCompany?.bank_name,
+        iban: adminCompany?.iban,
+        bic: adminCompany?.bic,
+      }
+
+      // Получател (Buyer) = Logged-in company user's company
+      const buyerCity = buyerCompany.city || parseCityFromAddress(buyerCompany.address)
+      const buyer: ProformaInvoicePDFProps['buyer'] = {
+        companyName: buyerCompany.name || order.company_name,
+        eik: buyerCompany.eik_bulstat,
+        vatNumber: buyerCompany.vat_number,
+        city: buyerCity,
+        address: buyerCompany.address || order.address || undefined,
+        email: order.email,
+        phone: buyerCompany.phone || order.phone || undefined,
+        mol: buyerCompany.mol,
+      }
+
+      // Map order items to the expected format
+      const mappedOrder = {
+        ...order,
+        items: order.items.map(item => ({
+          ...item,
+          product_id: item.product_id,
+        })),
+      }
+
+      // Generate PDF blob
+      const blob = await pdf(
+        <ProformaInvoicePDF
+          order={mappedOrder}
+          supplier={supplier}
+          buyer={buyer}
+          settings={{
+            currency: 'EUR',
+            // Bulgarian VAT is fixed at 20%
+            vatRate: 0.2,
+          }}
+        />
+      ).toBlob()
+
+      // Create download link and trigger download
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `proforma-${order.order_number}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error generating proforma PDF:', error)
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
   const handleAction = (action: string) => {
-    console.log(`Order action: ${action}`, order)
-    // TODO: Implement actions
     switch (action) {
-      case 'proforma':
-        // TODO: Generate proforma invoice PDF
-        break
       case 'duplicate':
         // TODO: Duplicate order
         break
@@ -314,14 +454,28 @@ export function OrderDetailsSheet({
 
           {/* Action Buttons */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t">
-            <Button
-              variant="default"
-              className="w-full"
-              onClick={() => handleAction('proforma')}
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Generate Proforma Invoice
-            </Button>
+            {/* Proforma Invoice - Only visible for company users */}
+            {isCompanyUser && (
+              <Button
+                variant="default"
+                className="w-full sm:col-span-2"
+                onClick={handleGenerateProforma}
+                disabled={isGeneratingPdf || !company}
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Генериране...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Проформа фактура (PDF)
+                  </>
+                )}
+              </Button>
+            )}
+            {/* Other actions - visible for all users */}
             <Button
               variant="outline"
               className="w-full"

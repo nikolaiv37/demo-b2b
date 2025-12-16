@@ -29,12 +29,11 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Eye, Search, FileText, Download, Building2, X } from 'lucide-react'
+import { Eye, Search, Building2, X } from 'lucide-react'
 import { SHIPPING_METHOD_CONFIG } from '@/types'
 import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 import { formatPrice, formatDateTime, cn } from '@/lib/utils'
-import { ProformaInvoicePDF } from '@/components/ProformaInvoicePDF'
-import { pdf } from '@react-pdf/renderer'
+// Proforma PDFs are generated only from company user accounts (see OrdersPage/OrderDetailsSheet)
 
 interface OrderItem {
   product_id?: string
@@ -768,74 +767,8 @@ export function AdminOrdersView() {
                   </p>
                 </div>
 
-                {/* PDF Generation Buttons */}
-                <div className="flex gap-3 pt-4 border-t">
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const blob = await pdf(
-                          <ProformaInvoicePDF order={selectedOrder} />
-                        ).toBlob()
-                        const url = URL.createObjectURL(blob)
-                        const link = document.createElement('a')
-                        link.href = url
-                        link.download = `Proforma_Order_${selectedOrder.order_number}.pdf`
-                        document.body.appendChild(link)
-                        link.click()
-                        document.body.removeChild(link)
-                        URL.revokeObjectURL(url)
-                        toast({
-                          title: 'Proforma Invoice Generated',
-                          description: 'The proforma invoice has been downloaded successfully.',
-                        })
-                      } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : 'Failed to generate proforma invoice.'
-                        toast({
-                          title: 'Error',
-                          description: errorMessage,
-                          variant: 'destructive',
-                        })
-                      }
-                    }}
-                    className="flex-1"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Generate Proforma Invoice
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const blob = await pdf(
-                          <ProformaInvoicePDF order={selectedOrder} />
-                        ).toBlob()
-                        const url = URL.createObjectURL(blob)
-                        const link = document.createElement('a')
-                        link.href = url
-                        link.download = `Order_${selectedOrder.order_number}_Summary.pdf`
-                        document.body.appendChild(link)
-                        link.click()
-                        document.body.removeChild(link)
-                        URL.revokeObjectURL(url)
-                        toast({
-                          title: 'Order Summary Downloaded',
-                          description: 'The order summary PDF has been downloaded successfully.',
-                        })
-                      } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : 'Failed to generate order summary.'
-                        toast({
-                          title: 'Error',
-                          description: errorMessage,
-                          variant: 'destructive',
-                        })
-                      }
-                    }}
-                    className="flex-1"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download as PDF
-                  </Button>
-                </div>
+                {/* PDF generation buttons removed from admin view.
+                    Proforma invoices are generated only from company user accounts. */}
               </div>
             </>
           )}

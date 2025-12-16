@@ -8,7 +8,14 @@ export interface Company {
   vat_number?: string
   phone?: string
   address?: string
+  city?: string
   website?: string
+  // МОЛ (Материално Отговорно Лице) - Legal representative full name
+  mol?: string
+  // Bank details for invoices
+  bank_name?: string
+  iban?: string
+  bic?: string
   onboarding_completed?: boolean
   created_at: string
   updated_at: string

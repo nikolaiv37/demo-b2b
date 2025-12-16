@@ -30,8 +30,15 @@ const createCompanyFormSchema = (t: (key: string) => string) =>
     eikBulstat: z.string().min(1, t('company.eikRequired')),
     vatNumber: z.string().min(1, t('company.vatRequired')),
     phone: z.string().min(1, t('company.phoneRequired')),
+    city: z.string().min(1, t('company.cityRequired')),
     address: z.string().min(10, t('company.addressMinLength')),
     website: z.string().url(t('company.invalidUrl')).optional().or(z.literal('')),
+    // МОЛ (Legal representative) - required for invoices
+    mol: z.string().min(3, t('company.molRequired')),
+    // Bank details for invoices
+    bankName: z.string().min(2, t('company.bankNameRequired')),
+    iban: z.string().min(15, t('company.ibanRequired')),
+    bic: z.string().min(8, t('company.bicRequired')),
     logo: z.instanceof(File).optional(),
   })
 
@@ -95,8 +102,13 @@ export function CompanyForm({
           eikBulstat: company.eik_bulstat || '',
           vatNumber: company.vat_number || '',
           phone: company.phone || '',
+          city: company.city || '',
           address: company.address || '',
           website: company.website || '',
+          mol: company.mol || '',
+          bankName: company.bank_name || '',
+          iban: company.iban || '',
+          bic: company.bic || '',
         }
       : undefined,
   })
@@ -116,8 +128,13 @@ export function CompanyForm({
         eikBulstat: company.eik_bulstat || '',
         vatNumber: company.vat_number || '',
         phone: company.phone || '',
+        city: company.city || '',
         address: company.address || '',
         website: company.website || '',
+        mol: company.mol || '',
+        bankName: company.bank_name || '',
+        iban: company.iban || '',
+        bic: company.bic || '',
       })
       setLogoPreview(company.logo_url || '')
     }
@@ -329,6 +346,22 @@ export function CompanyForm({
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="city" className="text-base flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            {t('company.city')} <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="city"
+            placeholder={t('company.cityPlaceholder')}
+            className="h-12"
+            {...register('city')}
+          />
+          {errors.city && (
+            <p className="text-sm text-destructive">{errors.city.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="address" className="text-base flex items-center gap-2">
             <MapPin className="w-4 h-4" />
             {t('company.fullCompanyAddress')} <span className="text-destructive">*</span>
@@ -360,6 +393,96 @@ export function CompanyForm({
           {errors.website && (
             <p className="text-sm text-destructive">{errors.website.message}</p>
           )}
+        </div>
+
+        {/* МОЛ (Legal Representative) */}
+        <div className="space-y-2">
+          <Label htmlFor="mol" className="text-base flex items-center gap-2">
+            <span>
+              {t('company.mol')} <span className="text-destructive">*</span>
+            </span>
+            <Tooltip content={t('company.molTooltip')}>
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground/80 bg-background/80 hover:bg-muted/60"
+              >
+                <Info className="w-3 h-3" />
+              </button>
+            </Tooltip>
+          </Label>
+          <Input
+            id="mol"
+            placeholder={t('company.molPlaceholder')}
+            className="h-12"
+            {...register('mol')}
+          />
+          {errors.mol && (
+            <p className="text-sm text-destructive">{errors.mol.message}</p>
+          )}
+        </div>
+
+        {/* Bank Details Section */}
+        <div className="border-t pt-6 mt-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            {t('company.bankDetailsTitle')}
+            <Tooltip content={t('company.bankDetailsTooltip')}>
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground/80 bg-background/80 hover:bg-muted/60"
+              >
+                <Info className="w-3 h-3" />
+              </button>
+            </Tooltip>
+          </h3>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="bankName" className="text-base">
+                {t('company.bankName')} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="bankName"
+                placeholder={t('company.bankNamePlaceholder')}
+                className="h-12"
+                {...register('bankName')}
+              />
+              {errors.bankName && (
+                <p className="text-sm text-destructive">{errors.bankName.message}</p>
+              )}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="iban" className="text-base">
+                  IBAN <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="iban"
+                  placeholder={t('company.ibanPlaceholder')}
+                  className="h-12 font-mono"
+                  {...register('iban')}
+                />
+                {errors.iban && (
+                  <p className="text-sm text-destructive">{errors.iban.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bic" className="text-base">
+                  BIC / SWIFT <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="bic"
+                  placeholder={t('company.bicPlaceholder')}
+                  className="h-12 font-mono"
+                  {...register('bic')}
+                />
+                {errors.bic && (
+                  <p className="text-sm text-destructive">{errors.bic.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {showLogoUpload && (
