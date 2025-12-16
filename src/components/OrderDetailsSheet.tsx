@@ -194,7 +194,6 @@ export function OrderDetailsSheet({
 
         if (adminCompanyData) {
           adminCompany = adminCompanyData as Company
-          console.log('Admin company (Доставчик) loaded:', adminCompany)
         }
       }
 
@@ -210,7 +209,6 @@ export function OrderDetailsSheet({
       }
 
       const buyerCompany = (freshCompany as Company) || company
-      console.log('Buyer company (Получател) loaded:', buyerCompany)
 
       // Доставчик (Supplier) = Admin's company (the platform/seller)
       const supplierCity = adminCompany?.city || parseCityFromAddress(adminCompany?.address)
@@ -239,9 +237,6 @@ export function OrderDetailsSheet({
         phone: buyerCompany.phone || order.phone || undefined,
         mol: buyerCompany.mol,
       }
-
-      console.log('Supplier for PDF:', supplier)
-      console.log('Buyer for PDF:', buyer)
 
       // Map order items to the expected format
       const mappedOrder = {
@@ -283,7 +278,6 @@ export function OrderDetailsSheet({
   }
 
   const handleAction = (action: string) => {
-    console.log(`Order action: ${action}`, order)
     switch (action) {
       case 'duplicate':
         // TODO: Duplicate order

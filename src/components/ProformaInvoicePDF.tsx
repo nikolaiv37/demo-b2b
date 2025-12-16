@@ -43,10 +43,10 @@ const colors = {
 // Bulgarian-compliant invoice styles matching target template
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    paddingTop: 30,
-    paddingBottom: 60,
-    fontSize: 9,
+    padding: 32,
+    paddingTop: 26,
+    paddingBottom: 40,
+    fontSize: 8,
     fontFamily: 'OpenSans',
     backgroundColor: colors.background,
     color: colors.text,
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   headerLeft: {
     width: '50%',
@@ -77,18 +77,19 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   invoiceTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 5,
   },
   invoiceNumber: {
-    fontSize: 11,
+    fontSize: 9,
     color: colors.textLight,
   },
   totalPreviewBox: {
     backgroundColor: colors.highlight,
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 4,
     borderLeft: `3 solid ${colors.primary}`,
   },
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   totalPreviewAmount: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: colors.primary,
   },
@@ -110,12 +111,12 @@ const styles = StyleSheet.create({
   // ===== PARTIES SECTION (Buyer & Supplier) =====
   partiesContainer: {
     flexDirection: 'row',
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 14,
+    marginBottom: 14,
   },
   partyBox: {
     width: '48%',
-    padding: 12,
+    padding: 10,
     backgroundColor: colors.backgroundAlt,
     borderRadius: 4,
     border: `1 solid ${colors.border}`,
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
     marginLeft: '2%',
   },
   partyTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 10,
@@ -138,22 +139,22 @@ const styles = StyleSheet.create({
   },
   partyRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   partyLabel: {
     width: '35%',
-    fontSize: 8,
+    fontSize: 7,
     color: colors.textLight,
   },
   partyValue: {
     width: '65%',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'semibold',
   },
 
   // ===== ITEMS TABLE =====
   tableContainer: {
-    marginBottom: 15,
+    marginBottom: 10,
   },
   table: {
     border: `1 solid ${colors.borderDark}`,
@@ -163,21 +164,21 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: colors.primary,
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 4,
   },
   tableHeaderCell: {
     color: '#ffffff',
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 'bold',
     textTransform: 'uppercase',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
+    paddingVertical: 5,
     paddingHorizontal: 4,
     borderBottom: `0.5 solid ${colors.border}`,
-    minHeight: 32,
+    minHeight: 24,
     alignItems: 'center',
   },
   tableRowAlt: {
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     borderBottom: 'none',
   },
   tableCell: {
-    fontSize: 8,
+    fontSize: 7,
     paddingHorizontal: 4,
   },
   // Column widths
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
   colVat: { width: '10%', textAlign: 'center' },
   colTotal: { width: '13%', textAlign: 'right', fontWeight: 'bold' },
   productSku: {
-    fontSize: 7,
+    fontSize: 6,
     color: colors.textLight,
     marginTop: 2,
   },
@@ -209,10 +210,10 @@ const styles = StyleSheet.create({
   totalsContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   totalsBox: {
-    width: '40%',
+    width: '38%',
     border: `1 solid ${colors.borderDark}`,
     borderRadius: 4,
     overflow: 'hidden',
@@ -220,8 +221,8 @@ const styles = StyleSheet.create({
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
     borderBottom: `0.5 solid ${colors.border}`,
   },
   totalRowGrand: {
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
     borderBottom: 'none',
   },
   totalLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: colors.text,
   },
   totalLabelGrand: {
@@ -237,42 +238,42 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   totalValue: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     textAlign: 'right',
   },
   totalValueGrand: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 10,
   },
 
   // ===== SLOVOM (Amount in Words) =====
   slovomBox: {
-    marginBottom: 15,
-    padding: 10,
+    marginBottom: 10,
+    padding: 8,
     backgroundColor: colors.backgroundAlt,
     borderRadius: 4,
     border: `1 solid ${colors.border}`,
   },
   slovomLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     color: colors.textLight,
     marginBottom: 3,
   },
   slovomText: {
-    fontSize: 9,
+    fontSize: 8,
     fontStyle: 'italic',
   },
 
   // ===== DETAILS SECTION (Payment & Bank) =====
   detailsContainer: {
     flexDirection: 'row',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   detailsBox: {
     width: '48%',
-    padding: 10,
+    padding: 8,
     border: `1 solid ${colors.border}`,
     borderRadius: 4,
   },
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
     marginLeft: '2%',
   },
   detailsTitle: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 8,
@@ -292,27 +293,27 @@ const styles = StyleSheet.create({
   },
   detailsRow: {
     flexDirection: 'row',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   detailsLabel: {
     width: '30%',
-    fontSize: 8,
+    fontSize: 7,
     color: colors.textLight,
   },
   detailsValue: {
     width: '70%',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'semibold',
   },
   paymentMethod: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'semibold',
   },
 
   // ===== DATES SECTION =====
   datesContainer: {
     flexDirection: 'row',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   datesBox: {
     width: '48%',
@@ -328,12 +329,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dateLabel: {
-    fontSize: 8,
+    fontSize: 7,
     color: colors.textLight,
     width: '55%',
   },
   dateValue: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'semibold',
     width: '45%',
   },
@@ -341,8 +342,8 @@ const styles = StyleSheet.create({
   // ===== SIGNATURES SECTION =====
   signaturesContainer: {
     flexDirection: 'row',
-    marginTop: 25,
-    marginBottom: 20,
+    marginTop: 18,
+    marginBottom: 14,
   },
   signatureBox: {
     width: '48%',
@@ -354,12 +355,12 @@ const styles = StyleSheet.create({
     marginLeft: '2%',
   },
   signatureLabel: {
-    fontSize: 8,
+    fontSize: 7,
     color: colors.textLight,
     marginBottom: 4,
   },
   signatureName: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     marginBottom: 20,
   },
@@ -368,30 +369,30 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   signatureLineText: {
-    fontSize: 8,
+    fontSize: 7,
     color: colors.textLight,
   },
 
   // ===== FOOTER =====
   footer: {
     position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
+    bottom: 24,
+    left: 32,
+    right: 32,
   },
   footerDivider: {
     borderTop: `1 solid ${colors.border}`,
     marginBottom: 10,
   },
   footerNote: {
-    fontSize: 7,
+    fontSize: 6.5,
     color: colors.textLight,
     textAlign: 'center',
     lineHeight: 1.4,
   },
   proformaDisclaimer: {
     marginTop: 8,
-    padding: 8,
+    padding: 6,
     backgroundColor: '#fff8e1',
     border: '1 solid #ffcc02',
     borderRadius: 3,

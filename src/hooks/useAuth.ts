@@ -291,9 +291,9 @@ export function useAuth() {
   // Sign out function
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
+    // Do not block logout on Supabase errors (including \"session_not_found\")
     if (error) {
-      console.error('Error signing out:', error)
-      throw error
+      console.warn('Supabase signOut returned error, continuing logout anyway:', error)
     }
     clear()
     navigate('/auth/login')

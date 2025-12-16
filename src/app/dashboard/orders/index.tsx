@@ -38,10 +38,15 @@ import {
   FileText,
   Mail,
   Copy,
+  Loader2,
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
+import { pdf } from '@react-pdf/renderer'
+import { ProformaInvoicePDF, type ProformaInvoicePDFProps } from '@/components/ProformaInvoicePDF'
+import { Company } from '@/types'
+import { useToast } from '@/components/ui/use-toast'
 
 // Order status types - new simplified workflow
 type OrderStatus =
@@ -270,7 +275,8 @@ function formatOrderDate(dateString: string): string {
 
 export function OrdersPage() {
   const { t } = useTranslation()
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, company, profile } = useAuth()
+  const { toast } = useToast()
   
   // Admin sees completely different view
   if (isAdmin) {
@@ -284,6 +290,7 @@ export function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
   const [quickFilter, setQuickFilter] = useState<string | null>(null)
+  const [isGeneratingBulkPdfs, setIsGeneratingBulkPdfs] = useState(false)
 
   const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
@@ -427,15 +434,172 @@ export function OrdersPage() {
     setSelectedOrders(newSelected)
   }
 
-  const handleBulkAction = (action: string) => {
-    console.log(`Bulk action: ${action}`, Array.from(selectedOrders))
-    // TODO: Implement bulk actions
-    setSelectedOrders(new Set())
+  const handleBulkAction = async (action: string) => {
+    if (action === 'proforma') {
+      if (!company || profile?.role !== 'company') {
+        toast({
+          title: t('settings.error'),
+          description: 'PDF generation only available for company users',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (selectedOrders.size === 0) {
+        return
+      }
+
+      setIsGeneratingBulkPdfs(true)
+
+      try {
+        // Helper: parse city from address if not stored separately
+        const parseCityFromAddress = (address: string | undefined | null): string | undefined => {
+          if (!address) return undefined
+          const parts = address.split(',').map(p => p.trim())
+          if (parts.length >= 2) {
+            return parts[parts.length - 2] || parts[parts.length - 1]
+          }
+          return parts[0] || undefined
+        }
+
+        // Fetch ADMIN's company data (Доставчик/Supplier - the platform owner)
+        const { data: adminProfile } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('role', 'admin')
+          .single()
+
+        let adminCompany: Company | null = null
+        if (adminProfile?.company_id) {
+          const { data: adminCompanyData } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('id', adminProfile.company_id)
+            .single()
+
+          if (adminCompanyData) {
+            adminCompany = adminCompanyData as Company
+          }
+        }
+
+        // Refresh logged-in company's data (Получател/Buyer)
+        const { data: freshCompany } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', company.id)
+          .single()
+
+        const buyerCompany = (freshCompany as Company) || company
+
+        // Prepare supplier and buyer data
+        const supplierCity = adminCompany?.city || parseCityFromAddress(adminCompany?.address)
+        const supplier: ProformaInvoicePDFProps['supplier'] = {
+          name: adminCompany?.name || '—',
+          address: adminCompany?.address || '',
+          city: supplierCity,
+          phone: adminCompany?.phone,
+          eik: adminCompany?.eik_bulstat,
+          vatNumber: adminCompany?.vat_number,
+          mol: adminCompany?.mol,
+          bankName: adminCompany?.bank_name,
+          iban: adminCompany?.iban,
+          bic: adminCompany?.bic,
+        }
+
+        const buyerCity = buyerCompany.city || parseCityFromAddress(buyerCompany.address)
+        const baseBuyer: Omit<ProformaInvoicePDFProps['buyer'], 'companyName' | 'email'> = {
+          eik: buyerCompany.eik_bulstat,
+          vatNumber: buyerCompany.vat_number,
+          city: buyerCity,
+          address: buyerCompany.address || undefined,
+          phone: buyerCompany.phone || undefined,
+          mol: buyerCompany.mol,
+        }
+
+        // Get selected orders from filtered orders
+        const selectedOrderIds = Array.from(selectedOrders)
+        const ordersToProcess = filteredOrders.filter(order => selectedOrderIds.includes(order.id))
+
+        if (ordersToProcess.length === 0) {
+          toast({
+            title: t('settings.error'),
+            description: 'No orders found to generate PDFs',
+            variant: 'destructive',
+          })
+          return
+        }
+
+        // Generate and download PDFs for each selected order
+        for (let i = 0; i < ordersToProcess.length; i++) {
+          const order = ordersToProcess[i]
+          
+          const buyer: ProformaInvoicePDFProps['buyer'] = {
+            ...baseBuyer,
+            companyName: buyerCompany.name || order.company_name,
+            email: order.email,
+          }
+
+          const mappedOrder = {
+            ...order,
+            items: order.items.map(item => ({
+              ...item,
+              product_id: item.product_id,
+            })),
+          }
+
+          const blob = await pdf(
+            <ProformaInvoicePDF
+              order={mappedOrder}
+              supplier={supplier}
+              buyer={buyer}
+              settings={{
+                currency: 'EUR',
+                vatRate: 0.2,
+              }}
+            />
+          ).toBlob()
+
+          // Download with a small delay between downloads to avoid browser blocking
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `proforma-${order.order_number}.pdf`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+
+          // Small delay between downloads (except for the last one)
+          if (i < ordersToProcess.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300))
+          }
+        }
+
+        toast({
+          title: t('settings.success'),
+          description: `Generated ${ordersToProcess.length} proforma invoice(s)`,
+        })
+
+        // Clear selection after successful generation
+        setSelectedOrders(new Set())
+      } catch (error) {
+        console.error('Error generating bulk PDFs:', error)
+        toast({
+          title: t('settings.error'),
+          description: error instanceof Error ? error.message : 'Failed to generate PDFs',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsGeneratingBulkPdfs(false)
+      }
+    } else if (action === 'send_email') {
+      // TODO: Implement bulk email sending
+      setSelectedOrders(new Set())
+    }
   }
 
-  const handleOrderAction = (order: Order, action: string) => {
-    console.log(`Order action: ${action}`, order)
-    // TODO: Implement order actions
+  const handleOrderAction = (_order: Order, action: string) => {
+    // TODO: Implement per-order actions (duplicate, send email, etc.)
     switch (action) {
       case 'duplicate':
         // TODO: Duplicate order logic
@@ -546,9 +710,19 @@ export function OrdersPage() {
               variant="outline"
               size="sm"
               onClick={() => handleBulkAction('proforma')}
+              disabled={isGeneratingBulkPdfs}
             >
-              <FileText className="w-4 h-4 mr-2" />
-              {t('orders.generateProforma')}
+              {isGeneratingBulkPdfs ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Генериране...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  {t('orders.generateProforma')}
+                </>
+              )}
             </Button>
             <Button
               variant="outline"
