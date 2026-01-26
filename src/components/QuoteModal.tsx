@@ -120,7 +120,9 @@ export function QuoteModal({
               />
               {errors.customerName && (
                 <p className="text-sm text-destructive">
-                  {t(errors.customerName.message)}
+                  {errors.customerName.message
+                    ? t(errors.customerName.message)
+                    : ''}
                 </p>
               )}
             </div>
@@ -135,7 +137,9 @@ export function QuoteModal({
               />
               {errors.customerEmail && (
                 <p className="text-sm text-destructive">
-                  {t(errors.customerEmail.message)}
+                  {errors.customerEmail.message
+                    ? t(errors.customerEmail.message)
+                    : ''}
                 </p>
               )}
             </div>

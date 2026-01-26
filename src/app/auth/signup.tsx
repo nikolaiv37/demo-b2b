@@ -92,7 +92,9 @@ export function SignupPage() {
               {...register('email')}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{t(errors.email.message)}</p>
+              <p className="text-sm text-destructive">
+                {errors.email.message ? t(errors.email.message) : ''}
+              </p>
             )}
           </div>
 
@@ -106,7 +108,7 @@ export function SignupPage() {
             />
             {errors.password && (
               <p className="text-sm text-destructive">
-                {t(errors.password.message)}
+                {errors.password.message ? t(errors.password.message) : ''}
               </p>
             )}
           </div>
@@ -121,7 +123,9 @@ export function SignupPage() {
             />
             {errors.confirmPassword && (
               <p className="text-sm text-destructive">
-                {t(errors.confirmPassword.message)}
+                {errors.confirmPassword.message
+                  ? t(errors.confirmPassword.message)
+                  : ''}
               </p>
             )}
           </div>
