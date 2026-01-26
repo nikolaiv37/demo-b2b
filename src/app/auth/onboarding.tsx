@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils'
 const TOTAL_STEPS = 2
 
 export function OnboardingPage() {
+  const { t } = useTranslation()
   const [step, setStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState<CompanyFormData | null>(null)
@@ -64,8 +66,8 @@ export function OnboardingPage() {
   const handleFinalSubmit = async () => {
     if (!formData || !user) {
       toast({
-        title: 'Error',
-        description: 'Please complete all required fields',
+        title: t('general.error'),
+        description: t('auth.onboarding.completeRequiredFields'),
         variant: 'destructive',
       })
       return
@@ -178,8 +180,8 @@ export function OnboardingPage() {
       }
 
       toast({
-        title: 'Welcome to FurniTrade! 🎉',
-        description: 'Your company has been set up successfully.',
+        title: t('auth.onboarding.welcomeTitle'),
+        description: t('auth.onboarding.welcomeDescription'),
       })
 
       // Refresh auth state to get updated company
@@ -187,8 +189,8 @@ export function OnboardingPage() {
     } catch (error: any) {
       console.error('Onboarding error:', error)
       toast({
-        title: 'Onboarding failed',
-        description: error.message || 'Failed to complete onboarding. Please try again.',
+        title: t('auth.onboarding.failedTitle'),
+        description: error.message || t('auth.onboarding.failedDescription'),
         variant: 'destructive',
       })
     } finally {
@@ -208,19 +210,19 @@ export function OnboardingPage() {
             <Sparkles className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Complete Your Setup
+            {t('auth.onboarding.title')}
           </h1>
           <p className="text-muted-foreground mb-6">
-            Step {step} of {TOTAL_STEPS}: Let's set up your company profile
+            {t('auth.onboarding.stepDescription', { step, total: TOTAL_STEPS })}
           </p>
           <div className="max-w-md mx-auto">
             <Progress value={progress} className="h-2" />
             <div className="flex justify-between mt-2 text-xs text-muted-foreground">
               <span className={cn(step >= 1 && 'text-primary font-medium')}>
-                Company Info
+                {t('auth.onboarding.companyInfoShort')}
               </span>
               <span className={cn(step >= 2 && 'text-primary font-medium')}>
-                Review
+                {t('auth.onboarding.reviewShort')}
               </span>
             </div>
           </div>
@@ -235,9 +237,9 @@ export function OnboardingPage() {
                   <Building2 className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold">Company Information</h2>
+                  <h2 className="text-2xl font-semibold">{t('auth.onboarding.companyInfoTitle')}</h2>
                   <p className="text-sm text-muted-foreground">
-                    Tell us about your business
+                    {t('auth.onboarding.companyInfoSubtitle')}
                   </p>
                 </div>
               </div>
@@ -260,9 +262,9 @@ export function OnboardingPage() {
                   <CheckCircle2 className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold">Review & Confirm</h2>
+                  <h2 className="text-2xl font-semibold">{t('auth.onboarding.reviewTitle')}</h2>
                   <p className="text-sm text-muted-foreground">
-                    Please review your information before completing setup
+                    {t('auth.onboarding.reviewSubtitle')}
                   </p>
                 </div>
               </div>
@@ -272,7 +274,7 @@ export function OnboardingPage() {
                   <div className="flex justify-center pb-4 border-b">
                     <img
                       src={logoUrl}
-                      alt="Company logo"
+                      alt={t('auth.onboarding.companyLogoAlt')}
                       className="w-32 h-32 object-contain rounded-lg"
                     />
                   </div>
@@ -282,7 +284,7 @@ export function OnboardingPage() {
                   <div className="flex items-start gap-3">
                     <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                     <div className="flex-1">
-                      <p className="text-sm text-muted-foreground mb-1">Company Name</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t('auth.onboarding.companyName')}</p>
                       <p className="font-semibold">{formData.companyName}</p>
                     </div>
                   </div>
@@ -290,35 +292,35 @@ export function OnboardingPage() {
                   <div className="flex items-start gap-3">
                     <Globe className="w-5 h-5 text-muted-foreground mt-0.5" />
                     <div className="flex-1">
-                      <p className="text-sm text-muted-foreground mb-1">Catalog URL</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t('auth.onboarding.catalogUrl')}</p>
                       <p className="font-mono text-sm text-primary">/catalog/{slug}</p>
                     </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">ЕИК / BULSTAT</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t('auth.onboarding.eikBulstat')}</p>
                       <p className="font-semibold">{formData.eikBulstat}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">VAT Number</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t('auth.onboarding.vatNumber')}</p>
                       <p className="font-semibold">{formData.vatNumber}</p>
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('general.phone')}</p>
                     <p className="font-semibold">{formData.phone}</p>
                   </div>
 
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Address</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('general.address')}</p>
                     <p className="font-semibold whitespace-pre-line">{formData.address}</p>
                   </div>
 
                   {formData.website && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Website</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t('general.website')}</p>
                       <a
                         href={formData.website}
                         target="_blank"
@@ -342,7 +344,7 @@ export function OnboardingPage() {
                   disabled={isLoading}
                 >
                   <ArrowLeft className="mr-2 w-4 h-4" />
-                  Back
+                  {t('general.back')}
                 </Button>
                 <Button
                   type="button"
@@ -354,11 +356,11 @@ export function OnboardingPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Setting up...
+                      {t('auth.onboarding.settingUp')}
                     </>
                   ) : (
                     <>
-                      Complete Setup
+                      {t('auth.onboarding.completeSetup')}
                       <CheckCircle2 className="ml-2 w-4 h-4" />
                     </>
                   )}

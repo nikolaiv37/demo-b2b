@@ -348,7 +348,7 @@ export function MyComplaintsTab() {
                     <TableCell>{getStatusBadge(complaint.status, t)}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {complaint.items?.length || 0} {t('products.items')}
+                        {t('complaints.itemsCount', { count: complaint.items?.length || 0 })}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -376,7 +376,7 @@ export function MyComplaintsTab() {
             <>
               <DialogHeader>
                 <DialogTitle>
-                  Complaint #{selectedComplaint.id.slice(0, 8)}
+                  {t('complaints.complaintNumber', { id: selectedComplaint.id.slice(0, 8) })}
                 </DialogTitle>
               </DialogHeader>
 
@@ -384,11 +384,11 @@ export function MyComplaintsTab() {
                 {/* Status and Order Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Status</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.status')}</p>
                     {getStatusBadge(selectedComplaint.status, t)}
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Order ID</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.orderId')}</p>
                     <p className="font-mono text-sm">
                       {selectedComplaint.order_number
                         ? `#${selectedComplaint.order_number}`
@@ -396,25 +396,25 @@ export function MyComplaintsTab() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Created</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.created')}</p>
                     <p className="text-sm">{formatDate(selectedComplaint.created_at)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Last Updated</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('complaints.lastUpdated')}</p>
                     <p className="text-sm">{formatDate(selectedComplaint.updated_at)}</p>
                   </div>
                 </div>
 
                 {/* Reason */}
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Reason</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t('complaints.reason')}</p>
                   <p className="font-medium">{getReasonLabel(selectedComplaint.reason, t)}</p>
                 </div>
 
                 {/* Items */}
                 {selectedComplaint.items && selectedComplaint.items.length > 0 && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Items</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t('complaints.items')}</p>
                     <div className="space-y-2">
                       {selectedComplaint.items.map((item, index) => (
                         <div
@@ -424,10 +424,10 @@ export function MyComplaintsTab() {
                           <div>
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-muted-foreground font-mono">
-                              SKU: {item.sku}
+                              {t('products.sku')}: {item.sku}
                             </p>
                           </div>
-                          <Badge variant="secondary">Qty: {item.quantity}</Badge>
+                          <Badge variant="secondary">{t('complaints.quantityShort', { count: item.quantity })}</Badge>
                         </div>
                       ))}
                     </div>
@@ -451,7 +451,7 @@ export function MyComplaintsTab() {
                         <div key={index} className="relative group">
                           <img
                             src={photo}
-                            alt={`Complaint photo ${index + 1}`}
+                            alt={t('complaints.photoAlt', { index: index + 1 })}
                             className="w-full h-32 object-cover rounded border"
                           />
                           <a
@@ -475,4 +475,3 @@ export function MyComplaintsTab() {
     </>
   )
 }
-

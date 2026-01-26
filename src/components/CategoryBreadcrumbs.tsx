@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, Home, Grid3X3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,8 +14,9 @@ interface CategoryBreadcrumbsProps {
 }
 
 export function CategoryBreadcrumbs({ items, className }: CategoryBreadcrumbsProps) {
+  const { t } = useTranslation()
   return (
-    <nav className={cn('flex items-center gap-1 text-sm', className)} aria-label="Breadcrumb">
+    <nav className={cn('flex items-center gap-1 text-sm', className)} aria-label={t('general.breadcrumb')}>
       <ol className="flex items-center gap-1 flex-wrap">
         {/* Home link */}
         <li className="flex items-center">
@@ -23,7 +25,7 @@ export function CategoryBreadcrumbs({ items, className }: CategoryBreadcrumbsPro
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
           >
             <Home className="w-4 h-4" />
-            <span className="sr-only sm:not-sr-only">Home</span>
+            <span className="sr-only sm:not-sr-only">{t('header.home')}</span>
           </Link>
         </li>
 
@@ -38,7 +40,7 @@ export function CategoryBreadcrumbs({ items, className }: CategoryBreadcrumbsPro
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
           >
             <Grid3X3 className="w-4 h-4" />
-            <span>Categories</span>
+            <span>{t('nav.categories')}</span>
           </Link>
         </li>
 
@@ -62,4 +64,3 @@ export function CategoryBreadcrumbs({ items, className }: CategoryBreadcrumbsPro
     </nav>
   )
 }
-

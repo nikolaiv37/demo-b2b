@@ -28,8 +28,10 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { Quote } from '@/types'
 import { Search, CheckCircle2, XCircle, Eye } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { useTranslation } from 'react-i18next'
 
 export function QuotesPage() {
+  const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -65,14 +67,14 @@ export function QuotesPage() {
     try {
       await updateStatusMutation.mutateAsync({ quoteId, status: 'approved' })
       toast({
-        title: 'Quote approved',
-        description: 'The customer has been notified via email.',
+        title: t('quotes.approved'),
+        description: t('quotes.customerNotified'),
       })
       setDetailsOpen(false)
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to approve quote.',
+        title: t('general.error'),
+        description: t('quotes.approveFailed'),
         variant: 'destructive',
       })
     }
@@ -83,17 +85,17 @@ export function QuotesPage() {
       await updateStatusMutation.mutateAsync({
         quoteId,
         status: 'rejected',
-        reason: 'Quote rejected by administrator',
+        reason: t('quotes.rejectionReason'),
       })
       toast({
-        title: 'Quote rejected',
-        description: 'The customer has been notified via email.',
+        title: t('quotes.rejected'),
+        description: t('quotes.customerNotified'),
       })
       setDetailsOpen(false)
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to reject quote.',
+        title: t('general.error'),
+        description: t('quotes.rejectFailed'),
         variant: 'destructive',
       })
     }
@@ -103,9 +105,9 @@ export function QuotesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Quotes</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('quotes.title')}</h1>
           <p className="text-muted-foreground">
-            Review and manage customer quote requests
+            {t('quotes.subtitle')}
           </p>
         </div>
       </div>
@@ -115,7 +117,7 @@ export function QuotesPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search by customer name, email, or quote ID..."
+              placeholder={t('quotes.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -133,13 +135,13 @@ export function QuotesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Quote ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('quotes.quoteId')}</TableHead>
+                <TableHead>{t('quotes.customer')}</TableHead>
+                <TableHead>{t('quotes.items')}</TableHead>
+                <TableHead>{t('general.total')}</TableHead>
+                <TableHead>{t('general.status')}</TableHead>
+                <TableHead>{t('general.date')}</TableHead>
+                <TableHead className="text-right">{t('general.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -151,14 +153,14 @@ export function QuotesPage() {
                   <TableCell>
                     <div>
                       <p className="font-semibold">
-                        {quote.customer_name || 'N/A'}
+                        {quote.customer_name || t('general.notAvailable')}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {quote.customer_email}
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell>{quote.items?.length || 0} items</TableCell>
+                  <TableCell>{t('quotes.itemsCount', { count: quote.items?.length || 0 })}</TableCell>
                   <TableCell className="font-semibold">
                     {formatCurrency(quote.total)}
                   </TableCell>
@@ -187,7 +189,7 @@ export function QuotesPage() {
                             disabled={updateStatusMutation.isPending}
                           >
                             <CheckCircle2 className="w-4 h-4 mr-1" />
-                            Approve
+                            {t('quotes.approve')}
                           </Button>
                           <Button
                             size="sm"
@@ -196,7 +198,7 @@ export function QuotesPage() {
                             disabled={updateStatusMutation.isPending}
                           >
                             <XCircle className="w-4 h-4 mr-1" />
-                            Reject
+                            {t('quotes.reject')}
                           </Button>
                         </>
                       )}
@@ -209,11 +211,11 @@ export function QuotesPage() {
         ) : (
           <div className="text-center py-12">
             <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No quotes found</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('quotes.noneFound')}</h3>
             <p className="text-muted-foreground">
               {searchQuery
-                ? 'Try adjusting your search'
-                : 'Quote requests will appear here'}
+                ? t('quotes.adjustSearch')
+                : t('quotes.emptyState')}
             </p>
           </div>
         )}
@@ -223,9 +225,9 @@ export function QuotesPage() {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="sm:max-w-[600px] glass">
           <DialogHeader>
-            <DialogTitle>Quote Details</DialogTitle>
+            <DialogTitle>{t('quotes.detailsTitle')}</DialogTitle>
             <DialogDescription>
-              Quote ID: {selectedQuote?.id.slice(0, 8)}
+              {t('quotes.quoteId')}: {selectedQuote?.id.slice(0, 8)}
             </DialogDescription>
           </DialogHeader>
 
@@ -233,18 +235,18 @@ export function QuotesPage() {
             <div className="space-y-4">
               <div className="glass-card p-4 space-y-3">
                 <div>
-                  <p className="text-sm text-muted-foreground">Customer</p>
+                  <p className="text-sm text-muted-foreground">{t('quotes.customer')}</p>
                   <p className="font-semibold">{selectedQuote.customer_name}</p>
                   <p className="text-sm">{selectedQuote.customer_email}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="text-sm text-muted-foreground">{t('general.status')}</p>
                   <OrderStatusBadge status={selectedQuote.status} />
                 </div>
               </div>
 
               <div className="glass-card p-4">
-                <h4 className="font-semibold mb-3">Items</h4>
+                <h4 className="font-semibold mb-3">{t('quotes.items')}</h4>
                 <div className="space-y-2">
                   {selectedQuote.items.map((item, index) => (
                     <div
@@ -254,7 +256,7 @@ export function QuotesPage() {
                       <div>
                         <p className="font-medium">{item.product_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          Qty: {item.quantity} × {formatCurrency(item.unit_price)}
+                          {t('quotes.quantityLine', { count: item.quantity, price: formatCurrency(item.unit_price) })}
                         </p>
                       </div>
                       <p className="font-semibold">
@@ -264,7 +266,7 @@ export function QuotesPage() {
                   ))}
                 </div>
                 <div className="border-t mt-3 pt-3 flex justify-between">
-                  <span className="font-bold">Total</span>
+                  <span className="font-bold">{t('general.total')}</span>
                   <span className="font-bold text-lg">
                     {formatCurrency(selectedQuote.total)}
                   </span>
@@ -273,7 +275,7 @@ export function QuotesPage() {
 
               {selectedQuote.notes && (
                 <div className="glass-card p-4">
-                  <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t('general.notes')}</p>
                   <p className="text-sm">{selectedQuote.notes}</p>
                 </div>
               )}
@@ -282,7 +284,7 @@ export function QuotesPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailsOpen(false)}>
-              Close
+              {t('general.close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -290,4 +292,3 @@ export function QuotesPage() {
     </div>
   )
 }
-

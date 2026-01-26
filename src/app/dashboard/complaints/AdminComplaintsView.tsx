@@ -515,7 +515,7 @@ export function AdminComplaintsView() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
-                        {complaint.items?.length || 0} {t('products.items')}
+                        {t('complaints.itemsCount', { count: complaint.items?.length || 0 })}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -543,7 +543,7 @@ export function AdminComplaintsView() {
             <>
               <DialogHeader>
                 <DialogTitle>
-                  Complaint #{selectedComplaint.id.slice(0, 8)}
+                  {t('complaints.complaintNumber', { id: selectedComplaint.id.slice(0, 8) })}
                 </DialogTitle>
               </DialogHeader>
 
@@ -611,10 +611,10 @@ export function AdminComplaintsView() {
                           <div>
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-muted-foreground font-mono">
-                              SKU: {item.sku}
+                              {t('products.sku')}: {item.sku}
                             </p>
                           </div>
-                          <Badge variant="secondary">Qty: {item.quantity}</Badge>
+                          <Badge variant="secondary">{t('complaints.quantityShort', { count: item.quantity })}</Badge>
                         </div>
                       ))}
                     </div>
@@ -638,7 +638,7 @@ export function AdminComplaintsView() {
                         <div key={index} className="relative group">
                           <img
                             src={photo}
-                            alt={`Complaint photo ${index + 1}`}
+                            alt={t('complaints.photoAlt', { index: index + 1 })}
                             className="w-full h-32 object-cover rounded border"
                           />
                           <a
@@ -686,4 +686,3 @@ export function AdminComplaintsView() {
     </>
   )
 }
-

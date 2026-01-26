@@ -726,7 +726,7 @@ export function AnalyticsPage() {
               <span
                 className={displayData.totalRevenueMoM >= 0 ? 'text-green-500' : 'text-red-500'}
               >
-                {Math.abs(displayData.totalRevenueMoM).toFixed(1)}% MoM
+                {t('analytics.monthOverMonth', { value: Math.abs(displayData.totalRevenueMoM).toFixed(1) })}
               </span>
             </div>
           </div>

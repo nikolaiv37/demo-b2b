@@ -790,7 +790,7 @@ export function DashboardOverview() {
                             {(company.companyName || company.email || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-sm">{company.companyName || 'Unknown Company'}</p>
+                            <p className="font-medium text-sm">{company.companyName || t('overview.unknownCompany')}</p>
                             {company.email && (
                               <p className="text-xs text-muted-foreground truncate max-w-[180px]">{company.email}</p>
                             )}
@@ -801,18 +801,18 @@ export function DashboardOverview() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-4">
                           <div>
-                            <span className="text-muted-foreground text-xs">Unpaid</span>
+                            <span className="text-muted-foreground text-xs">{t('unpaidBalances.unpaid')}</span>
                             <p className={`font-semibold ${isHighAmount ? 'text-red-500' : isMediumAmount ? 'text-amber-500' : 'text-foreground'}`}>
                               {formatCurrency(company.unpaidAmount, 'EUR')}
                             </p>
                           </div>
                           <div>
-                            <span className="text-muted-foreground text-xs">Orders</span>
+                            <span className="text-muted-foreground text-xs">{t('overview.orders')}</span>
                             <p className="font-medium">{company.orderCount}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-muted-foreground text-xs">Last Order</span>
+                          <span className="text-muted-foreground text-xs">{t('overview.lastOrder')}</span>
                           <p className="text-sm">
                             {new Date(company.lastOrderDate).toLocaleDateString('en-US', {
                               month: 'short',

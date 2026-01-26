@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ export function Pagination({
   onPageChange,
   className,
 }: PaginationProps) {
+  const { t } = useTranslation()
   const pages = React.useMemo(() => {
     const items: (number | 'ellipsis')[] = []
     
@@ -52,7 +54,7 @@ export function Pagination({
   return (
     <nav
       role="navigation"
-      aria-label="pagination"
+      aria-label={t('general.pagination')}
       className={cn('flex justify-center', className)}
     >
       <ul className="flex items-center gap-1">
@@ -63,7 +65,7 @@ export function Pagination({
             className="h-8 w-8 p-0"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            aria-label="Go to previous page"
+            aria-label={t('general.paginationPrevious')}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -83,7 +85,7 @@ export function Pagination({
                   currentPage === page && 'pointer-events-none'
                 )}
                 onClick={() => onPageChange(page)}
-                aria-label={`Go to page ${page}`}
+                aria-label={t('general.paginationPage', { page })}
                 aria-current={currentPage === page ? 'page' : undefined}
               >
                 {page}
@@ -98,7 +100,7 @@ export function Pagination({
             className="h-8 w-8 p-0"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            aria-label="Go to next page"
+            aria-label={t('general.paginationNext')}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -107,4 +109,3 @@ export function Pagination({
     </nav>
   )
 }
-

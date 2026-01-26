@@ -10,19 +10,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, Package } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const signupSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('errors.invalidEmail'),
+  password: z.string().min(6, 'auth.passwordMinLength'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: 'auth.passwordsMustMatch',
   path: ['confirmPassword'],
 })
 
 type SignupFormData = z.infer<typeof signupSchema>
 
 export function SignupPage() {
+  const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -46,8 +48,8 @@ export function SignupPage() {
       if (error) throw error
 
       toast({
-        title: 'Account created!',
-        description: 'Your account has been created successfully. Redirecting...',
+        title: t('auth.accountCreated'),
+        description: t('auth.accountCreatedDescription'),
       })
       
       // The useAuth hook will automatically create the profile with role = 'company'
@@ -57,8 +59,8 @@ export function SignupPage() {
       }, 500)
     } catch (error: any) {
       toast({
-        title: 'Signup failed',
-        description: error.message || 'Failed to create account',
+        title: t('auth.signupFailed'),
+        description: error.message || t('auth.signupFailedDescription'),
         variant: 'destructive',
       })
     } finally {
@@ -74,70 +76,70 @@ export function SignupPage() {
           <div className="flex items-center justify-center mb-4">
             <Package className="w-12 h-12 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Join FurniTrade</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('auth.joinFurniTrade')}</h1>
           <p className="text-muted-foreground">
-            Create your wholesale account
+            {t('auth.createAccountSubtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               {...register('email')}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-sm text-destructive">{t(errors.email.message)}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder={t('auth.passwordPlaceholder')}
               {...register('password')}
             />
             {errors.password && (
               <p className="text-sm text-destructive">
-                {errors.password.message}
+                {t(errors.password.message)}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
             <Input
               id="confirmPassword"
               type="password"
-              placeholder="••••••••"
+              placeholder={t('auth.passwordPlaceholder')}
               {...register('confirmPassword')}
             />
             {errors.confirmPassword && (
               <p className="text-sm text-destructive">
-                {errors.confirmPassword.message}
+                {t(errors.confirmPassword.message)}
               </p>
             )}
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Account
+            {t('auth.createAccount')}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm">
           <p className="text-muted-foreground">
-            Already have an account?{' '}
+            {t('auth.alreadyHaveAccount')}{' '}
             <Link
               to="/auth/login"
               className="text-primary font-semibold hover:underline"
             >
-              Sign in
+              {t('auth.signIn')}
             </Link>
           </p>
         </div>
@@ -146,4 +148,3 @@ export function SignupPage() {
     </div>
   )
 }
-

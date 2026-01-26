@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Product, UserRole } from '@/types'
 import { getTieredPricing } from '@/lib/pricing'
 import { formatCurrency } from '@/lib/utils'
@@ -17,17 +18,18 @@ interface TieredPriceTableProps {
 }
 
 export function TieredPriceTable({ product, userRole }: TieredPriceTableProps) {
+  const { t } = useTranslation()
   const tiers = getTieredPricing(product, userRole)
 
   return (
     <GlassCard className="p-4">
-      <h3 className="text-lg font-semibold mb-3">Volume Pricing</h3>
+      <h3 className="text-lg font-semibold mb-3">{t('products.tieredPricing.title')}</h3>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Quantity</TableHead>
-            <TableHead>Price per Unit</TableHead>
-            <TableHead>Discount</TableHead>
+            <TableHead>{t('general.quantity')}</TableHead>
+            <TableHead>{t('products.tieredPricing.pricePerUnit')}</TableHead>
+            <TableHead>{t('products.tieredPricing.discount')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -43,7 +45,7 @@ export function TieredPriceTable({ product, userRole }: TieredPriceTableProps) {
               <TableCell>
                 {tier.discount_percentage ? (
                   <span className="text-green-600 dark:text-green-400 font-semibold">
-                    {tier.discount_percentage}% off
+                    {t('products.tieredPricing.percentOff', { percent: tier.discount_percentage })}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">—</span>
@@ -56,4 +58,3 @@ export function TieredPriceTable({ product, userRole }: TieredPriceTableProps) {
     </GlassCard>
   )
 }
-

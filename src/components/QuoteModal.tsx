@@ -17,10 +17,11 @@ import { useToast } from '@/components/ui/use-toast'
 import { CartItem } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const quoteFormSchema = z.object({
-  customerName: z.string().min(2, 'Name must be at least 2 characters'),
-  customerEmail: z.string().email('Invalid email address'),
+  customerName: z.string().min(2, 'errors.nameMinLength'),
+  customerEmail: z.string().email('errors.invalidEmail'),
   notes: z.string().optional(),
 })
 
@@ -41,6 +42,7 @@ export function QuoteModal({
   total,
   onSubmit,
 }: QuoteModalProps) {
+  const { t } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
@@ -58,15 +60,15 @@ export function QuoteModal({
     try {
       await onSubmit(data)
       toast({
-        title: 'Quote Requested',
-        description: 'Your quote request has been submitted successfully.',
+        title: t('quotes.requested'),
+        description: t('quotes.requestedDescription'),
       })
       reset()
       onOpenChange(false)
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to submit quote request. Please try again.',
+        title: t('general.error'),
+        description: t('quotes.submitFailed'),
         variant: 'destructive',
       })
     } finally {
@@ -78,9 +80,9 @@ export function QuoteModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] glass">
         <DialogHeader>
-          <DialogTitle>Request a Quote</DialogTitle>
+          <DialogTitle>{t('quotes.requestTitle')}</DialogTitle>
           <DialogDescription>
-            Fill in your details to receive a quote for the selected items.
+            {t('quotes.requestDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -88,7 +90,7 @@ export function QuoteModal({
           <div className="space-y-4 py-4">
             {/* Quote Summary */}
             <div className="glass-card p-4 space-y-2">
-              <h4 className="font-semibold">Quote Summary</h4>
+              <h4 className="font-semibold">{t('quotes.summary')}</h4>
               {items.map((item) => (
                 <div
                   key={item.product.id}
@@ -103,48 +105,48 @@ export function QuoteModal({
                 </div>
               ))}
               <div className="border-t pt-2 flex justify-between font-bold">
-                <span>Total</span>
+                <span>{t('general.total')}</span>
                 <span>{formatCurrency(total)}</span>
               </div>
             </div>
 
             {/* Customer Details */}
             <div className="space-y-2">
-              <Label htmlFor="customerName">Full Name *</Label>
+              <Label htmlFor="customerName">{t('quotes.fullName')} *</Label>
               <Input
                 id="customerName"
                 {...register('customerName')}
-                placeholder="John Doe"
+                placeholder={t('quotes.fullNamePlaceholder')}
               />
               {errors.customerName && (
                 <p className="text-sm text-destructive">
-                  {errors.customerName.message}
+                  {t(errors.customerName.message)}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="customerEmail">Email *</Label>
+              <Label htmlFor="customerEmail">{t('auth.email')} *</Label>
               <Input
                 id="customerEmail"
                 type="email"
                 {...register('customerEmail')}
-                placeholder="john@example.com"
+                placeholder={t('quotes.emailPlaceholder')}
               />
               {errors.customerEmail && (
                 <p className="text-sm text-destructive">
-                  {errors.customerEmail.message}
+                  {t(errors.customerEmail.message)}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes</Label>
+              <Label htmlFor="notes">{t('general.notes')}</Label>
               <textarea
                 id="notes"
                 {...register('notes')}
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Any special requirements or questions..."
+                placeholder={t('quotes.notesPlaceholder')}
               />
             </div>
           </div>
@@ -156,11 +158,11 @@ export function QuoteModal({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {t('general.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Submit Quote Request
+              {t('quotes.submit')}
             </Button>
           </DialogFooter>
         </form>
@@ -168,4 +170,3 @@ export function QuoteModal({
     </Dialog>
   )
 }
-

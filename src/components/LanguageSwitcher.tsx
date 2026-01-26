@@ -3,27 +3,27 @@ import { useTranslation } from 'react-i18next'
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const languages = [
-  {
-    code: 'en',
-    name: 'English',
-    flag: '🇬🇧',
-    nativeName: 'English',
-  },
-  {
-    code: 'bg',
-    name: 'Bulgarian',
-    flag: '🇧🇬',
-    nativeName: 'Български',
-  },
-]
-
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   
+  const languages = [
+    {
+      code: 'en',
+      name: t('language.englishName'),
+      flag: '🇬🇧',
+      nativeName: t('language.en'),
+    },
+    {
+      code: 'bg',
+      name: t('language.bulgarianName'),
+      flag: '🇧🇬',
+      nativeName: t('language.bg'),
+    },
+  ]
+
   const currentLang = i18n.language || 'en'
   const currentLanguage = languages.find(lang => lang.code === currentLang) || languages[0]
 
@@ -71,7 +71,7 @@ export function LanguageSwitcher() {
           'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 focus:ring-offset-transparent',
           isOpen && 'bg-white/60 dark:bg-black/60 border-white/50 dark:border-white/20 shadow-md'
         )}
-        aria-label="Change language"
+        aria-label={t('language.changeLanguage')}
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
