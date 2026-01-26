@@ -29,6 +29,7 @@ import { CategoriesPage } from '@/app/dashboard/categories'
 import { ManageCategoriesPage } from '@/app/dashboard/categories/manage'
 import { ClientsPage } from '@/app/dashboard/clients'
 
+import LandingPage from '@/pages/LandingPage'
 import { NotFound } from '@/pages/NotFound'
 
 const queryClient = new QueryClient({
@@ -66,6 +67,7 @@ function App() {
               <Route path="/auth/login" element={<LoginPage />} />
               <Route path="/auth/signup" element={<SignupPage />} />
               <Route path="/auth/onboarding" element={<OnboardingPage />} />
+              <Route path="/landing" element={<LandingPage />} />
 
               {/* Dashboard Routes - Protected by AuthGuard */}
               <Route
@@ -109,4 +111,3 @@ function App() {
 }
 
 export default App
-
