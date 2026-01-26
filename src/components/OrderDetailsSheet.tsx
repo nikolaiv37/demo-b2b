@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Sheet,
   SheetContent,
@@ -90,45 +91,45 @@ function formatOrderDate(dateString: string): string {
   return `${day} ${month} ${year}, ${hours}:${minutes}`
 }
 
-function getStatusBadge(status: OrderStatus | string) {
+function getStatusBadge(status: OrderStatus | string, t: (key: string) => string) {
   const configs: Record<string, { label: string; className: string }> = {
     processing: {
-      label: 'Processing',
+      label: t('orderStatus.processing'),
       className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     },
     awaiting_payment: {
-      label: 'Awaiting Payment',
+      label: t('orderStatus.awaitingPayment'),
       className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     },
     shipped: {
-      label: 'Shipped',
+      label: t('orderStatus.shipped'),
       className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
     },
     completed: {
-      label: 'Completed & Sent',
+      label: t('orderStatus.completedSent'),
       className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
     rejected: {
-      label: 'Rejected',
+      label: t('orderStatus.rejected'),
       className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     },
     // Legacy status fallbacks (for backwards compatibility)
     new: {
-      label: 'Processing',
+      label: t('orderStatus.processing'),
       className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     },
     pending: {
-      label: 'Awaiting Payment',
+      label: t('orderStatus.awaitingPayment'),
       className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     },
     approved: {
-      label: 'Completed & Sent',
+      label: t('orderStatus.completedSent'),
       className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
   }
 
   const config = configs[status] || {
-    label: status || 'Unknown',
+    label: status || t('overview.unknown'),
     className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
   }
   
@@ -144,6 +145,7 @@ export function OrderDetailsSheet({
   open,
   onOpenChange,
 }: OrderDetailsSheetProps) {
+  const { t } = useTranslation()
   const { company, profile } = useAuth()
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
@@ -303,9 +305,9 @@ export function OrderDetailsSheet({
         <SheetHeader className="pb-6 border-b">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-2xl font-bold">
-              Order #{order.order_number}
+              {t('orders.orderNumber')} {order.order_number}
             </SheetTitle>
-            {getStatusBadge(order.status)}
+            {getStatusBadge(order.status, t)}
           </div>
           <SheetDescription className="text-base">
             {formatOrderDate(order.created_at)}
@@ -317,21 +319,21 @@ export function OrderDetailsSheet({
           <div className="bg-card border rounded-lg p-6">
             <div className="flex items-start gap-3 mb-4">
               <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <h3 className="text-lg font-semibold">Buyer Information</h3>
+              <h3 className="text-lg font-semibold">{t('orders.details.buyerInformation')}</h3>
             </div>
             <div className="space-y-3">
               <div>
-                <span className="text-sm text-muted-foreground">Company:</span>
+                <span className="text-sm text-muted-foreground">{t('orders.details.company')}:</span>
                 <p className="font-medium text-base">{order.company_name}</p>
               </div>
               <div>
-                <span className="text-sm text-muted-foreground">Email:</span>
+                <span className="text-sm text-muted-foreground">{t('general.email')}:</span>
                 <p className="font-medium text-base">{order.email}</p>
               </div>
               {order.phone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Phone:</span>
+                  <span className="text-sm text-muted-foreground">{t('general.phone')}:</span>
                   <p className="font-medium text-base">{order.phone}</p>
                 </div>
               )}
@@ -339,7 +341,7 @@ export function OrderDetailsSheet({
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                   <div>
-                    <span className="text-sm text-muted-foreground">Address:</span>
+                    <span className="text-sm text-muted-foreground">{t('general.address')}:</span>
                     <p className="font-medium text-base">{order.address}</p>
                   </div>
                 </div>
@@ -349,10 +351,22 @@ export function OrderDetailsSheet({
 
           {/* Shipping Method */}
           <div className="bg-card border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Shipping Method</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('orders.shippingMethod')}</h3>
             {(() => {
               const method = order.shipping_method || 'shop_delivery'
               const config = SHIPPING_METHOD_CONFIG[method] || SHIPPING_METHOD_CONFIG.shop_delivery
+              const translatedLabelMap = {
+                warehouse_pickup: t('shipping.warehousePickup'),
+                transport_company: t('shipping.transportCompany'),
+                dropshipping: t('shipping.dropshipping'),
+                shop_delivery: t('shipping.shopDelivery'),
+              }
+              const translatedShortLabelMap = {
+                warehouse_pickup: t('shipping.warehousePickupShort'),
+                transport_company: t('shipping.transportCompanyShort'),
+                dropshipping: t('shipping.dropshippingShort'),
+                shop_delivery: t('shipping.shopDeliveryShort'),
+              }
               const IconComponent = method === 'warehouse_pickup' ? Warehouse 
                 : method === 'transport_company' ? Truck 
                 : method === 'dropshipping' ? Package 
@@ -371,9 +385,9 @@ export function OrderDetailsSheet({
                     <IconComponent className={`h-8 w-8 ${colorClass.split(' ').slice(2).join(' ')}`} />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">{config.shortLabel}</p>
+                    <p className="text-sm text-muted-foreground">{translatedShortLabelMap[method]}</p>
                     <p className={`text-lg font-bold ${colorClass.split(' ').slice(2).join(' ')}`}>
-                      {config.label}
+                      {translatedLabelMap[method]}
                     </p>
                   </div>
                 </div>
@@ -384,17 +398,17 @@ export function OrderDetailsSheet({
           {/* Order Items Table */}
           <div className="bg-card border rounded-lg overflow-hidden">
             <div className="p-6 border-b">
-              <h3 className="text-lg font-semibold">Order Items</h3>
+              <h3 className="text-lg font-semibold">{t('orders.details.orderItems')}</h3>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-20">Image</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead className="text-right">Unit Price</TableHead>
-                  <TableHead className="text-right">Line Total</TableHead>
+                  <TableHead className="w-20">{t('orders.details.image')}</TableHead>
+                  <TableHead>{t('products.sku')}</TableHead>
+                  <TableHead>{t('orders.details.productName')}</TableHead>
+                  <TableHead className="text-right">{t('general.quantity')}</TableHead>
+                  <TableHead className="text-right">{t('orders.details.unitPrice')}</TableHead>
+                  <TableHead className="text-right">{t('orders.details.lineTotal')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -438,9 +452,9 @@ export function OrderDetailsSheet({
 
           {/* Totals Section */}
           <div className="bg-card border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Order Total</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('orders.details.orderTotal')}</h3>
             <div className="flex items-center justify-between">
-              <span className="text-lg font-bold">Total Amount</span>
+              <span className="text-lg font-bold">{t('orders.details.totalAmount')}</span>
               <span className="text-2xl font-bold text-primary">
                 {formatPrice(order.total)}
               </span>
@@ -450,7 +464,7 @@ export function OrderDetailsSheet({
           {/* Notes */}
           {order.notes && (
             <div className="bg-card border rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-2">Notes</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('general.notes')}</h3>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                 {order.notes}
               </p>
@@ -470,12 +484,12 @@ export function OrderDetailsSheet({
                 {isGeneratingPdf ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Генериране...
+                    {t('orders.generatingProforma')}
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Проформа фактура (PDF)
+                    {t('orders.generateProforma')}
                   </>
                 )}
               </Button>
@@ -487,7 +501,7 @@ export function OrderDetailsSheet({
               onClick={() => handleAction('duplicate')}
             >
               <Copy className="w-4 h-4 mr-2" />
-              Duplicate as New Order
+              {t('orders.duplicateAsNewOrder')}
             </Button>
             <Button
               variant="outline"
@@ -495,7 +509,7 @@ export function OrderDetailsSheet({
               onClick={() => handleAction('send_email')}
             >
               <Mail className="w-4 h-4 mr-2" />
-              Send by Email
+              {t('orders.sendByEmail')}
             </Button>
             <Button
               variant="outline"
@@ -503,7 +517,7 @@ export function OrderDetailsSheet({
               onClick={() => handleAction('print_packing')}
             >
               <Printer className="w-4 h-4 mr-2" />
-              Print Packing List
+              {t('orders.printPackingList')}
             </Button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Package, ArrowRight } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,6 +32,7 @@ export function CategoryGrid({
   isLoading = false,
   basePath = '/dashboard/categories',
 }: CategoryGridProps) {
+  const { t } = useTranslation()
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
@@ -51,8 +53,8 @@ export function CategoryGrid({
     return (
       <div className="text-center py-16">
         <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-        <h3 className="text-lg font-semibold mb-2">No categories found</h3>
-        <p className="text-muted-foreground">Categories will appear here once products are added.</p>
+        <h3 className="text-lg font-semibold mb-2">{t('categories.noCategoriesFound')}</h3>
+        <p className="text-muted-foreground">{t('categories.noCategoriesDescription')}</p>
       </div>
     )
   }
@@ -91,7 +93,7 @@ export function CategoryGrid({
             {/* Product count */}
             <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
               <span className="text-white/90 text-sm font-medium">
-                {category.productCount} {category.productCount === 1 ? 'product' : 'products'}
+                {t('categories.productCount', { count: category.productCount })}
               </span>
               <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <ArrowRight className="w-4 h-4 text-white" />
@@ -113,4 +115,3 @@ export function CategoryGrid({
     </div>
   )
 }
-

@@ -457,7 +457,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{item.product_name}</p>
                             <p className="text-sm text-muted-foreground font-mono">
-                              SKU: {item.sku}
+                              {t('products.sku')}: {item.sku}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {t('orders.items')}: {item.quantity} {t('products.items')}
@@ -563,7 +563,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
 
         {/* Photo Upload */}
         <div className="space-y-2">
-          <Label>{t('complaints.photos')} (max 5)</Label>
+          <Label>{t('complaints.photosMax', { count: 5 })}</Label>
           <div
             className={cn(
               'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
@@ -590,7 +590,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
                 {t('general.dragDropPhotos')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {formData.photos.length}/5 {t('complaints.photos')}
+                {t('complaints.photosCount', { count: formData.photos.length, max: 5 })}
               </p>
             </label>
           </div>
@@ -602,7 +602,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
                 <div key={index} className="relative group">
                   <img
                     src={preview}
-                    alt={`Preview ${index + 1}`}
+                    alt={t('complaints.photoPreview', { index: index + 1 })}
                     className="w-full h-24 object-cover rounded border"
                   />
                   <Button
@@ -630,7 +630,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
             >
               {t('general.contactSupport')}
             </a>
-            {' or '}
+            {' '}{t('general.or')}{' '}
             <a
               href="https://wa.me/359123456789"
               target="_blank"
@@ -665,4 +665,3 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
     </form>
   )
 }
-

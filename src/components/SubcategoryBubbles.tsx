@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Package, ArrowRight } from 'lucide-react'
@@ -24,6 +25,7 @@ export function SubcategoryBubbles({
   isLoading = false,
   mainCategoryName,
 }: SubcategoryBubblesProps) {
+  const { t } = useTranslation()
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
@@ -44,9 +46,9 @@ export function SubcategoryBubbles({
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
-        <p className="text-lg font-medium">No subcategories found</p>
+        <p className="text-lg font-medium">{t('categories.noSubcategoriesFound')}</p>
         {mainCategoryName && (
-          <p className="text-sm mt-2">All products are directly in "{mainCategoryName}" category</p>
+          <p className="text-sm mt-2">{t('categories.allProductsInCategory', { category: mainCategoryName })}</p>
         )}
       </div>
     )
@@ -91,7 +93,7 @@ export function SubcategoryBubbles({
               {/* Product count */}
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                 <span className="text-white/90 text-sm font-medium">
-                  {subcategory.productCount} {subcategory.productCount === 1 ? 'product' : 'products'}
+                  {t('categories.productCount', { count: subcategory.productCount })}
                 </span>
                 <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <ArrowRight className="w-4 h-4 text-white" />

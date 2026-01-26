@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Product } from '@/types'
 import { GlassCard } from './GlassCard'
@@ -24,8 +25,8 @@ interface ProductGridCardProps {
 /**
  * Format price in EUR or BGN
  */
-function formatPrice(price: number | null | undefined): string {
-  if (!price && price !== 0) return 'N/A'
+function formatPrice(price: number | null | undefined, fallback: string): string {
+  if (!price && price !== 0) return fallback
   // For now use EUR, can be made configurable
   return `€${price.toFixed(2)}`
 }
@@ -45,6 +46,7 @@ export function ProductGridCard({
   product,
   onQuickView,
 }: ProductGridCardProps) {
+  const { t } = useTranslation()
   const [localQuantity, setLocalQuantity] = useState(1)
   const [isPulsing, setIsPulsing] = useState(false)
   const { addItem } = useCartStore()
@@ -81,14 +83,14 @@ export function ProductGridCard({
     
     if (result.success) {
       toast({
-        title: 'Added to cart',
-        description: `${qty} × ${product.name || 'Product'} added to cart`,
+        title: t('cart.added'),
+        description: t('cart.addedDescription', { count: qty, name: product.name || t('products.unnamed') }),
       })
       setLocalQuantity(1) // Reset to 1
     } else {
       toast({
-        title: 'Cannot add to cart',
-        description: result.message || 'Unable to add product to cart',
+        title: t('cart.addFailed'),
+        description: result.message || t('cart.addFailedDescription'),
         variant: 'destructive',
       })
     }
@@ -153,7 +155,7 @@ export function ProductGridCard({
         {hasImages && product.images.length > 1 && (
           <div className="absolute top-2 right-2">
             <Badge variant="secondary" className="backdrop-blur-md bg-black/20 text-white">
-              {product.images.length} photos
+              {t('products.photosCount', { count: product.images.length })}
             </Badge>
           </div>
         )}
@@ -162,7 +164,7 @@ export function ProductGridCard({
         {product.sku && (
           <div className="absolute top-2 right-2 z-10">
             <TooltipProvider>
-              <Tooltip content={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+              <Tooltip content={inWishlist ? t('wishlist.removeFromWishlist') : t('wishlist.addToWishlist')}>
                 <button
                   onClick={handleWishlistToggle}
                   className={cn(
@@ -173,7 +175,7 @@ export function ProductGridCard({
                       : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800',
                     isPulsing && 'animate-pulse'
                   )}
-                  aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                  aria-label={inWishlist ? t('wishlist.removeFromWishlist') : t('wishlist.addToWishlist')}
                 >
                   <Heart
                     className={cn(
@@ -198,7 +200,7 @@ export function ProductGridCard({
               quantity > 10 && 'bg-green-500/80 text-white'
             )}
           >
-            {quantity === 0 ? 'Out of Stock' : `${quantity} in stock`}
+            {quantity === 0 ? t('products.outOfStock') : t('products.inStockCount', { count: quantity })}
           </Badge>
         </div>
 
@@ -218,7 +220,7 @@ export function ProductGridCard({
             data-no-navigate
           >
             <Eye className="w-4 h-4 mr-2" />
-            Quick View
+            {t('products.quickView')}
           </Button>
         </div>
 
@@ -235,19 +237,19 @@ export function ProductGridCard({
 
         {/* Name - Properly handle UTF-8 */}
         <h3 className="font-bold text-lg mb-2 line-clamp-2 min-h-[3rem] flex-shrink-0">
-          {product.name || 'Unnamed Product'}
+          {product.name || t('products.unnamed')}
         </h3>
 
         {/* SKU */}
         <p className="text-xs text-muted-foreground mb-3 font-mono">
-          SKU: {product.sku}
+          {t('products.sku')}: {product.sku}
         </p>
 
         {/* Price */}
         <div className="mb-3">
           <div className="flex items-center gap-2">
             <div className="text-2xl font-bold text-primary">
-              {formatPrice(displayPrice)}
+              {formatPrice(displayPrice, t('general.notAvailable'))}
             </div>
             {hasCommissionDiscount && (
               <Badge 
@@ -255,20 +257,20 @@ export function ProductGridCard({
                 className="gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
               >
                 <Percent className="w-2.5 h-2.5" />
-                {Math.round(commissionRate * 100)}% OFF
+                {t('products.percentOff', { percent: Math.round(commissionRate * 100) })}
               </Badge>
             )}
           </div>
           {/* Show base wholesale price as strikethrough when commission discount applies */}
           {hasCommissionDiscount && (
             <div className="text-sm text-muted-foreground line-through">
-              {formatPrice(product.weboffer_price)}
+              {formatPrice(product.weboffer_price, t('general.notAvailable'))}
             </div>
           )}
           {/* Show retail price strikethrough only if no commission discount and retail > wholesale */}
           {!hasCommissionDiscount && product.retail_price && product.retail_price > (product.weboffer_price || 0) && (
             <div className="text-sm text-muted-foreground line-through">
-              {formatPrice(product.retail_price)}
+              {formatPrice(product.retail_price, t('general.notAvailable'))}
             </div>
           )}
         </div>
@@ -289,7 +291,7 @@ export function ProductGridCard({
             data-no-navigate
           >
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Qty:</span>
+              <span className="text-xs text-muted-foreground">{t('general.quantity')}:</span>
               <div className="flex items-center gap-1 flex-1">
                 <Button
                   variant="outline"
@@ -348,7 +350,7 @@ export function ProductGridCard({
               disabled={isOutOfStock}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              Add to Cart
+              {t('cart.addToCart')}
             </Button>
           </div>
         )}
@@ -388,4 +390,3 @@ export function ProductGridCard({
     </Link>
   )
 }
-

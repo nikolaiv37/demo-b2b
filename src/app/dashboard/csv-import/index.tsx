@@ -4,10 +4,12 @@ import { GlassCard } from '@/components/GlassCard'
 import { Lock, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export function CSVImportPage() {
   const { isAdmin, isLoading } = useAuth()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   // Show loading state
   if (isLoading) {
@@ -15,7 +17,7 @@ export function CSVImportPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{t('general.loading')}</p>
         </div>
       </div>
     )
@@ -31,12 +33,11 @@ export function CSVImportPage() {
           </div>
           
           <h2 className="text-2xl font-bold mb-3 text-amber-700 dark:text-amber-400">
-            Admin Access Required
+            {t('csvImport.access.adminOnly')}
           </h2>
           
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            The CSV Import feature is only available to administrators. 
-            This helps maintain data integrity and prevents unauthorized product uploads.
+            {t('csvImport.access.adminOnlyDescription')}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -44,19 +45,19 @@ export function CSVImportPage() {
               variant="outline"
               onClick={() => navigate('/dashboard/products')}
             >
-              View Products
+              {t('csvImport.access.viewProducts')}
             </Button>
             <Button
               onClick={() => navigate('/dashboard')}
             >
-              Go to Dashboard
+              {t('csvImport.access.goToDashboard')}
             </Button>
           </div>
 
           <div className="mt-8 pt-6 border-t border-amber-200 dark:border-amber-800">
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Shield className="w-4 h-4" />
-              <span>Contact your administrator if you need import access</span>
+              <span>{t('csvImport.access.contactAdmin')}</span>
             </div>
           </div>
         </GlassCard>

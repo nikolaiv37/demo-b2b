@@ -335,7 +335,7 @@ export function SidebarNav() {
                       e.stopPropagation()
                       handleCatalogToggle(catalogOpen === 'catalog' ? '' : 'catalog')
                     }}
-                    aria-label="Toggle catalog menu"
+                    aria-label={t('nav.toggleCatalogMenu')}
                     style={{
                       minWidth: '32px',
                       minHeight: '32px'
@@ -483,7 +483,7 @@ export function SidebarNav() {
                       e.stopPropagation()
                       handleSettingsToggle(settingsOpen === 'settings' ? '' : 'settings')
                     }}
-                    aria-label="Toggle settings menu"
+                    aria-label={t('nav.toggleSettingsMenu')}
                     style={{
                       minWidth: '32px',
                       minHeight: '32px'
