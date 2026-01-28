@@ -109,16 +109,12 @@ const theme = {
 };
 
 const logos = [
-  "Nordic Supply",
-  "Balkan Trade Co",
-  "Alpine Group",
-  "Danube Distribution",
-  "Europa Wholesale",
-  "Meridian Partners",
-  "Continental Trading",
-  "East European Supply",
-  "Adriatic Group",
-  "Central Trade Hub",
+  { name: "Mebelcenter", image: "/mebelcenter..svg" },
+  { name: "All Power", image: "/allpower.avif" },
+  { name: "Domex", image: "/domex.png" },
+  { name: "HobbyFarms", image: "/hobbyfarms.png" },
+  { name: "Transcargo", image: "/transcargo.png" },
+  { name: "AiByLekov", image: "/aibylekov.png" },
 ];
 
 interface FeatureItem {
@@ -649,22 +645,80 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className={`border-y ${theme.colors.border} ${theme.colors.surfaceSoft}`}>
-          <div className={`${theme.container} ${theme.sectionTight}`}>
-            <p className={`${theme.text.eyebrow} text-center ${theme.colors.inkMuted}`}>
-              Trusted by wholesale teams across Europe
-            </p>
-            <div className={`mt-7 grid grid-cols-2 ${theme.gap.md} text-center sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5`}>
-              {logos.map((logo) => (
-                <div
-                  key={logo}
-                  className={`${theme.radius.pill} border ${theme.colors.border} ${theme.colors.surface} ${theme.components.pillSm} ${theme.text.micro} ${theme.colors.inkSoft}`}
-                >
-                  {logo}
+        <section className={`border-y ${theme.colors.border} bg-[color:var(--surface)] overflow-hidden`}>
+          <div className="py-12 md:py-16">
+            {/* Header */}
+            <div className={`${theme.container} text-center mb-10`}>
+              <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-[color:var(--ink)] mb-3 relative inline-block">
+                Trusted by industry leaders
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-[color:var(--landing-accent)] opacity-30 rounded-full" />
+              </h3>
+              <p className="text-[14px] text-[color:var(--ink-70)] max-w-md mx-auto mt-3">
+                Powering wholesale operations for companies across Europe
+              </p>
+            </div>
+            
+            {/* Marquee container with fade edges */}
+            <div className="relative">
+              {/* Left fade */}
+              <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-r from-[color:var(--surface)] via-[color:var(--surface)]/80 to-transparent z-10 pointer-events-none" />
+              {/* Right fade */}
+              <div className="absolute right-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-l from-[color:var(--surface)] via-[color:var(--surface)]/80 to-transparent z-10 pointer-events-none" />
+              
+              {/* Marquee track - 6 duplications for seamless infinite scroll */}
+              <div className="marquee-container overflow-hidden">
+                <div className="marquee-track flex items-center gap-16 md:gap-20 lg:gap-24 py-4 hover:[animation-play-state:paused]">
+                  {/* Repeat logos 6 times for truly seamless scroll */}
+                  {[...Array(6)].map((_, setIndex) => (
+                    logos.map((logo) => (
+                      <div
+                        key={`set${setIndex}-${logo.name}`}
+                        className="flex-shrink-0 group px-2"
+                      >
+                        <div className="h-10 md:h-12 flex items-center justify-center opacity-75 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 ease-out">
+                          <img 
+                            src={logo.image} 
+                            alt={logo.name}
+                            className="h-full w-auto max-w-[100px] md:max-w-[120px] object-contain"
+                          />
+                        </div>
+                      </div>
+                    ))
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
+          
+          {/* Marquee animation styles */}
+          <style>{`
+            .marquee-track {
+              animation: marquee 45s linear infinite;
+              width: fit-content;
+            }
+            
+            @keyframes marquee {
+              0% {
+                transform: translateX(0);
+              }
+              100% {
+                transform: translateX(-16.666%);
+              }
+            }
+            
+            /* Slower on mobile */
+            @media (max-width: 768px) {
+              .marquee-track {
+                animation-duration: 35s;
+              }
+            }
+            
+            @media (prefers-reduced-motion: reduce) {
+              .marquee-track {
+                animation: none;
+              }
+            }
+          `}</style>
         </section>
 
         <section id="features" className={`${theme.section}`}>
