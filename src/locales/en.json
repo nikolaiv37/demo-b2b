@@ -7,6 +7,234 @@
       "bulgarianName": "Bulgarian",
       "changeLanguage": "Change language"
     },
+    "landing": {
+      "nav": {
+        "features": "Features",
+        "product": "Product",
+        "workflow": "Workflow",
+        "impact": "Impact",
+        "faq": "FAQ",
+        "login": "Log in",
+        "startTrial": "Start free trial",
+        "toggleMenu": "Toggle menu"
+      },
+      "hero": {
+        "badge": "Built for modern wholesale teams",
+        "headlinePrefix": "A calmer wholesale workflow, built to ",
+        "headlineAccent": "close deals faster",
+        "headlineSuffix": ".",
+        "subheadline": "Quotes, pricing, orders, and BG-compliant proformas — all in one place.",
+        "ctaPrimary": "Start free trial",
+        "ctaSecondary": "Watch demo",
+        "screenshotAlt": "Platform dashboard"
+      },
+      "trust": {
+        "noCard": "No credit card",
+        "compliant": "BG & EU compliant"
+      },
+      "chips": {
+        "quoteApproved": "Quote approved",
+        "liveData": "Live data",
+        "tierPricing": "Tier B pricing",
+        "discountApplied": "12% discount applied",
+        "clientAdded": "Client added",
+        "customPricingSet": "Custom pricing set",
+        "proformaReady": "Proforma ready",
+        "bgCompliant": "BG-compliant",
+        "ordersToday": "orders today",
+        "syncing": "Syncing"
+      },
+      "trusted": {
+        "eyebrow": "Trusted by industry leaders",
+        "subheadline": "Powering wholesale operations for companies across Europe"
+      },
+      "features": {
+        "badge": "How it works",
+        "title": "Built for wholesalers, not retail stores",
+        "subtitle": "Replace spreadsheets and retail plugins with a single wholesale-native workspace.",
+        "rows": {
+          "catalogPricing": {
+            "title": "Catalog & client pricing",
+            "description": "Merge supplier feeds into one clean listing. Set negotiated tiers, volume discounts, and validity windows per buyer — all visible to your team.",
+            "pills": {
+              "unified": "Unified catalog",
+              "custom": "Custom pricing"
+            },
+            "imageAlt": "Catalog and client pricing"
+          },
+          "quoteToOrder": {
+            "title": "Quote to order & proformas",
+            "description": "Collect requests, route approvals, and move to order in minutes. Generate BG-compliant PDFs with EIK, VAT ID, IBAN, and MOL fields ready for audits.",
+            "pills": {
+              "approvals": "Approvals",
+              "compliant": "BG compliant"
+            },
+            "imageAlt": "Quote to order workflow"
+          },
+          "csv": {
+            "title": "CSV import & automation",
+            "description": "Normalize supplier files and refresh your catalog with clean mappings. Ingest multiple supplier files without manual cleanup.",
+            "pill": "Auto cleanup",
+            "imageAlt": "CSV import wizard"
+          },
+          "complaints": {
+            "title": "Complaints & reporting",
+            "description": "Log issues with suppliers or buyers and keep a clear resolution timeline. Track margin, repeat orders, and pipeline without spreadsheets.",
+            "pill": "Full visibility",
+            "imageAlt": "Complaints and reporting"
+          },
+          "buyers": {
+            "title": "For buyers",
+            "subtitle": "Faster approvals, fewer surprises",
+            "bullets": [
+              "Browse accurate availability and lead times",
+              "Request quotes with project notes",
+              "Track approvals and order status"
+            ]
+          },
+          "suppliers": {
+            "title": "For suppliers",
+            "subtitle": "Clean coordination across accounts",
+            "bullets": [
+              "Ingest multiple supplier files automatically",
+              "Sync pricing across warehouses",
+              "Share compliance-ready proformas"
+            ]
+          }
+        }
+      },
+      "workflow": {
+        "badge": "Workflow",
+        "title": "A predictable wholesale flow",
+        "subtitle": "Every step from import to proforma is tracked and visible.",
+        "step": "Step {{number}}",
+        "steps": [
+          {
+            "title": "Import catalog",
+            "detail": "Upload supplier files once and keep listings up to date."
+          },
+          {
+            "title": "Buyer requests quote",
+            "detail": "Clients pick items, quantities, and delivery terms."
+          },
+          {
+            "title": "Approve",
+            "detail": "Sales locks pricing and confirms lead times."
+          },
+          {
+            "title": "Proforma",
+            "detail": "Send compliant PDFs and confirm the order."
+          }
+        ]
+      },
+      "stats": {
+        "badge": "Impact",
+        "title": "Operational results you can measure",
+        "subtitle": "Move faster with clearer data and fewer manual handoffs.",
+        "items": [
+          {
+            "value": "31%",
+            "label": "faster quote turnaround",
+            "detail": "Average time from request to approved proforma."
+          },
+          {
+            "value": "22 hrs",
+            "label": "catalog refresh",
+            "detail": "From supplier file to buyer-ready listings."
+          },
+          {
+            "value": "15%",
+            "label": "repeat order lift",
+            "detail": "Improvement within the first quarter."
+          }
+        ]
+      },
+      "testimonials": {
+        "badge": "Testimonials",
+        "title": "Trusted by wholesale teams",
+        "cta": "Read customer stories",
+        "items": [
+          {
+            "quote": "We replaced spreadsheets, plugins, and email threads with a single workflow. Quotes now close the same day.",
+            "name": "Mila Georgieva",
+            "company": "Sofia Trade House"
+          },
+          {
+            "quote": "Client pricing finally lives in one place. Our buyers get the right terms without back-and-forth.",
+            "name": "Atanas Iliev",
+            "company": "Danube Distribution"
+          },
+          {
+            "quote": "Proforma documents are compliant by default, so accounting is no longer a bottleneck.",
+            "name": "Hristo Petrov",
+            "company": "Balkan Wholesale"
+          }
+        ]
+      },
+      "faq": {
+        "badge": "FAQ",
+        "title": "Questions, answered",
+        "subtitle": "Everything you need to know before modernizing your wholesale workflow.",
+        "cardTitle": "Want a guided walkthrough?",
+        "cardBody": "Book a 20-minute demo with a product specialist.",
+        "cardCta": "Book a demo",
+        "items": [
+          {
+            "question": "Is this built for wholesalers or retail stores?",
+            "answer": "This platform is purpose-built for wholesalers. It replaces the retail-store-plus-plugins model with dedicated wholesale workflows."
+          },
+          {
+            "question": "How do buyers access pricing?",
+            "answer": "Buyers can use a branded portal or be invited into private accounts with negotiated price tiers."
+          },
+          {
+            "question": "What BG compliance fields are included?",
+            "answer": "Proforma PDFs include EIK, VAT ID, IBAN, and MOL fields aligned with Bulgarian and EU trade standards."
+          },
+          {
+            "question": "Can we manage multiple supplier catalogs?",
+            "answer": "Yes. Supplier files are normalized into a single catalog with shared reporting."
+          },
+          {
+            "question": "How fast can we launch?",
+            "answer": "Most teams go live within days after import and portal branding."
+          },
+          {
+            "question": "Do you help with onboarding?",
+            "answer": "We provide assisted import, data mapping, and training for your sales team."
+          }
+        ]
+      },
+      "cta": {
+        "badge": "Ready to launch",
+        "title": "Replace manual workflows with a single wholesale platform.",
+        "subtitle": "Start your free trial, import your catalog, and invite buyers to a branded portal today.",
+        "primary": "Start free trial",
+        "secondary": "Download overview"
+      },
+      "footer": {
+        "tagline": "The B2B platform built for distributors, importers, and wholesale buyers.",
+        "product": "Product",
+        "company": "Company",
+        "resources": "Resources",
+        "productLinks": {
+          "features": "Features",
+          "workflow": "Workflow",
+          "impact": "Impact"
+        },
+        "companyLinks": {
+          "about": "About",
+          "careers": "Careers",
+          "contact": "Contact"
+        },
+        "resourceLinks": {
+          "compliance": "Compliance",
+          "security": "Security",
+          "support": "Support"
+        },
+        "copyright": "(c) 2026 FurniTrade. Made in Sofia, Bulgaria."
+      }
+    },
     "nav": {
       "mainNavigation": "Main Navigation",
       "toolsAndAccount": "Tools & Account",

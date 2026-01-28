@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   Accordion,
@@ -9,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import {
   ArrowRight,
   BadgeCheck,
@@ -116,78 +118,6 @@ const logos = [
   { name: "AiByLekov", image: "/aibylekov.png" },
 ];
 
-const workflowSteps = [
-  {
-    title: "Import catalog",
-    detail: "Upload supplier files once and keep listings up to date.",
-  },
-  {
-    title: "Buyer requests quote",
-    detail: "Clients pick items, quantities, and delivery terms.",
-  },
-  {
-    title: "Approve",
-    detail: "Sales locks pricing and confirms lead times.",
-  },
-  {
-    title: "Proforma",
-    detail: "Send compliant PDFs and confirm the order.",
-  },
-];
-
-const testimonials = [
-  {
-    quote:
-      "We replaced spreadsheets, plugins, and email threads with a single workflow. Quotes now close the same day.",
-    name: "Mila Georgieva",
-    company: "Sofia Trade House",
-  },
-  {
-    quote:
-      "Client pricing finally lives in one place. Our buyers get the right terms without back-and-forth.",
-    name: "Atanas Iliev",
-    company: "Danube Distribution",
-  },
-  {
-    quote:
-      "Proforma documents are compliant by default, so accounting is no longer a bottleneck.",
-    name: "Hristo Petrov",
-    company: "Balkan Wholesale",
-  },
-];
-
-const faqs = [
-  {
-    question: "Is this built for wholesalers or retail stores?",
-    answer:
-      "This platform is purpose-built for wholesalers. It replaces the retail-store-plus-plugins model with dedicated wholesale workflows.",
-  },
-  {
-    question: "How do buyers access pricing?",
-    answer:
-      "Buyers can use a branded portal or be invited into private accounts with negotiated price tiers.",
-  },
-  {
-    question: "What BG compliance fields are included?",
-    answer:
-      "Proforma PDFs include EIK, VAT ID, IBAN, and MOL fields aligned with Bulgarian and EU trade standards.",
-  },
-  {
-    question: "Can we manage multiple supplier catalogs?",
-    answer:
-      "Yes. Supplier files are normalized into a single catalog with shared reporting.",
-  },
-  {
-    question: "How fast can we launch?",
-    answer:
-      "Most teams go live within days after import and portal branding.",
-  },
-  {
-    question: "Do you help with onboarding?",
-    answer:
-      "We provide assisted import, data mapping, and training for your sales team.",
-  },
-];
 
 const screenshots = {
   dashboard: "/landing/dashboard.png",
@@ -199,10 +129,7 @@ const screenshots = {
 
 // Removed callout pills - using floating cards instead
 
-const statusBadge = {
-  label: "Live data",
-  className: "top-3 right-3",
-};
+ 
 
 const ImageFallback = ({ title }: { title: string }) => (
   <div
@@ -243,6 +170,105 @@ const ImageWithFallback = ({
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t, i18n } = useTranslation();
+  const direction = i18n.dir();
+
+  const workflowSteps = [
+    {
+      title: t("landing.workflow.steps.0.title"),
+      detail: t("landing.workflow.steps.0.detail"),
+    },
+    {
+      title: t("landing.workflow.steps.1.title"),
+      detail: t("landing.workflow.steps.1.detail"),
+    },
+    {
+      title: t("landing.workflow.steps.2.title"),
+      detail: t("landing.workflow.steps.2.detail"),
+    },
+    {
+      title: t("landing.workflow.steps.3.title"),
+      detail: t("landing.workflow.steps.3.detail"),
+    },
+  ];
+
+  const testimonials = [
+    {
+      quote: t("landing.testimonials.items.0.quote"),
+      name: t("landing.testimonials.items.0.name"),
+      company: t("landing.testimonials.items.0.company"),
+    },
+    {
+      quote: t("landing.testimonials.items.1.quote"),
+      name: t("landing.testimonials.items.1.name"),
+      company: t("landing.testimonials.items.1.company"),
+    },
+    {
+      quote: t("landing.testimonials.items.2.quote"),
+      name: t("landing.testimonials.items.2.name"),
+      company: t("landing.testimonials.items.2.company"),
+    },
+  ];
+
+  const faqs = [
+    {
+      question: t("landing.faq.items.0.question"),
+      answer: t("landing.faq.items.0.answer"),
+    },
+    {
+      question: t("landing.faq.items.1.question"),
+      answer: t("landing.faq.items.1.answer"),
+    },
+    {
+      question: t("landing.faq.items.2.question"),
+      answer: t("landing.faq.items.2.answer"),
+    },
+    {
+      question: t("landing.faq.items.3.question"),
+      answer: t("landing.faq.items.3.answer"),
+    },
+    {
+      question: t("landing.faq.items.4.question"),
+      answer: t("landing.faq.items.4.answer"),
+    },
+    {
+      question: t("landing.faq.items.5.question"),
+      answer: t("landing.faq.items.5.answer"),
+    },
+  ];
+
+  const buyerBullets = [
+    t("landing.features.rows.buyers.bullets.0"),
+    t("landing.features.rows.buyers.bullets.1"),
+    t("landing.features.rows.buyers.bullets.2"),
+  ];
+
+  const supplierBullets = [
+    t("landing.features.rows.suppliers.bullets.0"),
+    t("landing.features.rows.suppliers.bullets.1"),
+    t("landing.features.rows.suppliers.bullets.2"),
+  ];
+
+  const stats = [
+    {
+      icon: ClipboardCheck,
+      value: t("landing.stats.items.0.value"),
+      label: t("landing.stats.items.0.label"),
+      detail: t("landing.stats.items.0.detail"),
+    },
+    {
+      icon: Layers,
+      value: t("landing.stats.items.1.value"),
+      label: t("landing.stats.items.1.label"),
+      detail: t("landing.stats.items.1.detail"),
+    },
+    {
+      icon: LineChart,
+      value: t("landing.stats.items.2.value"),
+      label: t("landing.stats.items.2.label"),
+      detail: t("landing.stats.items.2.detail"),
+    },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -261,7 +287,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className={`min-h-screen ${theme.colors.bg} ${theme.colors.ink}`}>
+    <div className={`min-h-screen ${theme.colors.bg} ${theme.colors.ink}`} dir={direction}>
       {/* Floating navbar - centered with no visible wrapper */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] md:w-[calc(100%-3rem)] max-w-6xl">
         <header
@@ -286,41 +312,42 @@ export default function LandingPage() {
                 className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
                 href="#features"
               >
-                Features
+                {t("landing.nav.features")}
               </a>
               <a 
                 className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
                 href="#highlights"
               >
-                Product
+                {t("landing.nav.product")}
               </a>
               <a 
                 className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
                 href="#workflow"
               >
-                Workflow
+                {t("landing.nav.workflow")}
               </a>
               <a 
                 className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
                 href="#roi"
               >
-                Impact
+                {t("landing.nav.impact")}
               </a>
               <a 
                 className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
                 href="#faq"
               >
-                FAQ
+                {t("landing.nav.faq")}
               </a>
             </nav>
 
             {/* Desktop CTA */}
             <div className="hidden lg:flex items-center gap-4">
+              <LanguageSwitcher />
               <Link 
                 to="/auth/login" 
                 className="text-[13px] font-medium text-[color:var(--ink)] hover:text-[color:var(--landing-accent)] transition-colors duration-300 relative group"
               >
-                Log in
+                {t("landing.nav.login")}
                 <span className="absolute -bottom-0.5 left-0 right-0 h-px bg-[color:var(--landing-accent)] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left" />
               </Link>
               <Button 
@@ -328,7 +355,7 @@ export default function LandingPage() {
                 size="sm" 
                 asChild
               >
-                <Link to="/auth/signup">Start free trial</Link>
+                <Link to="/auth/signup">{t("landing.nav.startTrial")}</Link>
               </Button>
             </div>
 
@@ -336,7 +363,7 @@ export default function LandingPage() {
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden p-2 rounded-lg text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] transition-colors duration-200"
-              aria-label="Toggle menu"
+              aria-label={t("landing.nav.toggleMenu")}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -354,49 +381,54 @@ export default function LandingPage() {
                 href="#features"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Features
+                {t("landing.nav.features")}
               </a>
               <a 
                 className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
                 href="#highlights"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Product
+                {t("landing.nav.product")}
               </a>
               <a 
                 className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
                 href="#workflow"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Workflow
+                {t("landing.nav.workflow")}
               </a>
               <a 
                 className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
                 href="#roi"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Impact
+                {t("landing.nav.impact")}
               </a>
               <a 
                 className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
                 href="#faq"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                FAQ
+                {t("landing.nav.faq")}
               </a>
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-[color:var(--ink-08)]">
+                <div className="px-4">
+                  <LanguageSwitcher />
+                </div>
                 <Link 
                   to="/auth/login" 
                   className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] transition-all duration-200 text-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Log in
+                  {t("landing.nav.login")}
                 </Link>
                 <Button 
                   className="bg-[color:var(--landing-accent)] hover:bg-[#363043] text-white font-semibold rounded-lg shadow-[0_2px_10px_-2px_rgba(68,64,84,0.35)]" 
                   asChild
                 >
-                  <Link to="/auth/signup" onClick={() => setMobileMenuOpen(false)}>Start free trial</Link>
+                  <Link to="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
+                    {t("landing.nav.startTrial")}
+                  </Link>
                 </Button>
               </div>
             </nav>
@@ -442,16 +474,21 @@ export default function LandingPage() {
                 <div className="h-5 w-5 rounded-full bg-[color:var(--accent-soft)] flex items-center justify-center">
                   <Sparkles className="h-3 w-3 text-[color:var(--landing-accent)]" />
                 </div>
-                <span className="text-[11px] font-semibold tracking-wide text-[color:var(--ink)]">Built for modern wholesale teams</span>
+                <span className="text-[11px] font-semibold tracking-wide text-[color:var(--ink)]">
+                  {t("landing.hero.badge")}
+                </span>
               </div>
 
               <div>
                 <h1 className="text-[2rem] sm:text-4xl md:text-[3.5rem] lg:text-6xl font-bold tracking-[-0.02em] leading-[1.1] text-balance text-[color:var(--ink)]">
-                  A calmer wholesale workflow, built to{" "}
-                  <span className="underline decoration-[color:var(--landing-accent)] decoration-[3px] underline-offset-[5px]">close deals faster</span>.
+                  {t("landing.hero.headlinePrefix")}
+                  <span className="underline decoration-[color:var(--landing-accent)] decoration-[3px] underline-offset-[5px]">
+                    {t("landing.hero.headlineAccent")}
+                  </span>
+                  {t("landing.hero.headlineSuffix")}
                 </h1>
                 <p className={`${theme.text.body} ${theme.colors.inkSoft} max-w-[340px] sm:max-w-[380px] mt-3`}>
-                  Quotes, pricing, orders, and BG-compliant proformas — all in one place.
+                  {t("landing.hero.subheadline")}
                 </p>
               </div>
 
@@ -461,14 +498,14 @@ export default function LandingPage() {
                   size="lg" 
                   asChild
                 >
-                  <Link to="/auth/signup">Start free trial</Link>
+                  <Link to="/auth/signup">{t("landing.hero.ctaPrimary")}</Link>
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   className="text-[color:var(--ink)] border border-[color:var(--ink-12)] bg-transparent hover:bg-[color:var(--surface)] gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_-4px_rgba(47,36,58,0.15)]"
                 >
-                  Watch demo
+                  {t("landing.hero.ctaSecondary")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -477,11 +514,15 @@ export default function LandingPage() {
               <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[color:var(--surface)] border border-[color:var(--ink-08)] shadow-[0_1px_3px_-1px_rgba(47,36,58,0.08)]">
                   <ShieldCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
-                  <span className="text-[11px] font-medium text-[color:var(--ink-55)]">No credit card</span>
+                  <span className="text-[11px] font-medium text-[color:var(--ink-55)]">
+                    {t("landing.trust.noCard")}
+                  </span>
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[color:var(--surface)] border border-[color:var(--ink-08)] shadow-[0_1px_3px_-1px_rgba(47,36,58,0.08)]">
                   <FileCheck2 className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
-                  <span className="text-[11px] font-medium text-[color:var(--ink-55)]">BG & EU compliant</span>
+                  <span className="text-[11px] font-medium text-[color:var(--ink-55)]">
+                    {t("landing.trust.compliant")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -491,7 +532,9 @@ export default function LandingPage() {
               <div className="hidden md:flex justify-start mb-3 ml-4 lg:ml-10">
                 <div className="rounded-xl bg-emerald-50 border border-emerald-200 shadow-[0_6px_16px_-6px_rgba(16,185,129,0.25)] px-2.5 py-1 flex items-center gap-1.5 rotate-[-3deg]">
                   <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  <span className="text-[9px] font-semibold text-emerald-700">Quote approved</span>
+                  <span className="text-[9px] font-semibold text-emerald-700">
+                    {t("landing.chips.quoteApproved")}
+                  </span>
                 </div>
               </div>
 
@@ -504,7 +547,7 @@ export default function LandingPage() {
               >
                 <ImageWithFallback
                   src={screenshots.dashboard}
-                  alt="Platform dashboard"
+                  alt={t("landing.hero.screenshotAlt")}
                   className="h-full w-full object-contain"
                   loading="eager"
                 />
@@ -513,7 +556,7 @@ export default function LandingPage() {
                 <div className="absolute top-3 right-3">
                   <div className="rounded-lg bg-[color:var(--surface)] border border-[color:var(--ink-08)] px-2 py-1 text-[8px] font-semibold text-[color:var(--ink-55)] shadow-[0_4px_14px_-4px_rgba(47,36,58,0.2)] flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--status-live)] animate-pulse" />
-                    {statusBadge.label}
+                    {t("landing.chips.liveData")}
                   </div>
                 </div>
               </div>
@@ -525,8 +568,12 @@ export default function LandingPage() {
                     <Tag className="h-2.5 w-2.5 text-[color:var(--landing-accent)]" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-semibold text-[color:var(--ink)]">Tier B pricing</span>
-                    <span className="text-[8px] text-[color:var(--ink-55)]">12% discount applied</span>
+                    <span className="text-[9px] font-semibold text-[color:var(--ink)]">
+                      {t("landing.chips.tierPricing")}
+                    </span>
+                    <span className="text-[8px] text-[color:var(--ink-55)]">
+                      {t("landing.chips.discountApplied")}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -538,8 +585,12 @@ export default function LandingPage() {
                     <Users className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold text-[color:var(--ink)]">Client added</p>
-                    <p className="text-[8px] text-[color:var(--ink-55)]">Custom pricing set</p>
+                    <p className="text-[10px] font-semibold text-[color:var(--ink)]">
+                      {t("landing.chips.clientAdded")}
+                    </p>
+                    <p className="text-[8px] text-[color:var(--ink-55)]">
+                      {t("landing.chips.customPricingSet")}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -551,8 +602,12 @@ export default function LandingPage() {
                     <FileText className="h-3 w-3 text-[color:var(--landing-accent)]" />
                   </div>
                   <div>
-                    <p className="text-[9px] font-semibold text-[color:var(--ink)]">Proforma ready</p>
-                    <p className="text-[7px] text-[color:var(--ink-55)]">BG-compliant</p>
+                    <p className="text-[9px] font-semibold text-[color:var(--ink)]">
+                      {t("landing.chips.proformaReady")}
+                    </p>
+                    <p className="text-[7px] text-[color:var(--ink-55)]">
+                      {t("landing.chips.bgCompliant")}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -565,7 +620,9 @@ export default function LandingPage() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-white leading-none">+24</span>
-                    <span className="text-[7px] font-medium text-white/70">orders today</span>
+                    <span className="text-[7px] font-medium text-white/70">
+                      {t("landing.chips.ordersToday")}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -574,7 +631,9 @@ export default function LandingPage() {
               <div className="absolute bottom-8 left-8 hidden xl:block rotate-[-2deg]">
                 <div className="rounded-lg bg-[color:var(--surface)] border border-[color:var(--ink-08)] px-2.5 py-1 shadow-[0_4px_12px_-4px_rgba(47,36,58,0.15)] flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--status-live)] animate-pulse" />
-                  <span className="text-[8px] font-semibold text-[color:var(--ink-55)]">Syncing</span>
+                  <span className="text-[8px] font-semibold text-[color:var(--ink-55)]">
+                    {t("landing.chips.syncing")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -586,11 +645,11 @@ export default function LandingPage() {
             {/* Header */}
             <div className={`${theme.container} text-center mb-10`}>
               <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-[color:var(--ink)] mb-3 relative inline-block">
-                Trusted by industry leaders
+                {t("landing.trusted.eyebrow")}
                 <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-[color:var(--landing-accent)] opacity-30 rounded-full" />
               </h3>
               <p className="text-[14px] text-[color:var(--ink-70)] max-w-md mx-auto mt-3">
-                Powering wholesale operations for companies across Europe
+                {t("landing.trusted.subheadline")}
               </p>
             </div>
             
@@ -666,14 +725,14 @@ export default function LandingPage() {
             {/* Section Header */}
             <div className="text-center mb-16 md:mb-20">
               <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption} mb-5`}>
-                How it works
+                {t("landing.features.badge")}
               </Badge>
               <h2 className="text-3xl md:text-4xl lg:text-[44px] font-bold text-[color:var(--ink)] mb-5 relative inline-block">
-                Built for wholesalers, not retail stores
+                {t("landing.features.title")}
                 <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-[color:var(--landing-accent)] opacity-25 rounded-full" />
               </h2>
               <p className="text-[16px] md:text-lg text-[color:var(--ink-70)] max-w-2xl mx-auto mt-6 leading-relaxed">
-                Replace spreadsheets and retail plugins with a single wholesale-native workspace.
+                {t("landing.features.subtitle")}
               </p>
             </div>
 
@@ -706,21 +765,23 @@ export default function LandingPage() {
                           
                           {/* Title */}
                           <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
-                            Catalog & client pricing
+                            {t("landing.features.rows.catalogPricing.title")}
                           </h3>
                           
                           {/* Description */}
                           <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
-                            Merge supplier feeds into one clean listing. Set negotiated tiers, volume discounts, and validity windows per buyer — all visible to your team.
+                            {t("landing.features.rows.catalogPricing.description")}
                           </p>
                           
                           {/* Feature pills */}
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
-                              <Layers className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Unified catalog
+                              <Layers className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />{" "}
+                              {t("landing.features.rows.catalogPricing.pills.unified")}
                             </span>
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
-                              <BadgeCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Custom pricing
+                              <BadgeCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />{" "}
+                              {t("landing.features.rows.catalogPricing.pills.custom")}
                             </span>
                           </div>
                         </div>
@@ -736,7 +797,7 @@ export default function LandingPage() {
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
                               src={screenshots.clients}
-                              alt="Catalog and client pricing"
+                              alt={t("landing.features.rows.catalogPricing.imageAlt")}
                               className="h-full w-full object-cover"
                             />
                           </div>
@@ -773,21 +834,23 @@ export default function LandingPage() {
                           
                           {/* Title */}
                           <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
-                            Quote to order & proformas
+                            {t("landing.features.rows.quoteToOrder.title")}
                           </h3>
                           
                           {/* Description */}
                           <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
-                            Collect requests, route approvals, and move to order in minutes. Generate BG-compliant PDFs with EIK, VAT ID, IBAN, and MOL fields ready for audits.
+                            {t("landing.features.rows.quoteToOrder.description")}
                           </p>
                           
                           {/* Feature pills */}
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
-                              <ClipboardCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Approvals
+                              <ClipboardCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />{" "}
+                              {t("landing.features.rows.quoteToOrder.pills.approvals")}
                             </span>
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
-                              <FileCheck2 className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> BG compliant
+                              <FileCheck2 className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />{" "}
+                              {t("landing.features.rows.quoteToOrder.pills.compliant")}
                             </span>
                           </div>
                         </div>
@@ -803,7 +866,7 @@ export default function LandingPage() {
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
                               src={screenshots.orders}
-                              alt="Quote to order workflow"
+                              alt={t("landing.features.rows.quoteToOrder.imageAlt")}
                               className="h-full w-full object-cover"
                             />
                           </div>
@@ -824,13 +887,13 @@ export default function LandingPage() {
               >
                 <div className="text-center mb-10">
                   <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption} mb-4`}>
-                    Workflow
+                    {t("landing.workflow.badge")}
                   </Badge>
                   <h3 className="text-2xl md:text-3xl font-bold text-[color:var(--ink)] mb-3">
-                    A predictable wholesale flow
+                    {t("landing.workflow.title")}
                   </h3>
                   <p className="text-[15px] text-[color:var(--ink-70)] max-w-lg mx-auto">
-                    Every step from import to proforma is tracked and visible.
+                    {t("landing.workflow.subtitle")}
                   </p>
                 </div>
                 
@@ -842,7 +905,7 @@ export default function LandingPage() {
                     >
                       <div className="flex items-center justify-between mb-4">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[color:var(--accent-soft)] text-[11px] font-semibold text-[color:var(--ink)]">
-                          Step {index + 1}
+                          {t("landing.workflow.step", { number: index + 1 })}
                         </span>
                         {index < workflowSteps.length - 1 && (
                           <ArrowRight className="h-4 w-4 text-[color:var(--ink-55)] hidden lg:block" />
@@ -876,18 +939,19 @@ export default function LandingPage() {
                           
                           {/* Title */}
                           <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
-                            CSV import & automation
+                            {t("landing.features.rows.csv.title")}
                           </h3>
                           
                           {/* Description */}
                           <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
-                            Normalize supplier files and refresh your catalog with clean mappings. Ingest multiple supplier files without manual cleanup.
+                            {t("landing.features.rows.csv.description")}
                           </p>
                           
                           {/* Feature pill */}
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
-                              <FileText className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Auto cleanup
+                              <FileText className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />{" "}
+                              {t("landing.features.rows.csv.pill")}
                             </span>
                           </div>
                         </div>
@@ -903,7 +967,7 @@ export default function LandingPage() {
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
                               src={screenshots.csv}
-                              alt="CSV import wizard"
+                              alt={t("landing.features.rows.csv.imageAlt")}
                               className="h-full w-full object-cover"
                             />
                           </div>
@@ -934,18 +998,19 @@ export default function LandingPage() {
                           
                           {/* Title */}
                           <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
-                            Complaints & reporting
+                            {t("landing.features.rows.complaints.title")}
                           </h3>
                           
                           {/* Description */}
                           <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
-                            Log issues with suppliers or buyers and keep a clear resolution timeline. Track margin, repeat orders, and pipeline without spreadsheets.
+                            {t("landing.features.rows.complaints.description")}
                           </p>
                           
                           {/* Feature pill */}
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
-                              <LineChart className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Full visibility
+                              <LineChart className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />{" "}
+                              {t("landing.features.rows.complaints.pill")}
                             </span>
                           </div>
                         </div>
@@ -961,7 +1026,7 @@ export default function LandingPage() {
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
                               src={screenshots.complaints}
-                              alt="Complaints and reporting"
+                              alt={t("landing.features.rows.complaints.imageAlt")}
                               className="h-full w-full object-cover"
                             />
                           </div>
@@ -986,16 +1051,16 @@ export default function LandingPage() {
                           <Users className="h-5 w-5 text-[color:var(--landing-accent)]" />
                         </div>
                         <div>
-                          <h4 className="text-lg font-semibold text-[color:var(--ink)] tracking-[-0.01em]">For buyers</h4>
-                          <p className="text-[12px] text-[color:var(--ink-55)]">Faster approvals, fewer surprises</p>
+                          <h4 className="text-lg font-semibold text-[color:var(--ink)] tracking-[-0.01em]">
+                            {t("landing.features.rows.buyers.title")}
+                          </h4>
+                          <p className="text-[12px] text-[color:var(--ink-55)]">
+                            {t("landing.features.rows.buyers.subtitle")}
+                          </p>
                         </div>
                       </div>
                       <ul className="space-y-3">
-                        {[
-                          "Browse accurate availability and lead times",
-                          "Request quotes with project notes",
-                          "Track approvals and order status",
-                        ].map((item) => (
+                        {buyerBullets.map((item) => (
                           <li key={item} className="flex items-start gap-3">
                             <CheckCircle2 className="h-4 w-4 mt-0.5 text-[color:var(--landing-accent)] flex-shrink-0" />
                             <span className="text-[14px] text-[color:var(--ink-70)] leading-relaxed">{item}</span>
@@ -1013,16 +1078,16 @@ export default function LandingPage() {
                           <Truck className="h-5 w-5 text-[color:var(--landing-accent)]" />
                         </div>
                         <div>
-                          <h4 className="text-lg font-semibold text-[color:var(--ink)] tracking-[-0.01em]">For suppliers</h4>
-                          <p className="text-[12px] text-[color:var(--ink-55)]">Clean coordination across accounts</p>
+                          <h4 className="text-lg font-semibold text-[color:var(--ink)] tracking-[-0.01em]">
+                            {t("landing.features.rows.suppliers.title")}
+                          </h4>
+                          <p className="text-[12px] text-[color:var(--ink-55)]">
+                            {t("landing.features.rows.suppliers.subtitle")}
+                          </p>
                         </div>
                       </div>
                       <ul className="space-y-3">
-                        {[
-                          "Ingest multiple supplier files automatically",
-                          "Sync pricing across warehouses",
-                          "Share compliance-ready proformas",
-                        ].map((item) => (
+                        {supplierBullets.map((item) => (
                           <li key={item} className="flex items-start gap-3">
                             <CheckCircle2 className="h-4 w-4 mt-0.5 text-[color:var(--landing-accent)] flex-shrink-0" />
                             <span className="text-[14px] text-[color:var(--ink-70)] leading-relaxed">{item}</span>
@@ -1059,23 +1124,19 @@ export default function LandingPage() {
             {/* Section Header */}
             <div className="text-center mb-14">
               <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption} mb-5`}>
-                Impact
+                {t("landing.stats.badge")}
               </Badge>
               <h2 className="text-3xl md:text-4xl font-bold text-[color:var(--ink)] mb-4">
-                Operational results you can measure
+                {t("landing.stats.title")}
               </h2>
               <p className="text-[16px] text-[color:var(--ink-70)] max-w-xl mx-auto">
-                Move faster with clearer data and fewer manual handoffs.
+                {t("landing.stats.subtitle")}
               </p>
             </div>
 
             {/* Stats Cards - Horizontal with mini-icons */}
             <div className="grid gap-6 md:grid-cols-3">
-              {[
-                { icon: ClipboardCheck, value: "31%", label: "faster quote turnaround", detail: "Average time from request to approved proforma." },
-                { icon: Layers, value: "22 hrs", label: "catalog refresh", detail: "From supplier file to buyer-ready listings." },
-                { icon: LineChart, value: "15%", label: "repeat order lift", detail: "Improvement within the first quarter." },
-              ].map((metric, index) => (
+              {stats.map((metric, index) => (
                 <Card
                   key={metric.label}
                   className="group rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-8 md:p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.2)] hover:border-[color:var(--ink-12)]"
@@ -1106,15 +1167,17 @@ export default function LandingPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-14">
               <div className="space-y-3">
                 <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
-                  Testimonials
+                  {t("landing.testimonials.badge")}
                 </Badge>
-                <h2 className="text-3xl md:text-4xl font-bold text-[color:var(--ink)]">Trusted by wholesale teams</h2>
+                <h2 className="text-3xl md:text-4xl font-bold text-[color:var(--ink)]">
+                  {t("landing.testimonials.title")}
+                </h2>
               </div>
               <Button
                 variant="outline"
                 className="text-[color:var(--ink)] border border-[color:var(--ink-12)] bg-white/80 hover:bg-white rounded-xl"
               >
-                Read customer stories
+                {t("landing.testimonials.cta")}
               </Button>
             </div>
 
@@ -1155,21 +1218,22 @@ export default function LandingPage() {
           <div className={`${theme.container} grid gap-10 lg:grid-cols-[0.9fr_1.1fr]`}>
             <div className="space-y-4">
               <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
-                FAQ
+                {t("landing.faq.badge")}
               </Badge>
-              <h2 className={theme.text.h2}>Questions, answered</h2>
+              <h2 className={theme.text.h2}>{t("landing.faq.title")}</h2>
               <p className={`${theme.text.body} ${theme.colors.inkSoft}`}>
-                Everything you need to know before modernizing your wholesale
-                workflow.
+                {t("landing.faq.subtitle")}
               </p>
               <Card
                 className={`${theme.radius.md} ${theme.colors.surface} border ${theme.colors.border} p-6`}
               >
-                <p className={theme.text.label}>Want a guided walkthrough?</p>
+                <p className={theme.text.label}>{t("landing.faq.cardTitle")}</p>
                 <p className={`${theme.text.bodySm} ${theme.colors.inkMuted} mt-2`}>
-                  Book a 20-minute demo with a product specialist.
+                  {t("landing.faq.cardBody")}
                 </p>
-                <Button className={`${theme.colors.accent} mt-4`}>Book a demo</Button>
+                <Button className={`${theme.colors.accent} mt-4`}>
+                  {t("landing.faq.cardCta")}
+                </Button>
               </Card>
             </div>
             <Accordion type="single" collapsible className="space-y-4">
@@ -1201,19 +1265,18 @@ export default function LandingPage() {
               <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] md:items-center">
                 <div className="space-y-4">
                   <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
-                    Ready to launch
+                    {t("landing.cta.badge")}
                   </Badge>
                   <h2 className={theme.text.h2}>
-                    Replace manual workflows with a single wholesale platform.
+                    {t("landing.cta.title")}
                   </h2>
                   <p className={`${theme.text.body} ${theme.colors.inkSoft}`}>
-                    Start your free trial, import your catalog, and invite buyers
-                    to a branded portal today.
+                    {t("landing.cta.subtitle")}
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button className={theme.colors.accent} size="lg" asChild>
-                    <Link to="/auth/signup">Start free trial</Link>
+                    <Link to="/auth/signup">{t("landing.cta.primary")}</Link>
                   </Button>
                   <Button
                     variant="outline"
@@ -1221,7 +1284,7 @@ export default function LandingPage() {
                     size="lg"
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Download overview
+                    {t("landing.cta.secondary")}
                   </Button>
                 </div>
               </div>
@@ -1242,49 +1305,48 @@ export default function LandingPage() {
               <span className={theme.text.label}>FurniTrade</span>
             </div>
             <p className={`${theme.text.bodySm} ${theme.colors.inkMuted}`}>
-              The B2B platform built for distributors, importers, and
-              wholesale buyers.
+              {t("landing.footer.tagline")}
             </p>
           </div>
           <div>
-            <p className={theme.text.label}>Product</p>
+            <p className={theme.text.label}>{t("landing.footer.product")}</p>
             <ul className={`mt-3 space-y-2 ${theme.text.bodySm} ${theme.colors.inkMuted}`}>
               <li>
                 <a href="#features" className="hover:text-[color:var(--ink)]">
-                  Features
+                  {t("landing.footer.productLinks.features")}
                 </a>
               </li>
               <li>
                 <a href="#workflow" className="hover:text-[color:var(--ink)]">
-                  Workflow
+                  {t("landing.footer.productLinks.workflow")}
                 </a>
               </li>
               <li>
                 <a href="#roi" className="hover:text-[color:var(--ink)]">
-                  Impact
+                  {t("landing.footer.productLinks.impact")}
                 </a>
               </li>
             </ul>
           </div>
           <div>
-            <p className={theme.text.label}>Company</p>
+            <p className={theme.text.label}>{t("landing.footer.company")}</p>
             <ul className={`mt-3 space-y-2 ${theme.text.bodySm} ${theme.colors.inkMuted}`}>
-              <li>About</li>
-              <li>Careers</li>
-              <li>Contact</li>
+              <li>{t("landing.footer.companyLinks.about")}</li>
+              <li>{t("landing.footer.companyLinks.careers")}</li>
+              <li>{t("landing.footer.companyLinks.contact")}</li>
             </ul>
           </div>
           <div>
-            <p className={theme.text.label}>Resources</p>
+            <p className={theme.text.label}>{t("landing.footer.resources")}</p>
             <ul className={`mt-3 space-y-2 ${theme.text.bodySm} ${theme.colors.inkMuted}`}>
-              <li>Compliance</li>
-              <li>Security</li>
-              <li>Support</li>
+              <li>{t("landing.footer.resourceLinks.compliance")}</li>
+              <li>{t("landing.footer.resourceLinks.security")}</li>
+              <li>{t("landing.footer.resourceLinks.support")}</li>
             </ul>
           </div>
         </div>
         <div className={`border-t ${theme.colors.border} py-6 text-center ${theme.text.caption} ${theme.colors.inkMuted}`}>
-          (c) 2026 FurniTrade. Made in Sofia, Bulgaria.
+          {t("landing.footer.copyright")}
         </div>
       </footer>
     </div>
