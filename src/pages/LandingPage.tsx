@@ -19,7 +19,6 @@ import {
   Layers,
   LineChart,
   Menu,
-  PackageCheck,
   ShieldCheck,
   Sparkles,
   Tag,
@@ -687,31 +686,52 @@ export default function LandingPage() {
                 style={{ animation: 'fadeInUp 0.6s ease-out 0s both' }}
               >
                 <div className="flex flex-col lg:flex-row gap-8 lg:gap-14 items-center">
-                  {/* Text */}
+                  {/* Text Card - Modern Design */}
                   <div className="flex-1 w-full lg:w-auto">
-                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                          <Layers className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                    <div className="relative h-full">
+                      {/* Clean card - no accent */}
+                      <Card className="h-full rounded-[28px] border border-[color:var(--ink-08)] bg-gradient-to-b from-white to-[color:var(--base)] shadow-[0_4px_24px_-8px_rgba(47,36,58,0.08)] transition-all duration-400 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-16px_rgba(47,36,58,0.18)] group-hover:border-[color:var(--ink-12)]">
+                        <div className="p-8 md:p-10">
+                          {/* Stacked icons - clean white style */}
+                          <div className="flex items-center mb-7">
+                            <div className="relative flex items-center">
+                              <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-white border border-[color:var(--ink-08)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.12)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)] z-10">
+                                <Layers className="h-5 w-5 text-[color:var(--landing-accent)]" />
+                              </div>
+                              <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-[color:var(--base)] border border-[color:var(--ink-12)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.08)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)] -ml-3">
+                                <BadgeCheck className="h-5 w-5 text-[color:var(--ink-70)]" />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Title */}
+                          <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
+                            Catalog & client pricing
+                          </h3>
+                          
+                          {/* Description */}
+                          <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
+                            Merge supplier feeds into one clean listing. Set negotiated tiers, volume discounts, and validity windows per buyer — all visible to your team.
+                          </p>
+                          
+                          {/* Feature pills */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
+                              <Layers className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Unified catalog
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
+                              <BadgeCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Custom pricing
+                            </span>
+                          </div>
                         </div>
-                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                          <BadgeCheck className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
-                        </div>
-                      </div>
-                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">Catalog & client pricing</h3>
-                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
-                        Merge supplier feeds into one clean listing. Set negotiated tiers, volume discounts, and validity windows per buyer — all visible to your team.
-                      </p>
-                      <div className="flex flex-wrap items-center gap-4 text-[color:var(--ink-55)] text-sm">
-                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> Unified catalog</span>
-                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> Custom pricing rules</span>
-                      </div>
-                    </Card>
+                      </Card>
+                    </div>
                   </div>
+                  
                   {/* Screenshot - tilted style */}
                   <div className="flex-1 w-full lg:w-auto">
                     <div className="relative">
-                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[2deg] group-hover:rotate-0">
+                      <Card className="rounded-[28px] bg-white border border-[color:var(--ink-08)] p-3 shadow-[0_4px_24px_-8px_rgba(47,36,58,0.12)] transition-all duration-400 ease-out group-hover:shadow-[0_24px_48px_-16px_rgba(47,36,58,0.2)] overflow-hidden rotate-[2deg] group-hover:rotate-0">
                         <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
@@ -733,31 +753,52 @@ export default function LandingPage() {
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.1s both' }}
               >
                 <div className="flex flex-col lg:flex-row-reverse gap-8 lg:gap-14 items-center">
-                  {/* Text */}
+                  {/* Text Card - Modern Design */}
                   <div className="flex-1 w-full lg:w-auto">
-                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                          <ClipboardCheck className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                    <div className="relative h-full">
+                      {/* Clean card - no accent */}
+                      <Card className="h-full rounded-[28px] border border-[color:var(--ink-08)] bg-gradient-to-b from-white to-[color:var(--base)] shadow-[0_4px_24px_-8px_rgba(47,36,58,0.08)] transition-all duration-400 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-16px_rgba(47,36,58,0.18)] group-hover:border-[color:var(--ink-12)]">
+                        <div className="p-8 md:p-10">
+                          {/* Stacked icons - clean white style */}
+                          <div className="flex items-center mb-7">
+                            <div className="relative flex items-center">
+                              <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-white border border-[color:var(--ink-08)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.12)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)] z-10">
+                                <ClipboardCheck className="h-5 w-5 text-[color:var(--landing-accent)]" />
+                              </div>
+                              <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-[color:var(--base)] border border-[color:var(--ink-12)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.08)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)] -ml-3">
+                                <FileCheck2 className="h-5 w-5 text-[color:var(--ink-70)]" />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Title */}
+                          <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
+                            Quote to order & proformas
+                          </h3>
+                          
+                          {/* Description */}
+                          <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
+                            Collect requests, route approvals, and move to order in minutes. Generate BG-compliant PDFs with EIK, VAT ID, IBAN, and MOL fields ready for audits.
+                          </p>
+                          
+                          {/* Feature pills */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
+                              <ClipboardCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Approvals
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
+                              <FileCheck2 className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> BG compliant
+                            </span>
+                          </div>
                         </div>
-                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                          <FileCheck2 className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
-                        </div>
-                      </div>
-                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">Quote to order & proformas</h3>
-                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
-                        Collect requests, route approvals, and move to order in minutes. Generate BG-compliant PDFs with EIK, VAT ID, IBAN, and MOL fields ready for audits.
-                      </p>
-                      <div className="flex flex-wrap items-center gap-4 text-[color:var(--ink-55)] text-sm">
-                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> Streamlined approvals</span>
-                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> BG & EU compliant</span>
-                      </div>
-                    </Card>
+                      </Card>
+                    </div>
                   </div>
+                  
                   {/* Screenshot - tilted style */}
                   <div className="flex-1 w-full lg:w-auto">
                     <div className="relative">
-                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[-2deg] group-hover:rotate-0">
+                      <Card className="rounded-[28px] bg-white border border-[color:var(--ink-08)] p-3 shadow-[0_4px_24px_-8px_rgba(47,36,58,0.12)] transition-all duration-400 ease-out group-hover:shadow-[0_24px_48px_-16px_rgba(47,36,58,0.2)] overflow-hidden rotate-[-2deg] group-hover:rotate-0">
                         <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
@@ -820,26 +861,44 @@ export default function LandingPage() {
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.2s both' }}
               >
                 <div className="flex flex-col lg:flex-row gap-8 lg:gap-14 items-center">
-                  {/* Text */}
+                  {/* Text Card - Clean Modern Design (no accent) */}
                   <div className="flex-1 w-full lg:w-auto">
-                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
-                      <div className="rounded-xl mb-6 inline-flex h-14 w-14 items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                        <FileText className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
-                      </div>
-                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">CSV import & automation</h3>
-                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
-                        Normalize supplier files and refresh your catalog with clean mappings. Ingest multiple supplier files without manual cleanup.
-                      </p>
-                      <div className="flex items-center gap-2 text-[color:var(--ink-55)] text-sm">
-                        <PackageCheck className="h-4 w-4" />
-                        <span>Automated data cleanup</span>
-                      </div>
-                    </Card>
+                    <div className="relative h-full">
+                      <Card className="h-full rounded-[28px] border border-[color:var(--ink-08)] bg-gradient-to-b from-white to-[color:var(--base)] shadow-[0_4px_24px_-8px_rgba(47,36,58,0.08)] transition-all duration-400 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-16px_rgba(47,36,58,0.18)] group-hover:border-[color:var(--ink-12)]">
+                        
+                        <div className="p-8 md:p-10">
+                          {/* Single icon */}
+                          <div className="mb-7">
+                            <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-white border border-[color:var(--ink-08)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.12)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)]">
+                              <FileText className="h-5 w-5 text-[color:var(--landing-accent)]" />
+                            </div>
+                          </div>
+                          
+                          {/* Title */}
+                          <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
+                            CSV import & automation
+                          </h3>
+                          
+                          {/* Description */}
+                          <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
+                            Normalize supplier files and refresh your catalog with clean mappings. Ingest multiple supplier files without manual cleanup.
+                          </p>
+                          
+                          {/* Feature pill */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
+                              <FileText className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Auto cleanup
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
                   </div>
+                  
                   {/* Screenshot - tilted style */}
                   <div className="flex-1 w-full lg:w-auto">
                     <div className="relative">
-                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[2deg] group-hover:rotate-0">
+                      <Card className="rounded-[28px] bg-white border border-[color:var(--ink-08)] p-3 shadow-[0_4px_24px_-8px_rgba(47,36,58,0.12)] transition-all duration-400 ease-out group-hover:shadow-[0_24px_48px_-16px_rgba(47,36,58,0.2)] overflow-hidden rotate-[2deg] group-hover:rotate-0">
                         <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
@@ -861,26 +920,43 @@ export default function LandingPage() {
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.25s both' }}
               >
                 <div className="flex flex-col lg:flex-row-reverse gap-8 lg:gap-14 items-center">
-                  {/* Text */}
+                  {/* Text Card - Modern Design */}
                   <div className="flex-1 w-full lg:w-auto">
-                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
-                      <div className="rounded-xl mb-6 inline-flex h-14 w-14 items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                        <LineChart className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
-                      </div>
-                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">Complaints & reporting</h3>
-                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
-                        Log issues with suppliers or buyers and keep a clear resolution timeline. Track margin, repeat orders, and pipeline without spreadsheets.
-                      </p>
-                      <div className="flex items-center gap-2 text-[color:var(--ink-55)] text-sm">
-                        <PackageCheck className="h-4 w-4" />
-                        <span>Full visibility</span>
-                      </div>
-                    </Card>
+                    <div className="relative h-full">
+                      <Card className="h-full rounded-[28px] border border-[color:var(--ink-08)] bg-gradient-to-b from-white to-[color:var(--base)] shadow-[0_4px_24px_-8px_rgba(47,36,58,0.08)] transition-all duration-400 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-16px_rgba(47,36,58,0.18)] group-hover:border-[color:var(--ink-12)]">
+                        <div className="p-8 md:p-10">
+                          {/* Single icon */}
+                          <div className="mb-7">
+                            <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-white border border-[color:var(--ink-08)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.12)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)]">
+                              <LineChart className="h-5 w-5 text-[color:var(--landing-accent)]" />
+                            </div>
+                          </div>
+                          
+                          {/* Title */}
+                          <h3 className="text-[22px] md:text-[26px] font-semibold text-[color:var(--ink)] mb-3 tracking-[-0.02em]">
+                            Complaints & reporting
+                          </h3>
+                          
+                          {/* Description */}
+                          <p className="text-[15px] text-[color:var(--ink-70)] leading-[1.7] mb-6">
+                            Log issues with suppliers or buyers and keep a clear resolution timeline. Track margin, repeat orders, and pipeline without spreadsheets.
+                          </p>
+                          
+                          {/* Feature pill */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[color:var(--ink-08)] text-[12px] font-medium text-[color:var(--ink)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
+                              <LineChart className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" /> Full visibility
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
                   </div>
+                  
                   {/* Screenshot - tilted style */}
                   <div className="flex-1 w-full lg:w-auto">
                     <div className="relative">
-                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[-2deg] group-hover:rotate-0">
+                      <Card className="rounded-[28px] bg-white border border-[color:var(--ink-08)] p-3 shadow-[0_4px_24px_-8px_rgba(47,36,58,0.12)] transition-all duration-400 ease-out group-hover:shadow-[0_24px_48px_-16px_rgba(47,36,58,0.2)] overflow-hidden rotate-[-2deg] group-hover:rotate-0">
                         <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
                           <div className="relative aspect-[16/10]">
                             <ImageWithFallback
@@ -902,54 +978,58 @@ export default function LandingPage() {
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.3s both' }}
               >
                 <div className="grid gap-6 md:grid-cols-2">
-                  {/* Buyers Card */}
-                  <Card className="group rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] hover:border-[color:var(--ink-12)]">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                        <Users className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                  {/* Buyers Card - Clean Design */}
+                  <Card className="group rounded-[28px] border border-[color:var(--ink-08)] bg-gradient-to-b from-white to-[color:var(--base)] shadow-[0_4px_24px_-8px_rgba(47,36,58,0.08)] transition-all duration-400 hover:-translate-y-2 hover:shadow-[0_32px_64px_-16px_rgba(47,36,58,0.18)] hover:border-[color:var(--ink-12)]">
+                    <div className="p-8 md:p-10">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-white border border-[color:var(--ink-08)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.12)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)]">
+                          <Users className="h-5 w-5 text-[color:var(--landing-accent)]" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-semibold text-[color:var(--ink)] tracking-[-0.01em]">For buyers</h4>
+                          <p className="text-[12px] text-[color:var(--ink-55)]">Faster approvals, fewer surprises</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xl font-semibold text-[color:var(--ink)]">For buyers</h4>
-                        <p className="text-[13px] text-[color:var(--ink-55)]">Faster approvals, fewer surprises</p>
-                      </div>
+                      <ul className="space-y-3">
+                        {[
+                          "Browse accurate availability and lead times",
+                          "Request quotes with project notes",
+                          "Track approvals and order status",
+                        ].map((item) => (
+                          <li key={item} className="flex items-start gap-3">
+                            <CheckCircle2 className="h-4 w-4 mt-0.5 text-[color:var(--landing-accent)] flex-shrink-0" />
+                            <span className="text-[14px] text-[color:var(--ink-70)] leading-relaxed">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul className="space-y-3">
-                      {[
-                        "Browse accurate availability and lead times",
-                        "Request quotes with project notes",
-                        "Track approvals and order status",
-                      ].map((item) => (
-                        <li key={item} className="flex items-start gap-3">
-                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--landing-accent)] flex-shrink-0" />
-                          <span className="text-[14px] text-[color:var(--ink-70)]">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
                   </Card>
                   
-                  {/* Suppliers Card */}
-                  <Card className="group rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] hover:border-[color:var(--ink-12)]">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
-                        <Truck className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                  {/* Suppliers Card - Clean Design */}
+                  <Card className="group rounded-[28px] border border-[color:var(--ink-08)] bg-gradient-to-b from-white to-[color:var(--base)] shadow-[0_4px_24px_-8px_rgba(47,36,58,0.08)] transition-all duration-400 hover:-translate-y-2 hover:shadow-[0_32px_64px_-16px_rgba(47,36,58,0.18)] hover:border-[color:var(--ink-12)]">
+                    <div className="p-8 md:p-10">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="rounded-2xl h-12 w-12 flex items-center justify-center bg-white border border-[color:var(--ink-08)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.12)] transition-all duration-300 group-hover:border-[color:var(--landing-accent)] group-hover:shadow-[0_4px_16px_-4px_rgba(68,64,84,0.25)]">
+                          <Truck className="h-5 w-5 text-[color:var(--landing-accent)]" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-semibold text-[color:var(--ink)] tracking-[-0.01em]">For suppliers</h4>
+                          <p className="text-[12px] text-[color:var(--ink-55)]">Clean coordination across accounts</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xl font-semibold text-[color:var(--ink)]">For suppliers</h4>
-                        <p className="text-[13px] text-[color:var(--ink-55)]">Clean coordination across accounts</p>
-                      </div>
+                      <ul className="space-y-3">
+                        {[
+                          "Ingest multiple supplier files automatically",
+                          "Sync pricing across warehouses",
+                          "Share compliance-ready proformas",
+                        ].map((item) => (
+                          <li key={item} className="flex items-start gap-3">
+                            <CheckCircle2 className="h-4 w-4 mt-0.5 text-[color:var(--landing-accent)] flex-shrink-0" />
+                            <span className="text-[14px] text-[color:var(--ink-70)] leading-relaxed">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul className="space-y-3">
-                      {[
-                        "Ingest multiple supplier files automatically",
-                        "Sync pricing across warehouses",
-                        "Share compliance-ready proformas",
-                      ].map((item) => (
-                        <li key={item} className="flex items-start gap-3">
-                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--landing-accent)] flex-shrink-0" />
-                          <span className="text-[14px] text-[color:var(--ink-70)]">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
                   </Card>
                 </div>
               </div>
