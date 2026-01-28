@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Accordion,
@@ -117,51 +117,6 @@ const logos = [
   { name: "AiByLekov", image: "/aibylekov.png" },
 ];
 
-interface FeatureItem {
-  title: string;
-  description: string;
-  icon: ComponentType<{ className?: string }>;
-}
-
-const features: FeatureItem[] = [
-  {
-    title: "Unified catalog",
-    description:
-      "Merge supplier feeds, variants, and availability into one clean listing.",
-    icon: Layers,
-  },
-  {
-    title: "Client-specific pricing",
-    description:
-      "Set negotiated tiers, volume discounts, and validity windows per buyer.",
-    icon: BadgeCheck,
-  },
-  {
-    title: "Quote workflows",
-    description:
-      "Collect requests, route approvals, and move to order in minutes.",
-    icon: ClipboardCheck,
-  },
-  {
-    title: "BG compliant proformas",
-    description:
-      "Generate PDFs with EIK, VAT ID, IBAN, and MOL fields ready for audits.",
-    icon: FileCheck2,
-  },
-  {
-    title: "Supplier coordination",
-    description:
-      "Keep warehouse stock, lead times, and delivery schedules in sync.",
-    icon: Truck,
-  },
-  {
-    title: "Clear reporting",
-    description:
-      "Track margin, repeat orders, and pipeline without manual spreadsheets.",
-    icon: LineChart,
-  },
-];
-
 const workflowSteps = [
   {
     title: "Import catalog",
@@ -178,24 +133,6 @@ const workflowSteps = [
   {
     title: "Proforma",
     detail: "Send compliant PDFs and confirm the order.",
-  },
-];
-
-const metrics = [
-  {
-    value: "31%",
-    label: "faster quote turnaround",
-    detail: "Average time from request to approved proforma.",
-  },
-  {
-    value: "22 hrs",
-    label: "catalog refresh",
-    detail: "From supplier file to buyer-ready listings.",
-  },
-  {
-    value: "15%",
-    label: "repeat order lift",
-    detail: "Improvement within the first quarter.",
   },
 ];
 
@@ -721,362 +658,411 @@ export default function LandingPage() {
           `}</style>
         </section>
 
-        <section id="features" className={`${theme.section}`}>
-          <div className={`${theme.container} space-y-10`}>
-            <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-              <div className="space-y-4">
-                <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
-                  Platform overview
-                </Badge>
-                <h2 className={theme.text.h2}>
-                  Built for wholesalers, not retail stores
-                </h2>
-                <p className={`${theme.text.body} ${theme.colors.inkSoft}`}>
-                  Replace spreadsheets and retail plugins with a single
-                  wholesale-native workspace.
-                </p>
-              </div>
-              <div
-                className={`${theme.radius.lg} ${theme.colors.surfaceSoft} border ${theme.colors.border} p-6`}
-              >
-                <p className={`${theme.text.caption} ${theme.colors.inkMuted}`}>
-                  Wholesale workspace signals
-                </p>
-                <div className="mt-4 space-y-3">
-                  <div className={`${theme.radius.pill} h-3 w-3/4 bg-[color:var(--ink-12)]`} />
-                  <div className={`${theme.radius.pill} h-3 w-full bg-[color:var(--ink-12)]`} />
-                  <div className={`${theme.radius.pill} h-3 w-5/6 bg-[color:var(--ink-12)]`} />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {features.map((feature) => {
-                const Icon = feature.icon;
-                return (
-                  <Card
-                    key={feature.title}
-                    className={`${theme.radius.md} ${theme.shadow.card} ${theme.colors.surface} border ${theme.colors.border} p-6 ${theme.shadow.cardHover}`}
-                  >
-                    <div
-                      className={`${theme.radius.sm} mb-4 inline-flex h-12 w-12 items-center justify-center ${theme.colors.accentSoft}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className={theme.text.h3}>{feature.title}</h3>
-                    <p className={`mt-2 ${theme.text.bodySm} ${theme.colors.inkSoft}`}>
-                      {feature.description}
-                    </p>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        <section id="highlights" className={`${theme.section} ${theme.colors.surfaceSoft} border-y ${theme.colors.border}`}>
-          <div className={`${theme.container} space-y-16`}>
-            {[
-              {
-                title: "Orders",
-                description:
-                  "Track approvals, delivery dates, and order status without email threads.",
-                image: screenshots.orders,
-              },
-              {
-                title: "Clients & pricing",
-                description:
-                  "Keep negotiated tiers and client terms in one place, visible to your team.",
-                image: screenshots.clients,
-              },
-              {
-                title: "Complaints",
-                description:
-                  "Log issues with suppliers or buyers and keep a clear resolution timeline.",
-                image: screenshots.complaints,
-              },
-              {
-                title: "CSV import",
-                description:
-                  "Normalize supplier files and refresh your catalog with clean mappings.",
-                image: screenshots.csv,
-              },
-            ].map((item, index) => (
-              <div
-                key={item.title}
-                className={`grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center ${
-                  index % 2 === 1 ? "lg:grid-cols-[1.05fr_0.95fr]" : ""
-                }`}
-              >
-                <div className={index % 2 === 1 ? "lg:order-2" : ""}>
-                  <Badge
-                    className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}
-                  >
-                    {item.title}
-                  </Badge>
-                  <h3 className={`mt-4 ${theme.text.h2}`}>{item.title}</h3>
-                  <p className={`${theme.text.body} ${theme.colors.inkSoft} mt-4`}>
-                    {item.description}
-                  </p>
-                  <div className="mt-6 flex items-center gap-3">
-                    <PackageCheck className="h-5 w-5" />
-                    <p className={`${theme.text.bodySm} ${theme.colors.inkMuted}`}>
-                      Built for wholesale operations, not retail workflows.
-                    </p>
-                  </div>
-                </div>
-                <Card
-                  className={`${theme.radius.lg} ${theme.shadow.card} ${theme.colors.surface} border ${theme.colors.border} p-3`}
-                >
-                  <div
-                    className={`${theme.radius.lg} ${theme.colors.surfaceSoft} border ${theme.colors.border} overflow-hidden`}
-                  >
-                    <div className="relative aspect-[16/10]">
-                      <ImageWithFallback
-                        src={item.image}
-                        alt={`${item.title} screenshot`}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className={`${theme.section}`}>
-          <div className={`${theme.container} space-y-10`}>
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div className="space-y-3">
-                <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
-                  Buyers & suppliers
-                </Badge>
-                <h2 className={theme.text.h2}>
-                  Clear experiences for both sides of the relationship
-                </h2>
-              </div>
-              <p className={`${theme.text.body} ${theme.colors.inkSoft} max-w-md`}>
-                Give buyers a polished portal while suppliers and sales teams stay
-                in control of pricing and inventory.
-              </p>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card
-                className={`${theme.radius.lg} ${theme.shadow.card} ${theme.colors.surface} border ${theme.colors.border} p-8`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`${theme.radius.sm} flex h-12 w-12 items-center justify-center ${theme.colors.accentSoft}`}
-                  >
-                    <Users className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className={theme.text.h3}>For buyers</p>
-                    <p className={`${theme.text.bodySm} ${theme.colors.inkMuted}`}>
-                      Faster approvals, fewer surprises.
-                    </p>
-                  </div>
-                </div>
-                <ul className="mt-6 space-y-3">
-                  {[
-                    "Browse accurate availability and lead times",
-                    "Request quotes with project notes and delivery details",
-                    "Track approvals and order status in one place",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-3">
-                      <span
-                        className={`${theme.radius.pill} mt-2 h-2 w-2 bg-[color:var(--landing-accent)]`}
-                      />
-                      <span className={`${theme.text.bodySm} ${theme.colors.inkSoft}`}>
-                        {item}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="outline"
-                  className={`${theme.colors.ink} border border-[color:var(--ink-12)] mt-6 bg-transparent hover:bg-[color:var(--surface)]`}
-                >
-                  View buyer portal
-                </Button>
-              </Card>
-
-              <Card
-                className={`${theme.radius.lg} ${theme.shadow.card} ${theme.colors.surface} border ${theme.colors.border} p-8`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`${theme.radius.sm} flex h-12 w-12 items-center justify-center ${theme.colors.accentSoft}`}
-                  >
-                    <Truck className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className={theme.text.h3}>For suppliers</p>
-                    <p className={`${theme.text.bodySm} ${theme.colors.inkMuted}`}>
-                      Clean coordination across accounts.
-                    </p>
-                  </div>
-                </div>
-                <ul className="mt-6 space-y-3">
-                  {[
-                    "Ingest multiple supplier files without manual cleanup",
-                    "Sync pricing across warehouses and showrooms",
-                    "Share proformas with compliance-ready fields",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-3">
-                      <span
-                        className={`${theme.radius.pill} mt-2 h-2 w-2 bg-[color:var(--landing-accent)]`}
-                      />
-                      <span className={`${theme.text.bodySm} ${theme.colors.inkSoft}`}>
-                        {item}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="outline"
-                  className={`${theme.colors.ink} border border-[color:var(--ink-12)] mt-6 bg-transparent hover:bg-[color:var(--surface)]`}
-                >
-                  Explore supplier tools
-                </Button>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section id="workflow" className={`${theme.section} ${theme.colors.surfaceSoft} border-y ${theme.colors.border}`}>
-          <div className={`${theme.container} space-y-10`}>
-            <div className="text-center space-y-4">
-              <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
-                Workflow
+        {/* ============================================
+            CONSOLIDATED "HOW IT WORKS" SECTION
+            5 rows + Predictable Flow diagram
+            ============================================ */}
+        <section id="features" className="py-20 md:py-28 bg-[color:var(--ink-08)]/30">
+          <div className={theme.container}>
+            {/* Section Header */}
+            <div className="text-center mb-16 md:mb-20">
+              <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption} mb-5`}>
+                How it works
               </Badge>
-              <h2 className={theme.text.h2}>A predictable wholesale flow</h2>
-              <p className={`${theme.text.body} ${theme.colors.inkSoft}`}>
-                Every step from import to proforma is tracked and visible.
+              <h2 className="text-3xl md:text-4xl lg:text-[44px] font-bold text-[color:var(--ink)] mb-5 relative inline-block">
+                Built for wholesalers, not retail stores
+                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-[color:var(--landing-accent)] opacity-25 rounded-full" />
+              </h2>
+              <p className="text-[16px] md:text-lg text-[color:var(--ink-70)] max-w-2xl mx-auto mt-6 leading-relaxed">
+                Replace spreadsheets and retail plugins with a single wholesale-native workspace.
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {workflowSteps.map((step, index) => (
-                <Card
-                  key={step.title}
-                  className={`${theme.radius.md} ${theme.shadow.card} ${theme.colors.surface} border ${theme.colors.border} p-6`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`${theme.radius.pill} ${theme.colors.accentSoft} px-3 py-1 ${theme.text.caption}`}
-                    >
-                      Step {index + 1}
-                    </span>
-                    <ArrowRight className={`h-4 w-4 ${theme.colors.inkMuted}`} />
+            {/* Alternating Feature Rows - 5 rows */}
+            <div className="space-y-14 md:space-y-20">
+              
+              {/* Row 1: Unified Catalog + Client Pricing (merged) */}
+              <div 
+                className="feature-row group"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0s both' }}
+              >
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-14 items-center">
+                  {/* Text */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                          <Layers className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                        </div>
+                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                          <BadgeCheck className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                        </div>
+                      </div>
+                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">Catalog & client pricing</h3>
+                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
+                        Merge supplier feeds into one clean listing. Set negotiated tiers, volume discounts, and validity windows per buyer — all visible to your team.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-4 text-[color:var(--ink-55)] text-sm">
+                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> Unified catalog</span>
+                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> Custom pricing rules</span>
+                      </div>
+                    </Card>
                   </div>
-                  <h3 className={`mt-4 ${theme.text.h3}`}>{step.title}</h3>
-                  <p className={`${theme.text.bodySm} ${theme.colors.inkMuted} mt-2`}>
-                    {step.detail}
-                  </p>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="roi" className={`${theme.section}`}>
-          <div className={`${theme.container} space-y-10`}>
-            <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-              <div className="space-y-4">
-                <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
-                  ROI
-                </Badge>
-                <h2 className={theme.text.h2}>Operational impact you can measure</h2>
-                <p className={`${theme.text.body} ${theme.colors.inkSoft}`}>
-                  Move faster with clearer data and fewer manual handoffs.
-                </p>
-              </div>
-              <div className={`${theme.radius.lg} ${theme.colors.surface} border ${theme.colors.border} p-6`}>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`${theme.radius.sm} flex h-12 w-12 items-center justify-center ${theme.colors.accentSoft}`}
-                  >
-                    <LineChart className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className={theme.text.label}>Forecast accuracy</p>
-                    <p className={`${theme.text.bodySm} ${theme.colors.inkMuted}`}>
-                      Pipeline health across top accounts.
-                    </p>
+                  {/* Screenshot - tilted style */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <div className="relative">
+                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[2deg] group-hover:rotate-0">
+                        <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
+                          <div className="relative aspect-[16/10]">
+                            <ImageWithFallback
+                              src={screenshots.clients}
+                              alt="Catalog and client pricing"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-6 space-y-3">
-                  {["Wholesale", "Hospitality", "Design studios"].map((row) => (
-                    <div key={row} className="flex items-center justify-between">
-                      <span className={`${theme.text.bodySm} ${theme.colors.inkSoft}`}>
-                        {row}
-                      </span>
-                      <span
-                        className={`${theme.radius.pill} h-2 w-24 bg-[color:var(--ink-12)]`}
-                      />
+              </div>
+
+              {/* Row 2: Quote to Order (merged) - Reversed */}
+              <div 
+                className="feature-row group"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.1s both' }}
+              >
+                <div className="flex flex-col lg:flex-row-reverse gap-8 lg:gap-14 items-center">
+                  {/* Text */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                          <ClipboardCheck className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                        </div>
+                        <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                          <FileCheck2 className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                        </div>
+                      </div>
+                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">Quote to order & proformas</h3>
+                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
+                        Collect requests, route approvals, and move to order in minutes. Generate BG-compliant PDFs with EIK, VAT ID, IBAN, and MOL fields ready for audits.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-4 text-[color:var(--ink-55)] text-sm">
+                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> Streamlined approvals</span>
+                        <span className="flex items-center gap-1.5"><PackageCheck className="h-4 w-4" /> BG & EU compliant</span>
+                      </div>
+                    </Card>
+                  </div>
+                  {/* Screenshot - tilted style */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <div className="relative">
+                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[-2deg] group-hover:rotate-0">
+                        <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
+                          <div className="relative aspect-[16/10]">
+                            <ImageWithFallback
+                              src={screenshots.orders}
+                              alt="Quote to order workflow"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </Card>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ============================================
+                  PREDICTABLE FLOW DIAGRAM (Full Width)
+                  ============================================ */}
+              <div 
+                id="workflow"
+                className="py-10 md:py-14 px-6 md:px-10 rounded-3xl bg-white/60 backdrop-blur-sm border border-[color:var(--ink-08)]"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.15s both' }}
+              >
+                <div className="text-center mb-10">
+                  <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption} mb-4`}>
+                    Workflow
+                  </Badge>
+                  <h3 className="text-2xl md:text-3xl font-bold text-[color:var(--ink)] mb-3">
+                    A predictable wholesale flow
+                  </h3>
+                  <p className="text-[15px] text-[color:var(--ink-70)] max-w-lg mx-auto">
+                    Every step from import to proforma is tracked and visible.
+                  </p>
+                </div>
+                
+                <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
+                  {workflowSteps.map((step, index) => (
+                    <Card
+                      key={step.title}
+                      className="rounded-2xl bg-white/90 backdrop-blur-md border border-[color:var(--ink-08)] p-6 md:p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-16px_rgba(47,36,58,0.18)] hover:border-[color:var(--ink-12)]"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[color:var(--accent-soft)] text-[11px] font-semibold text-[color:var(--ink)]">
+                          Step {index + 1}
+                        </span>
+                        {index < workflowSteps.length - 1 && (
+                          <ArrowRight className="h-4 w-4 text-[color:var(--ink-55)] hidden lg:block" />
+                        )}
+                      </div>
+                      <h4 className="text-lg font-semibold text-[color:var(--ink)] mb-2">{step.title}</h4>
+                      <p className="text-[13px] text-[color:var(--ink-70)] leading-relaxed">{step.detail}</p>
+                    </Card>
                   ))}
                 </div>
               </div>
+
+              {/* Row 3: CSV Import */}
+              <div 
+                className="feature-row group"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.2s both' }}
+              >
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-14 items-center">
+                  {/* Text */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
+                      <div className="rounded-xl mb-6 inline-flex h-14 w-14 items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                        <FileText className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                      </div>
+                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">CSV import & automation</h3>
+                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
+                        Normalize supplier files and refresh your catalog with clean mappings. Ingest multiple supplier files without manual cleanup.
+                      </p>
+                      <div className="flex items-center gap-2 text-[color:var(--ink-55)] text-sm">
+                        <PackageCheck className="h-4 w-4" />
+                        <span>Automated data cleanup</span>
+                      </div>
+                    </Card>
+                  </div>
+                  {/* Screenshot - tilted style */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <div className="relative">
+                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[2deg] group-hover:rotate-0">
+                        <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
+                          <div className="relative aspect-[16/10]">
+                            <ImageWithFallback
+                              src={screenshots.csv}
+                              alt="CSV import wizard"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Complaints & Reporting (Reversed) */}
+              <div 
+                className="feature-row group"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.25s both' }}
+              >
+                <div className="flex flex-col lg:flex-row-reverse gap-8 lg:gap-14 items-center">
+                  {/* Text */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <Card className="h-full rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 md:p-12 transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] group-hover:border-[color:var(--ink-12)]">
+                      <div className="rounded-xl mb-6 inline-flex h-14 w-14 items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                        <LineChart className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                      </div>
+                      <h3 className="text-2xl md:text-[28px] font-semibold text-[color:var(--ink)] mb-4">Complaints & reporting</h3>
+                      <p className="text-[15px] md:text-[16px] text-[color:var(--ink-70)] leading-relaxed mb-5">
+                        Log issues with suppliers or buyers and keep a clear resolution timeline. Track margin, repeat orders, and pipeline without spreadsheets.
+                      </p>
+                      <div className="flex items-center gap-2 text-[color:var(--ink-55)] text-sm">
+                        <PackageCheck className="h-4 w-4" />
+                        <span>Full visibility</span>
+                      </div>
+                    </Card>
+                  </div>
+                  {/* Screenshot - tilted style */}
+                  <div className="flex-1 w-full lg:w-auto">
+                    <div className="relative">
+                      <Card className="rounded-3xl bg-white/80 backdrop-blur-sm border-2 border-[color:var(--ink-12)] p-4 transition-all duration-300 ease-out group-hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.3)] overflow-hidden rotate-[-2deg] group-hover:rotate-0">
+                        <div className="rounded-2xl overflow-hidden border border-[color:var(--ink-08)]">
+                          <div className="relative aspect-[16/10]">
+                            <ImageWithFallback
+                              src={screenshots.complaints}
+                              alt="Complaints and reporting"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 5: Buyer & Supplier Portals */}
+              <div 
+                className="feature-row"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.3s both' }}
+              >
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Buyers Card */}
+                  <Card className="group rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] hover:border-[color:var(--ink-12)]">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                        <Users className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-semibold text-[color:var(--ink)]">For buyers</h4>
+                        <p className="text-[13px] text-[color:var(--ink-55)]">Faster approvals, fewer surprises</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-3">
+                      {[
+                        "Browse accurate availability and lead times",
+                        "Request quotes with project notes",
+                        "Track approvals and order status",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-3">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--landing-accent)] flex-shrink-0" />
+                          <span className="text-[14px] text-[color:var(--ink-70)]">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                  
+                  {/* Suppliers Card */}
+                  <Card className="group rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.25)] hover:border-[color:var(--ink-12)]">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="rounded-xl h-14 w-14 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] group-hover:shadow-[0_10px_24px_-8px_rgba(68,64,84,0.35)]">
+                        <Truck className="h-6 w-6 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-semibold text-[color:var(--ink)]">For suppliers</h4>
+                        <p className="text-[13px] text-[color:var(--ink-55)]">Clean coordination across accounts</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-3">
+                      {[
+                        "Ingest multiple supplier files automatically",
+                        "Sync pricing across warehouses",
+                        "Share compliance-ready proformas",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-3">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--landing-accent)] flex-shrink-0" />
+                          <span className="text-[14px] text-[color:var(--ink-70)]">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Fade-in animation */}
+          <style>{`
+            @keyframes fadeInUp {
+              from {
+                opacity: 0;
+                transform: translateY(30px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          `}</style>
+        </section>
+
+        {/* ============================================
+            STATS / ROI SECTION - Polished
+            ============================================ */}
+        <section id="roi" className="py-20 md:py-28 bg-[color:var(--base)]">
+          <div className={theme.container}>
+            {/* Section Header */}
+            <div className="text-center mb-14">
+              <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption} mb-5`}>
+                Impact
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold text-[color:var(--ink)] mb-4">
+                Operational results you can measure
+              </h2>
+              <p className="text-[16px] text-[color:var(--ink-70)] max-w-xl mx-auto">
+                Move faster with clearer data and fewer manual handoffs.
+              </p>
             </div>
 
+            {/* Stats Cards - Horizontal with mini-icons */}
             <div className="grid gap-6 md:grid-cols-3">
-              {metrics.map((metric) => (
+              {[
+                { icon: ClipboardCheck, value: "31%", label: "faster quote turnaround", detail: "Average time from request to approved proforma." },
+                { icon: Layers, value: "22 hrs", label: "catalog refresh", detail: "From supplier file to buyer-ready listings." },
+                { icon: LineChart, value: "15%", label: "repeat order lift", detail: "Improvement within the first quarter." },
+              ].map((metric, index) => (
                 <Card
                   key={metric.label}
-                  className={`${theme.radius.lg} ${theme.shadow.card} ${theme.colors.surface} border ${theme.colors.border} p-6`}
+                  className="group rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-8 md:p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.2)] hover:border-[color:var(--ink-12)]"
+                  style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
                 >
-                  <p className="text-3xl font-semibold">{metric.value}</p>
-                  <p className={`${theme.text.bodySm} ${theme.colors.inkSoft} mt-2`}>
-                    {metric.label}
-                  </p>
-                  <p className={`${theme.text.bodySm} ${theme.colors.inkMuted} mt-2`}>
-                    {metric.detail}
-                  </p>
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="rounded-xl h-12 w-12 flex items-center justify-center bg-[color:var(--accent-soft)] transition-all duration-300 group-hover:bg-[color:var(--landing-accent)] flex-shrink-0">
+                      <metric.icon className="h-5 w-5 text-[color:var(--landing-accent)] transition-colors duration-300 group-hover:text-white" />
+                    </div>
+                    <div>
+                      <p className="text-4xl md:text-5xl font-bold text-[color:var(--ink)]">{metric.value}</p>
+                    </div>
+                  </div>
+                  <p className="text-lg font-medium text-[color:var(--ink)] mb-2">{metric.label}</p>
+                  <p className="text-[14px] text-[color:var(--ink-70)] leading-relaxed">{metric.detail}</p>
                 </Card>
               ))}
             </div>
           </div>
         </section>
 
-        <section className={`${theme.section} ${theme.colors.surfaceSoft} border-y ${theme.colors.border}`}>
-          <div className={`${theme.container} space-y-10`}>
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        {/* ============================================
+            TESTIMONIALS SECTION - Staggered Layout
+            ============================================ */}
+        <section className="py-20 md:py-28 bg-[color:var(--ink-08)]/30">
+          <div className={theme.container}>
+            {/* Section Header */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-14">
               <div className="space-y-3">
                 <Badge className={`${theme.radius.pill} ${theme.colors.accentSoft} ${theme.text.caption}`}>
                   Testimonials
                 </Badge>
-                <h2 className={theme.text.h2}>Trusted by wholesale teams</h2>
+                <h2 className="text-3xl md:text-4xl font-bold text-[color:var(--ink)]">Trusted by wholesale teams</h2>
               </div>
               <Button
                 variant="outline"
-                className={`${theme.colors.ink} border border-[color:var(--ink-12)] bg-transparent hover:bg-[color:var(--surface)]`}
+                className="text-[color:var(--ink)] border border-[color:var(--ink-12)] bg-white/80 hover:bg-white rounded-xl"
               >
                 Read customer stories
               </Button>
             </div>
 
+            {/* Testimonials - Staggered Grid */}
             <div className="grid gap-6 md:grid-cols-3">
-              {testimonials.map((testimonial) => (
+              {testimonials.map((testimonial, index) => (
                 <Card
                   key={testimonial.name}
-                  className={`${theme.radius.lg} ${theme.shadow.card} ${theme.colors.surface} border ${theme.colors.border} p-6`}
+                  className={`group rounded-3xl bg-white/95 backdrop-blur-md border border-[color:var(--ink-08)] p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_32px_64px_-24px_rgba(47,36,58,0.2)] hover:border-[color:var(--ink-12)] ${
+                    index === 1 ? 'md:translate-y-6' : ''
+                  }`}
+                  style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
                 >
-                  <p className={`${theme.text.bodySm} ${theme.colors.inkSoft}`}>
-                    {testimonial.quote}
+                  {/* Quote */}
+                  <p className="text-[15px] text-[color:var(--ink-70)] leading-relaxed mb-8">
+                    "{testimonial.quote}"
                   </p>
-                  <div className="mt-6 flex items-center gap-3">
-                    <div
-                      className={`${theme.radius.pill} h-10 w-10 border ${theme.colors.border}`}
-                    />
+                  
+                  {/* Author */}
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-[color:var(--accent-soft)] border border-[color:var(--ink-08)] flex items-center justify-center">
+                      <span className="text-lg font-semibold text-[color:var(--landing-accent)]">
+                        {testimonial.name.charAt(0)}
+                      </span>
+                    </div>
                     <div>
-                      <p className={theme.text.label}>{testimonial.name}</p>
-                      <p className={`${theme.text.caption} ${theme.colors.inkMuted}`}>
-                        {testimonial.company}
-                      </p>
+                      <p className="font-semibold text-[color:var(--ink)]">{testimonial.name}</p>
+                      <p className="text-[13px] text-[color:var(--ink-55)]">{testimonial.company}</p>
                     </div>
                   </div>
                 </Card>
