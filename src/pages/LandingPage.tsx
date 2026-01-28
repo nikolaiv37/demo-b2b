@@ -18,12 +18,14 @@ import {
   FileText,
   Layers,
   LineChart,
+  Menu,
   PackageCheck,
   ShieldCheck,
   Sparkles,
   Tag,
   Truck,
   Users,
+  X,
 } from "lucide-react";
 
 // ============================================================================
@@ -308,6 +310,7 @@ const ImageWithFallback = ({
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -316,122 +319,256 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setMobileMenuOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div className={`min-h-screen ${theme.colors.bg} ${theme.colors.ink}`}>
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? `${theme.colors.surfaceSoft} backdrop-blur-xl border-b ${theme.colors.border}`
-            : ""
-        }`}
-      >
-        <div className={`${theme.container} flex items-center justify-between py-2`}>
-          <Link to="/" className={`flex items-center ${theme.gap.sm}`}>
-            <span
-              className={`${theme.radius.sm} ${theme.colors.surface} flex h-8 w-8 items-center justify-center border ${theme.colors.border}`}
-            >
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <span className={theme.text.label}>FurniTrade</span>
-          </Link>
-          <nav className={`hidden items-center gap-6 ${theme.text.nav} ${theme.colors.inkMuted} lg:flex`}>
-            <a className="transition-colors duration-200 hover:text-[color:var(--ink)]" href="#features">
-              Features
-            </a>
-            <a className="transition-colors duration-200 hover:text-[color:var(--ink)]" href="#highlights">
-              Product
-            </a>
-            <a className="transition-colors duration-200 hover:text-[color:var(--ink)]" href="#workflow">
-              Workflow
-            </a>
-            <a className="transition-colors duration-200 hover:text-[color:var(--ink)]" href="#roi">
-              Impact
-            </a>
-            <a className="transition-colors duration-200 hover:text-[color:var(--ink)]" href="#faq">
-              FAQ
-            </a>
-          </nav>
-          <div className={`flex items-center ${theme.gap.md}`}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`${theme.colors.inkMuted} hover:text-[color:var(--ink)] hover:bg-transparent text-[13px]`}
-              asChild
-            >
-              <Link to="/auth/login">Log in</Link>
-            </Button>
-            <Button className={`${theme.colors.accent} font-semibold ${theme.shadow.subtle}`} asChild>
-              <Link to="/auth/signup">Start free trial</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Floating navbar - centered with no visible wrapper */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] md:w-[calc(100%-3rem)] max-w-6xl">
+        <header
+          className={`rounded-2xl transition-all duration-300 ease-out ${
+            scrolled
+              ? "bg-white border border-[color:var(--ink-12)] shadow-[0_8px_32px_-8px_rgba(47,36,58,0.15)]"
+              : "bg-white border border-[color:var(--ink-08)] shadow-[0_4px_16px_-4px_rgba(47,36,58,0.08)]"
+          }`}
+        >
+          <div className="flex items-center justify-between px-5 py-3">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <span className="rounded-xl bg-[color:var(--landing-accent)] flex h-9 w-9 items-center justify-center shadow-[0_2px_8px_-2px_rgba(68,64,84,0.3)] transition-all duration-300 group-hover:shadow-[0_4px_12px_-2px_rgba(68,64,84,0.4)] group-hover:-translate-y-0.5">
+                <Sparkles className="h-4 w-4 text-white" />
+              </span>
+              <span className="text-[15px] font-semibold text-[color:var(--ink)]">FurniTrade</span>
+            </Link>
 
-      <main className="pt-14">
-        <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(47,36,58,0.04),_transparent_55%)]" />
+            {/* Desktop nav */}
+            <nav className="hidden items-center gap-1 lg:flex">
+              <a 
+                className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
+                href="#features"
+              >
+                Features
+              </a>
+              <a 
+                className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
+                href="#highlights"
+              >
+                Product
+              </a>
+              <a 
+                className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
+                href="#workflow"
+              >
+                Workflow
+              </a>
+              <a 
+                className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
+                href="#roi"
+              >
+                Impact
+              </a>
+              <a 
+                className="px-4 py-2 rounded-full text-[13px] font-medium text-[color:var(--ink)] transition-all duration-300 ease-out hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)]" 
+                href="#faq"
+              >
+                FAQ
+              </a>
+            </nav>
+
+            {/* Desktop CTA */}
+            <div className="hidden lg:flex items-center gap-4">
+              <Link 
+                to="/auth/login" 
+                className="text-[13px] font-medium text-[color:var(--ink)] hover:text-[color:var(--landing-accent)] transition-colors duration-300 relative group"
+              >
+                Log in
+                <span className="absolute -bottom-0.5 left-0 right-0 h-px bg-[color:var(--landing-accent)] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left" />
+              </Link>
+              <Button 
+                className="bg-[color:var(--landing-accent)] hover:bg-[#363043] text-white font-semibold rounded-lg px-5 shadow-[0_2px_10px_-2px_rgba(68,64,84,0.35)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_6px_16px_-2px_rgba(68,64,84,0.4)]" 
+                size="sm" 
+                asChild
+              >
+                <Link to="/auth/signup">Start free trial</Link>
+              </Button>
+            </div>
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] transition-colors duration-200"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+
+          {/* Mobile menu */}
+          <div
+            className={`lg:hidden overflow-hidden transition-all duration-300 ease-out ${
+              mobileMenuOpen ? "max-h-[400px] pb-6" : "max-h-0"
+            }`}
+          >
+            <nav className="flex flex-col gap-1 pt-2 border-t border-[color:var(--ink-08)]">
+              <a 
+                className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
+                href="#features"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Features
+              </a>
+              <a 
+                className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
+                href="#highlights"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Product
+              </a>
+              <a 
+                className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
+                href="#workflow"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Workflow
+              </a>
+              <a 
+                className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
+                href="#roi"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Impact
+              </a>
+              <a 
+                className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--landing-accent)] transition-all duration-200" 
+                href="#faq"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                FAQ
+              </a>
+              <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-[color:var(--ink-08)]">
+                <Link 
+                  to="/auth/login" 
+                  className="px-4 py-3 rounded-xl text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--accent-soft)] transition-all duration-200 text-center"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Log in
+                </Link>
+                <Button 
+                  className="bg-[color:var(--landing-accent)] hover:bg-[#363043] text-white font-semibold rounded-lg shadow-[0_2px_10px_-2px_rgba(68,64,84,0.35)]" 
+                  asChild
+                >
+                  <Link to="/auth/signup" onClick={() => setMobileMenuOpen(false)}>Start free trial</Link>
+                </Button>
+              </div>
+            </nav>
+          </div>
+        </header>
+      </div>
+
+      <main className="pt-20">
+        <section className="relative overflow-hidden bg-[color:var(--base)]">
+          
+          {/* Curved decorative lines - using --ink-08, loosely connecting badges */}
+          <svg className="absolute top-1/4 left-0 w-full h-64 pointer-events-none hidden lg:block" preserveAspectRatio="none">
+            {/* Main flowing curve */}
+            <path
+              d="M 0 80 Q 200 50, 450 70 T 900 55 T 1400 75"
+              stroke="rgba(47,36,58,0.08)"
+              strokeWidth="1.5"
+              fill="none"
+            />
+            {/* Secondary subtle curve */}
+            <path
+              d="M 50 130 Q 300 100, 550 115 T 1050 105 T 1300 120"
+              stroke="rgba(47,36,58,0.06)"
+              strokeWidth="1"
+              fill="none"
+            />
+            {/* Third gentle curve - connecting badges area */}
+            <path
+              d="M 400 160 Q 600 140, 800 150 T 1100 145"
+              stroke="rgba(68,64,84,0.10)"
+              strokeWidth="1"
+              fill="none"
+              strokeDasharray="4 6"
+            />
+          </svg>
 
           <div
             className={`${theme.container} ${theme.sectionHero} relative grid items-center gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-12`}
           >
             <div className="space-y-5">
-              {/* Modern badge with icon */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[color:var(--surface)] border border-[color:var(--ink-08)] shadow-[0_1px_3px_rgba(47,36,58,0.06)]">
-                <Sparkles className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
-                <span className="text-[11px] font-medium text-[color:var(--ink)]">Built for modern wholesale teams</span>
+              {/* Badge - premium pill with subtle glow */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[color:var(--surface)] border border-[color:var(--ink-12)] shadow-[0_2px_8px_-2px_rgba(47,36,58,0.08),_0_1px_2px_-1px_rgba(47,36,58,0.06)] hover:shadow-[0_4px_12px_-4px_rgba(47,36,58,0.12)] transition-shadow duration-200">
+                <div className="h-5 w-5 rounded-full bg-[color:var(--accent-soft)] flex items-center justify-center">
+                  <Sparkles className="h-3 w-3 text-[color:var(--landing-accent)]" />
+                </div>
+                <span className="text-[11px] font-semibold tracking-wide text-[color:var(--ink)]">Built for modern wholesale teams</span>
               </div>
 
               <div>
-                <h1 className={`${theme.text.h1} ${theme.colors.ink}`}>
+                <h1 className="text-[2rem] sm:text-4xl md:text-[3.5rem] lg:text-6xl font-bold tracking-[-0.02em] leading-[1.1] text-balance text-[color:var(--ink)]">
                   A calmer wholesale workflow, built to{" "}
                   <span className="underline decoration-[color:var(--landing-accent)] decoration-[3px] underline-offset-[5px]">close deals faster</span>.
                 </h1>
-                <p className={`${theme.text.body} ${theme.colors.inkSoft} max-w-[380px] mt-3`}>
+                <p className={`${theme.text.body} ${theme.colors.inkSoft} max-w-[340px] sm:max-w-[380px] mt-3`}>
                   Quotes, pricing, orders, and BG-compliant proformas — all in one place.
                 </p>
               </div>
 
-              <div className={`flex flex-wrap ${theme.gap.md}`}>
-                <Button className={`${theme.colors.accent} font-semibold ${theme.shadow.subtle}`} size="lg" asChild>
+              <div className="flex flex-wrap gap-3">
+                <Button 
+                  className="bg-[color:var(--landing-accent)] hover:bg-[#363043] text-[color:var(--base)] font-semibold shadow-[0_4px_14px_-4px_rgba(68,64,84,0.4)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_-6px_rgba(68,64,84,0.5)]" 
+                  size="lg" 
+                  asChild
+                >
                   <Link to="/auth/signup">Start free trial</Link>
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  className={`${theme.colors.ink} border ${theme.colors.border} bg-transparent hover:bg-[color:var(--surface)]`}
+                  className="text-[color:var(--ink)] border border-[color:var(--ink-12)] bg-transparent hover:bg-[color:var(--surface)] gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_-4px_rgba(47,36,58,0.15)]"
                 >
                   Watch demo
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
 
-              {/* Improved trust signals */}
-              <div className="flex items-center gap-6 pt-1">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-[color:var(--accent-soft)] flex items-center justify-center">
-                    <ShieldCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
-                  </div>
-                  <span className="text-[12px] font-medium text-[color:var(--ink-70)]">No credit card</span>
+              {/* Trust signals - refined pill style */}
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[color:var(--surface)] border border-[color:var(--ink-08)] shadow-[0_1px_3px_-1px_rgba(47,36,58,0.08)]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
+                  <span className="text-[11px] font-medium text-[color:var(--ink-55)]">No credit card</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-[color:var(--accent-soft)] flex items-center justify-center">
-                    <FileCheck2 className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
-                  </div>
-                  <span className="text-[12px] font-medium text-[color:var(--ink-70)]">BG & EU compliant</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[color:var(--surface)] border border-[color:var(--ink-08)] shadow-[0_1px_3px_-1px_rgba(47,36,58,0.08)]">
+                  <FileCheck2 className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
+                  <span className="text-[11px] font-medium text-[color:var(--ink-55)]">BG & EU compliant</span>
                 </div>
               </div>
             </div>
 
-            <div className="relative lg:scale-[1.10] lg:origin-left">
-              {/* Floating chip - above screenshot (colored accent) */}
-              <div className="hidden lg:flex justify-start mb-3 ml-6">
-                <div className="rounded-lg bg-emerald-50 border border-emerald-200 shadow-sm px-2.5 py-1 flex items-center gap-1.5">
+            <div className="relative lg:scale-[1.06] lg:origin-left">
+              {/* Floating chip - above screenshot (success green accent) */}
+              <div className="hidden md:flex justify-start mb-3 ml-4 lg:ml-10">
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 shadow-[0_6px_16px_-6px_rgba(16,185,129,0.25)] px-2.5 py-1 flex items-center gap-1.5 rotate-[-3deg]">
                   <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                   <span className="text-[9px] font-semibold text-emerald-700">Quote approved</span>
                 </div>
               </div>
 
+              {/* Main screenshot - stronger cardStrong shadow + inner glow */}
               <div
-                className={`${theme.radius.lg} border-2 ${theme.colors.borderStrong} ${theme.colors.surface} overflow-hidden ${theme.shadow.cardStrong}`}
+                className="rounded-3xl border-2 border-[color:var(--ink-12)] bg-[color:var(--surface)] overflow-hidden ring-1 ring-inset ring-[color:var(--ink-08)]"
+                style={{
+                  boxShadow: '0 36px 72px -28px rgba(47,36,58,0.45), 0 0 0 1px rgba(47,36,58,0.04), inset 0 1px 0 rgba(255,255,255,0.5)'
+                }}
               >
                 <ImageWithFallback
                   src={screenshots.dashboard}
@@ -439,49 +576,73 @@ export default function LandingPage() {
                   className="h-full w-full object-contain"
                   loading="eager"
                 />
-              </div>
-
-              {/* Floating chip - below screenshot (neutral) */}
-              <div className="hidden lg:flex justify-end mt-3 mr-6">
-                <div className={`${theme.radius.sm} ${theme.colors.surface} border ${theme.colors.border} ${theme.shadow.subtle} px-2.5 py-1 flex items-center gap-1.5`}>
-                  <Tag className="h-3 w-3 text-[color:var(--landing-accent)]" />
-                  <span className="text-[9px] font-medium text-[color:var(--ink)]">Tier B pricing • 12% off</span>
+                
+                {/* Live data chip - inside screenshot top right */}
+                <div className="absolute top-3 right-3">
+                  <div className="rounded-lg bg-[color:var(--surface)] border border-[color:var(--ink-08)] px-2 py-1 text-[8px] font-semibold text-[color:var(--ink-55)] shadow-[0_4px_14px_-4px_rgba(47,36,58,0.2)] flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--status-live)] animate-pulse" />
+                    {statusBadge.label}
+                  </div>
                 </div>
               </div>
 
-              {/* Floating card - left side (neutral) */}
-              <div className="absolute -left-3 top-16 hidden lg:block">
-                <div className={`${theme.radius.md} ${theme.colors.surface} border ${theme.colors.border} ${theme.shadow.card} px-3 py-2 flex items-center gap-2`}>
+              {/* Floating chip - below screenshot (refined style) */}
+              <div className="hidden md:flex justify-end mt-3 mr-4 lg:mr-10">
+                <div className="rounded-xl bg-[color:var(--surface)] border border-[color:var(--ink-12)] shadow-[0_8px_20px_-8px_rgba(47,36,58,0.2)] px-3 py-1.5 flex items-center gap-2 rotate-[2deg]">
                   <div className="h-5 w-5 rounded-md bg-[color:var(--accent-soft)] flex items-center justify-center">
-                    <Users className="h-3 w-3 text-[color:var(--landing-accent)]" />
+                    <Tag className="h-2.5 w-2.5 text-[color:var(--landing-accent)]" />
                   </div>
-                  <div>
-                    <p className="text-[9px] font-semibold text-[color:var(--ink)]">Client added</p>
-                    <p className="text-[8px] text-[color:var(--ink-55)]">Custom pricing</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating card - right side (colored accent) */}
-              <div className="absolute -right-2 bottom-24 hidden lg:block">
-                <div className="rounded-xl bg-sky-50 border border-sky-200 shadow-md px-3 py-2 flex items-center gap-2">
-                  <div className="h-5 w-5 rounded-md bg-sky-100 flex items-center justify-center">
-                    <FileText className="h-3 w-3 text-sky-600" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-semibold text-sky-800">Proforma ready</p>
-                    <p className="text-[8px] text-sky-600">BG-compliant</p>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-semibold text-[color:var(--ink)]">Tier B pricing</span>
+                    <span className="text-[8px] text-[color:var(--ink-55)]">12% discount applied</span>
                   </div>
                 </div>
               </div>
 
-              {/* Live data status chip - top right */}
-              <div className="absolute top-3 right-3 hidden lg:block">
-                <div
-                  className={`${theme.radius.sm} ${theme.colors.surface} border ${theme.colors.border} px-2 py-1 text-[8px] font-semibold ${theme.colors.inkSoft} ${theme.shadow.pill} flex items-center gap-1`}
-                >
+              {/* Floating card - left side (larger, more rotation) */}
+              <div className="absolute -left-2 lg:-left-5 top-20 hidden lg:block rotate-[-6deg]">
+                <div className="rounded-2xl bg-[color:var(--surface)] border border-[color:var(--ink-12)] shadow-[0_20px_44px_-24px_rgba(47,36,58,0.4)] px-3 py-2 flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-[color:var(--accent-soft)] flex items-center justify-center">
+                    <Users className="h-3.5 w-3.5 text-[color:var(--landing-accent)]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-[color:var(--ink)]">Client added</p>
+                    <p className="text-[8px] text-[color:var(--ink-55)]">Custom pricing set</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating card - right side (smaller, varied rotation) */}
+              <div className="absolute -right-1 lg:-right-4 bottom-28 hidden lg:block rotate-[7deg]">
+                <div className="rounded-xl bg-[color:var(--surface)] border border-[color:var(--ink-08)] shadow-[0_14px_32px_-18px_rgba(47,36,58,0.35)] px-2.5 py-1.5 flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-md bg-[color:var(--accent-soft)] flex items-center justify-center">
+                    <FileText className="h-3 w-3 text-[color:var(--landing-accent)]" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-semibold text-[color:var(--ink)]">Proforma ready</p>
+                    <p className="text-[7px] text-[color:var(--ink-55)]">BG-compliant</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Extra badge - orders metric with trend */}
+              <div className="absolute top-4 left-1/4 hidden xl:block rotate-[4deg]">
+                <div className="rounded-xl bg-[color:var(--landing-accent)] px-3 py-1.5 shadow-[0_6px_16px_-4px_rgba(68,64,84,0.4)] flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-md bg-white/20 flex items-center justify-center">
+                    <ArrowRight className="h-3 w-3 text-white rotate-[-45deg]" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-white leading-none">+24</span>
+                    <span className="text-[7px] font-medium text-white/70">orders today</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Extra "Syncing" badge - white style like Live data */}
+              <div className="absolute bottom-8 left-8 hidden xl:block rotate-[-2deg]">
+                <div className="rounded-lg bg-[color:var(--surface)] border border-[color:var(--ink-08)] px-2.5 py-1 shadow-[0_4px_12px_-4px_rgba(47,36,58,0.15)] flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--status-live)] animate-pulse" />
-                  {statusBadge.label}
+                  <span className="text-[8px] font-semibold text-[color:var(--ink-55)]">Syncing</span>
                 </div>
               </div>
             </div>
