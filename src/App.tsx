@@ -1,10 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HelmetProvider } from 'react-helmet-async'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Toaster } from '@/components/ui/toaster'
 import { ErrorFallback } from '@/components/ErrorFallback'
 import { AuthGuard } from '@/components/AuthGuard'
+import { supabase } from '@/lib/supabase/client'
 
 // Auth Pages
 import { LoginPage } from '@/app/auth/login'
@@ -31,6 +33,51 @@ import { ClientsPage } from '@/app/dashboard/clients'
 
 import LandingPage from '@/pages/LandingPage'
 import { NotFound } from '@/pages/NotFound'
+
+/**
+ * IndexRoute: Shows landing page for guests, redirects to dashboard for authenticated users
+ */
+function IndexRoute() {
+  const navigate = useNavigate()
+  const [checking, setChecking] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!mounted) return
+        
+        if (session?.user) {
+          setIsAuthenticated(true)
+          navigate('/dashboard', { replace: true })
+        } else {
+          setChecking(false)
+        }
+      } catch {
+        if (mounted) setChecking(false)
+      }
+    }
+
+    checkAuth()
+
+    return () => { mounted = false }
+  }, [navigate])
+
+  // Show nothing while checking auth (fast check)
+  if (checking && !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[color:var(--base)]">
+        <div className="h-6 w-6 border-2 border-[color:var(--ink-12)] border-t-[color:var(--landing-accent)] rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // User is not authenticated - show landing page
+  return <LandingPage />
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,11 +110,14 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <Routes>
+              {/* Landing / Index Route - Auth-aware */}
+              <Route path="/" element={<IndexRoute />} />
+              <Route path="/landing" element={<LandingPage />} />
+
               {/* Auth Routes */}
               <Route path="/auth/login" element={<LoginPage />} />
               <Route path="/auth/signup" element={<SignupPage />} />
               <Route path="/auth/onboarding" element={<OnboardingPage />} />
-              <Route path="/landing" element={<LandingPage />} />
 
               {/* Dashboard Routes - Protected by AuthGuard */}
               <Route
@@ -95,9 +145,6 @@ function App() {
                 <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
                 <Route path="clients" element={<ClientsPage />} />
               </Route>
-
-              {/* Redirect root to dashboard or login */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
