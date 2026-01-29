@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function LanguageSwitcher() {
@@ -13,13 +13,13 @@ export function LanguageSwitcher() {
     {
       code: 'en',
       name: t('language.englishName'),
-      flag: '🇬🇧',
+      icon: Globe,
       nativeName: t('language.en'),
     },
     {
       code: 'bg',
       name: t('language.bulgarianName'),
-      flag: '🇧🇬',
+      icon: Globe,
       nativeName: t('language.bg'),
     },
   ]
@@ -75,15 +75,15 @@ export function LanguageSwitcher() {
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        {/* Flag Icon */}
-        <span className="text-lg leading-none select-none transition-transform duration-200 group-hover:scale-110">
-          {currentLanguage.flag}
-        </span>
+        {/* Globe Icon */}
+        <currentLanguage.icon className="h-4 w-4 text-gray-600 dark:text-gray-300 transition-transform duration-200 group-hover:scale-110" />
         
-        {/* Language Code - Hidden on mobile, shown on larger screens */}
-        <span className="hidden sm:inline-block text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors">
-          {currentLanguage.code.toUpperCase()}
-        </span>
+        {/* Language Code - Only show when menu is open */}
+        {isOpen && (
+          <span className="hidden sm:inline-block text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors">
+            {currentLanguage.code.toUpperCase()}
+          </span>
+        )}
         
         {/* Chevron Icon */}
         <ChevronDown
@@ -130,10 +130,8 @@ export function LanguageSwitcher() {
                   )}
                   role="menuitem"
                 >
-                  {/* Flag */}
-                  <span className="text-xl leading-none select-none flex-shrink-0">
-                    {lang.flag}
-                  </span>
+                  {/* Globe */}
+                  <lang.icon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                   
                   {/* Language Info */}
                   <div className="flex-1 min-w-0">

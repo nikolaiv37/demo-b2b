@@ -15,7 +15,7 @@
         "impact": "Impact",
         "faq": "FAQ",
         "login": "Log in",
-        "startTrial": "Start free trial",
+        "startTrial": "Create an account",
         "toggleMenu": "Toggle menu"
       },
       "hero": {
@@ -24,7 +24,7 @@
         "headlineAccent": "close deals faster",
         "headlineSuffix": ".",
         "subheadline": "Quotes, pricing, orders, and BG-compliant proformas — all in one place.",
-        "ctaPrimary": "Start free trial",
+        "ctaPrimary": "Create an account",
         "ctaSecondary": "Watch demo",
         "screenshotAlt": "Platform dashboard"
       },
