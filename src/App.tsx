@@ -51,7 +51,13 @@ function RootRoute() {
     return <TenantEntry />
   }
 
-  if (domainKind === 'main') {
+  // Marketing host — show landing page directly, no auth/tenant logic
+  if (domainKind === 'marketing') {
+    return <LandingPage />
+  }
+
+  // App host — workspace discovery / login
+  if (domainKind === 'app') {
     return <MainIndexRoute />
   }
 
@@ -149,9 +155,9 @@ function App() {
                     <Route path="clients" element={<ClientsPage />} />
                   </Route>
 
-                  {/* Slug Fallback Routes */}
+                  {/* Slug Fallback Routes – /t/:slug/* on app host */}
                   <Route
-                    path="/:slug"
+                    path="/t/:slug"
                     element={
                       <SlugOnlyGuard>
                         <Outlet />

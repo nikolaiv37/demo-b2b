@@ -1,27 +1,20 @@
-import { useEffect } from 'react'
-import LandingPage from '@/pages/LandingPage'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenantMemberships } from '@/hooks/useTenantMemberships'
 import { TenantSelector } from '@/pages/TenantSelector'
 import { NoTenantState } from '@/pages/NoTenantState'
-import { buildTenantUrl } from '@/lib/tenant/urls'
+import { LoginPage } from '@/app/auth/login'
 
+/**
+ * Shown on the app host (centivon.vercel.app) when no tenant is resolved.
+ * Unauthenticated → login screen.
+ * Authenticated   → workspace selector (no auto-redirect).
+ */
 export function MainIndexRoute() {
   const { isAuthenticated, isLoading } = useAuth()
   const { data: memberships = [], isLoading: membershipsLoading } = useTenantMemberships()
 
-  useEffect(() => {
-    if (!isAuthenticated || membershipsLoading) return
-
-    if (memberships.length === 1 && memberships[0]) {
-      const tenant = memberships[0].tenant
-      const targetUrl = buildTenantUrl(tenant, '/dashboard')
-      window.location.assign(targetUrl)
-    }
-  }, [isAuthenticated, memberships, membershipsLoading])
-
   if (!isAuthenticated) {
-    return <LandingPage />
+    return <LoginPage />
   }
 
   if (isLoading || membershipsLoading) {
@@ -34,10 +27,6 @@ export function MainIndexRoute() {
 
   if (memberships.length === 0) {
     return <NoTenantState />
-  }
-
-  if (memberships.length === 1) {
-    return null
   }
 
   return <TenantSelector />
