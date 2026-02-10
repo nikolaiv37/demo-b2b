@@ -557,7 +557,7 @@ export function SidebarNav() {
             <Button
               variant="ghost"
               className="w-full justify-start px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors duration-150"
-              onClick={signOut}
+              onClick={() => signOut()}
             >
               <LogOut className="w-5 h-5 mr-3" />
               <span className="font-medium text-xs uppercase tracking-wide">{t('nav.logout')}</span>
