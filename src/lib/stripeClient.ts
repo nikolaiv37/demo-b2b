@@ -11,7 +11,7 @@ export function getStripe(): Promise<Stripe | null> {
   return stripePromise
 }
 
-export async function createCheckoutSession(orderId: string, items: any[], total: number) {
+export async function createCheckoutSession(orderId: string, items: unknown[], total: number) {
   // This would typically call your backend/Supabase Edge Function
   // that creates a Stripe checkout session
   const response = await fetch('/api/create-checkout-session', {
@@ -46,4 +46,3 @@ export async function redirectToCheckout(sessionId: string) {
     throw error
   }
 }
-

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Client } from '@/types'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 interface UpdateClientData {
   id: string
@@ -9,16 +10,22 @@ interface UpdateClientData {
 
 export function useMutationUpdateClient() {
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useMutation({
     mutationFn: async (data: UpdateClientData) => {
       const { id, ...updates } = data
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
 
       const { data: client, error } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', id)
         .eq('role', 'company')
+        .eq('tenant_id', tenantId)
         .select()
         .single()
 
@@ -27,19 +34,19 @@ export function useMutationUpdateClient() {
     },
     onSuccess: (data, variables) => {
       // Invalidate client queries
-      queryClient.invalidateQueries({ queryKey: ['clients'] })
-      queryClient.invalidateQueries({ queryKey: ['clients', data.id] })
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'clients'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'clients', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'profiles'] })
       
       // If commission_rate was updated, invalidate product queries
       // This ensures catalog views update with new adjusted prices
       if (variables.commission_rate !== undefined) {
         // Invalidate all product queries so adjusted prices are recalculated
-        queryClient.invalidateQueries({ queryKey: ['products'] })
-        queryClient.invalidateQueries({ queryKey: ['public-products'] })
-        queryClient.invalidateQueries({ queryKey: ['product'] })
+        queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products'] })
+        queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'public-products'] })
+        queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'product'] })
         // Also invalidate quotes so they show updated pricing
-        queryClient.invalidateQueries({ queryKey: ['quotes'] })
+        queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'quotes'] })
       }
     },
   })
@@ -47,23 +54,27 @@ export function useMutationUpdateClient() {
 
 export function useMutationDeleteClient() {
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useMutation({
     mutationFn: async (clientId: string) => {
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
       const { error } = await supabase
         .from('profiles')
         .delete()
         .eq('id', clientId)
         .eq('role', 'company')
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
       return clientId
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] })
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'clients'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'profiles'] })
     },
   })
 }
-
-

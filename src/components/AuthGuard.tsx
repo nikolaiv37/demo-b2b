@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
@@ -18,6 +19,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user, profile, company } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const { membership, membershipChecked } = useTenant()
+  const { withBase, stripBase } = useTenantPath()
   const { toast } = useToast()
   const [hasCheckedHash, setHasCheckedHash] = useState(false)
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false)
@@ -50,7 +53,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           description: 'Please log in again.',
           variant: 'destructive',
         })
-        navigate('/auth/login', { replace: true })
+        navigate(withBase('/auth/login'), { replace: true })
       }, 5000)
     } else {
       // Clear timeout if user exists or loading stopped
@@ -66,12 +69,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         timeoutRef.current = null
       }
     }
-  }, [isLoading, hasCheckedHash, navigate, toast, user])
+  }, [isLoading, hasCheckedHash, navigate, toast, user, withBase])
 
   // Check for email confirmation hash in URL (Supabase adds #access_token=... after confirmation)
   useEffect(() => {
     // Only check once and only if we're on a dashboard route
-    if (hasCheckedHash || !location.pathname.startsWith('/dashboard')) {
+    const logicalPath = stripBase(location.pathname)
+    if (hasCheckedHash || !logicalPath.startsWith('/dashboard')) {
       return
     }
 
@@ -89,14 +93,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           // No session yet - redirect to login to let Supabase process it there
           const newUrl = window.location.href.split('#')[0] // Remove hash
           window.history.replaceState({}, '', newUrl) // Clean URL
-          navigate('/auth/login?verified=true', { replace: true })
+          navigate(`${withBase('/auth/login')}?verified=true`, { replace: true })
           setHasCheckedHash(true)
         }
       })
     } else {
       setHasCheckedHash(true)
     }
-  }, [location.pathname, navigate, hasCheckedHash])
+  }, [location.pathname, navigate, hasCheckedHash, stripBase, withBase])
 
   // Check onboarding status once profile and company are loaded
   // IMPORTANT: This hook must be before any early returns to follow Rules of Hooks
@@ -111,8 +115,17 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // If the user is authenticated but NOT a member of the current tenant,
+    // skip the onboarding check entirely. MembershipGuard (child component)
+    // will show the AccessDenied page instead.
+    if (membershipChecked && !membership) {
+      setHasCheckedOnboarding(true)
+      return
+    }
+
     // If we're already on the onboarding page, don't redirect
-    if (location.pathname === '/auth/onboarding') {
+    const logicalPath = stripBase(location.pathname)
+    if (logicalPath === '/auth/onboarding') {
       setHasCheckedOnboarding(true)
       return
     }
@@ -127,9 +140,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       (profile.company_id && !company) ||
       (company && company.onboarding_completed === false)
 
-    if (needsOnboarding && location.pathname.startsWith('/dashboard')) {
+    if (needsOnboarding && logicalPath.startsWith('/dashboard')) {
       setHasCheckedOnboarding(true)
-      navigate('/auth/onboarding', { replace: true })
+      navigate(withBase('/auth/onboarding'), { replace: true })
       return
     }
 
@@ -142,8 +155,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     isLoading,
     hasCheckedHash,
     hasCheckedOnboarding,
+    membership,
+    membershipChecked,
     location.pathname,
     navigate,
+    stripBase,
+    withBase,
   ])
 
   // Show spinner while loading (but only after we've checked for confirmation hash)
@@ -156,7 +173,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   // If we're still checking the hash, show a brief loading state
-  if (!hasCheckedHash && location.pathname.startsWith('/dashboard')) {
+  if (!hasCheckedHash && stripBase(location.pathname).startsWith('/dashboard')) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -183,10 +200,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Redirect to login if not authenticated, preserving the location they tried to access
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login" state={{ from: location }} replace />
+    return <Navigate to={withBase('/auth/login')} state={{ from: location }} replace />
   }
 
   // User is authenticated, render children
   return <>{children}</>
 }
-

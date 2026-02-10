@@ -29,6 +29,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClients } from '@/hooks/useQueryClients'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 import {
   useMutationUpdateClient,
   useMutationDeleteClient,
@@ -55,6 +56,7 @@ const ITEMS_PER_PAGE = 12
 export function ClientsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { withBase } = useTenantPath()
   const { isAdmin } = useAuth()
   const { toast } = useToast()
 
@@ -129,9 +131,9 @@ export function ClientsPage() {
   // Redirect non-admin users
   useEffect(() => {
     if (!isAdmin) {
-      navigate('/dashboard')
+      navigate(withBase('/dashboard'))
     }
-  }, [isAdmin, navigate])
+  }, [isAdmin, navigate, withBase])
 
   // Early return AFTER all hooks
   if (!isAdmin) {

@@ -5,10 +5,12 @@ import { Lock, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 export function CSVImportPage() {
   const { isAdmin, isLoading } = useAuth()
   const navigate = useNavigate()
+  const { withBase } = useTenantPath()
   const { t } = useTranslation()
 
   // Show loading state
@@ -43,12 +45,12 @@ export function CSVImportPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button 
               variant="outline"
-              onClick={() => navigate('/dashboard/products')}
+              onClick={() => navigate(withBase('/dashboard/products'))}
             >
               {t('csvImport.access.viewProducts')}
             </Button>
             <Button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(withBase('/dashboard'))}
             >
               {t('csvImport.access.goToDashboard')}
             </Button>

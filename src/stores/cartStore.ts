@@ -33,6 +33,7 @@ export const useCartStore = create<CartState>()(
       items: [],
 
       addItem: (product, quantity, _userRole) => {
+        void _userRole
         // Validate stock (use quantity field)
         const stock = product.quantity ?? 0
         if (quantity > stock) {
@@ -99,6 +100,7 @@ export const useCartStore = create<CartState>()(
       },
 
       updateQuantity: (productId, quantity, _userRole) => {
+        void _userRole
         const items = get().items
         const itemIndex = items.findIndex((item) => item.product.id === productId)
 
@@ -156,4 +158,3 @@ export const useCartStore = create<CartState>()(
     }
   )
 )
-

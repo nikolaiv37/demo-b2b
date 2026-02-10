@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { slugify } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { CompanyForm, CompanyFormData } from '@/components/CompanyForm'
 import {
   Building2,
@@ -30,15 +31,18 @@ export function OnboardingPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   const { user, profile, isLoading: authLoading } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id ?? null
+  const { withBase } = useTenantPath()
   const navigate = useNavigate()
   const { toast } = useToast()
 
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth/login', { replace: true })
+      navigate(withBase('/auth/login'), { replace: true })
     }
-  }, [user, authLoading, navigate])
+  }, [user, authLoading, navigate, withBase])
 
   // Show loading while checking auth
   if (authLoading || !user) {
@@ -78,7 +82,12 @@ export function OnboardingPage() {
       const slug = slugify(formData.companyName)
 
       // Create or update company
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
+
       const companyData = {
+        tenant_id: tenantId,
         name: formData.companyName,
         slug,
         logo_url: logoUrl,
@@ -106,6 +115,7 @@ export function OnboardingPage() {
           .from('companies')
           .select('id')
           .eq('id', profile.company_id)
+          .eq('tenant_id', tenantId)
           .single()
 
         if (checkError || !existingCompany) {
@@ -113,7 +123,7 @@ export function OnboardingPage() {
           console.warn('Company not found or inaccessible, clearing company_id and creating new company')
           await supabase
             .from('profiles')
-            .update({ company_id: null })
+            .update({ company_id: null, tenant_id: tenantId })
             .eq('id', user.id)
           
           // Fall through to create new company
@@ -124,6 +134,7 @@ export function OnboardingPage() {
             .from('companies')
             .update(companyData)
             .eq('id', profile.company_id)
+            .eq('tenant_id', tenantId)
             .select()
             .single()
 
@@ -160,8 +171,9 @@ export function OnboardingPage() {
         // Update profile to link to company
         // Only update role if it's null/undefined (first user becomes admin/owner)
         // If role is already set (e.g., 'company'), preserve it
-        const profileUpdate: { company_id: string; role?: string } = {
+        const profileUpdate: { company_id: string; role?: string; tenant_id: string } = {
           company_id: company.id,
+          tenant_id: tenantId,
         }
 
         // Only set role to 'admin' if it's null/undefined (this is the owner)
@@ -175,6 +187,7 @@ export function OnboardingPage() {
           .from('profiles')
           .update(profileUpdate)
           .eq('id', user.id)
+          .eq('tenant_id', tenantId)
 
         if (profileError) throw profileError
       }
@@ -185,12 +198,15 @@ export function OnboardingPage() {
       })
 
       // Refresh auth state to get updated company
-      window.location.href = '/dashboard'
-    } catch (error: any) {
+      const postOnboardingPath = tenant ? withBase('/dashboard') : '/'
+      window.location.href = postOnboardingPath
+    } catch (error: unknown) {
       console.error('Onboarding error:', error)
+      const errorMessage =
+        error instanceof Error ? error.message : t('auth.onboarding.failedDescription')
       toast({
         title: t('auth.onboarding.failedTitle'),
-        description: error.message || t('auth.onboarding.failedDescription'),
+        description: errorMessage || t('auth.onboarding.failedDescription'),
         variant: 'destructive',
       })
     } finally {

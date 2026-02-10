@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useAllCompanyUnpaidBalances } from '@/hooks/useCompanyUnpaidBalances'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 import { GlassCard } from '@/components/GlassCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +25,7 @@ type SortDirection = 'asc' | 'desc'
 export function UnpaidBalancesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { withBase } = useTenantPath()
   const { isAdmin } = useAuth()
   const { data, isLoading, error } = useAllCompanyUnpaidBalances()
   
@@ -31,26 +33,11 @@ export function UnpaidBalancesPage() {
   const [sortField, setSortField] = useState<SortField>('unpaidAmount')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
-  // Redirect non-admins
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
-        <AlertTriangle className="w-12 h-12 mb-4 text-amber-500" />
-        <h2 className="text-xl font-semibold mb-2">{t('unpaidBalances.accessDenied')}</h2>
-        <p className="text-sm mb-4">{t('unpaidBalances.adminOnly')}</p>
-        <Button onClick={() => navigate('/dashboard')}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          {t('unpaidBalances.backToDashboard')}
-        </Button>
-      </div>
-    )
-  }
-
   // Filter and sort companies
   const filteredAndSortedCompanies = useMemo(() => {
     if (!data?.companies) return []
     
-    let filtered = data.companies.filter((company) => {
+    const filtered = data.companies.filter((company) => {
       const searchLower = searchQuery.toLowerCase()
       return (
         company.companyName.toLowerCase().includes(searchLower) ||
@@ -59,7 +46,7 @@ export function UnpaidBalancesPage() {
     })
     
     // Sort
-    filtered.sort((a, b) => {
+    const sorted = [...filtered].sort((a, b) => {
       let comparison = 0
       
       switch (sortField) {
@@ -80,8 +67,23 @@ export function UnpaidBalancesPage() {
       return sortDirection === 'desc' ? -comparison : comparison
     })
     
-    return filtered
+    return sorted
   }, [data?.companies, searchQuery, sortField, sortDirection])
+
+  // Redirect non-admins
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
+        <AlertTriangle className="w-12 h-12 mb-4 text-amber-500" />
+        <h2 className="text-xl font-semibold mb-2">{t('unpaidBalances.accessDenied')}</h2>
+        <p className="text-sm mb-4">{t('unpaidBalances.adminOnly')}</p>
+        <Button onClick={() => navigate(withBase('/dashboard'))}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          {t('unpaidBalances.backToDashboard')}
+        </Button>
+      </div>
+    )
+  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -121,7 +123,7 @@ export function UnpaidBalancesPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(withBase('/dashboard'))}
               className="gap-1.5"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -274,7 +276,11 @@ export function UnpaidBalancesPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/dashboard/orders?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`)}
+                            onClick={() =>
+                              navigate(
+                                `${withBase('/dashboard/orders')}?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`
+                              )
+                            }
                             className="text-xs"
                           >
                             {t('unpaidBalances.viewOrders')}
@@ -296,7 +302,11 @@ export function UnpaidBalancesPage() {
                 return (
                   <div
                     key={company.email || company.companyName || index}
-                    onClick={() => navigate(`/dashboard/orders?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`)}
+                    onClick={() =>
+                      navigate(
+                        `${withBase('/dashboard/orders')}?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`
+                      )
+                    }
                     className="p-4 rounded-lg bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-200 border border-white/10 dark:border-white/5 cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-3">
@@ -373,4 +383,3 @@ export function UnpaidBalancesPage() {
 }
 
 export default UnpaidBalancesPage
-

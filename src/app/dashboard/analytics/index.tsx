@@ -34,6 +34,7 @@ import {
   Line,
 } from 'recharts'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 import { formatCurrency, calculatePercentageChange } from '@/lib/utils'
 import { OrderStatusBadge } from '@/components/OrderStatusBadge'
 import {
@@ -118,18 +119,68 @@ interface AnalyticsData {
   myPendingQuotesCount?: number
 }
 
+interface QuoteRow {
+  id?: string | number | null
+  quote_id?: string | number | null
+  company_id?: string | null
+  customer_id?: string | null
+  customer_email?: string | null
+  customer_name?: string | null
+  user_id?: string | null
+  company_name?: string | null
+  email?: string | null
+  items?: unknown
+  subtotal?: string | number | null
+  tax?: string | number | null
+  shipping?: string | number | null
+  total?: string | number | null
+  status?: string | null
+  payment_status?: string | null
+  created_at?: string
+  updated_at?: string | null
+}
+
+interface QuoteItemRow {
+  sku?: string | null
+  product_name?: string | null
+  name?: string | null
+  unit_price?: string | number | null
+  quantity?: string | number | null
+  total?: string | number | null
+}
+
+interface ProductRow {
+  id?: string | number | null
+  sku?: string | null
+  name?: string | null
+  quantity?: string | number | null
+}
+
+interface AnalyticsOrderRow {
+  id?: string | number | null
+  quote_id?: string | number | null
+  company_id?: string | null
+  customer_id?: string | null
+  customer_email?: string | null
+  customer_name?: string | null
+  user_id?: string | null
+  items?: unknown
+  subtotal?: string | number | null
+  tax?: string | number | null
+  shipping?: string | number | null
+  total?: string | number | null
+  status?: string | null
+  payment_status?: string | null
+  created_at?: string
+  updated_at?: string | null
+}
+
 export function AnalyticsPage() {
   const { t } = useTranslation()
   const { user, profile, isAdmin } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const [dateRange, setDateRange] = useState<DateRange>('alltime')
-  
-  // Debug logging
-  console.log('AnalyticsPage render:', {
-    userId: user?.id,
-    profileId: profile?.id,
-    profileCompanyId: (profile as any)?.company_id,
-    isAdmin,
-  })
 
   // Calculate date range
   const dateRangeConfig = useMemo(() => {
@@ -159,31 +210,39 @@ export function AnalyticsPage() {
   // Get company ID from profile or fetch it
   const companyId = useMemo(() => {
     // Try to get company_id from profile
-    const profileCompanyId = (profile as any)?.company_id
+    const profileCompanyId = profile?.company_id ?? null
     if (profileCompanyId) {
-      console.log('Using company_id from profile:', profileCompanyId)
       return profileCompanyId
     }
     // For admin, we might not need company_id (they see all data)
     if (isAdmin) {
-      console.log('Admin user - will fetch all data')
       return null
     }
     // If no company_id, we'll use user.id and rely on RLS
-    console.log('No company_id found, will use user.id:', user?.id)
     return user?.id || null
   }, [profile, user, isAdmin])
 
   // Fetch all analytics data in parallel
   const { data: analytics, isLoading, error } = useQuery({
-    queryKey: ['analytics', companyId, dateRange, user?.id],
+    queryKey: ['tenant', tenantId, 'analytics', companyId, dateRange, user?.id],
     queryFn: async (): Promise<AnalyticsData> => {
-      console.log('Analytics queryFn called with:', { companyId, dateRange, userId: user?.id })
-      
       try {
+        if (!tenantId) {
+          return {
+            totalRevenue: 0,
+            totalRevenueMoM: 0,
+            totalOrders: 0,
+            averageOrderValue: 0,
+            quotesToOrdersConversion: 0,
+            revenueOverTime: [],
+            topProducts: [],
+            topCustomers: [],
+            lowStockProducts: [],
+            quoteFunnel: { draft: 0, sent: 0, accepted: 0, ordered: 0 },
+          }
+        }
         // For admin or if no company_id, we'll fetch all data (RLS will handle filtering)
         if (!user?.id && !isAdmin) {
-          console.warn('No user ID available, returning empty analytics')
           return {
             totalRevenue: 0,
             totalRevenueMoM: 0,
@@ -202,15 +261,14 @@ export function AnalyticsPage() {
 
       // Fetch from quotes table (this is the primary source - orders table doesn't exist)
       // Skip orders table query since it doesn't exist in this database
-      const ordersTableData: any[] = []
-      
-      console.log('Skipping orders table (does not exist), using quotes only')
+      const ordersTableData: AnalyticsOrderRow[] = []
       
       // Also fetch from quotes table (this is the primary source in Eastern Europe B2B style)
       // For company users, quotes table uses user_id. For admin, show all.
       let quotesQuery = supabase
         .from('quotes')
-        .select('*')
+        .select('id, customer_name, user_id, company_name, email, items, subtotal, tax, shipping, total, status, created_at, updated_at')
+        .eq('tenant_id', tenantId)
 
       // For company users, filter by user_id (TEXT field). For admin, show all quotes.
       if (!isAdmin && user?.id) {
@@ -227,19 +285,18 @@ export function AnalyticsPage() {
       // Filter quotes - already filtered by user_id for company users, so use as-is
       const filteredQuotes = quotesTableData || []
       
-      console.log('Quotes fetched:', { count: filteredQuotes.length, total: quotesTableData?.length || 0 })
 
       // Combine orders and quotes, treating approved quotes as paid orders
       const allOrdersFromTable = ordersTableData || []
       const allQuotesFromTable = filteredQuotes || []
 
         // Transform quotes to orders format for analytics
-        const quotesAsOrders = (allQuotesFromTable || []).map((q: any) => ({
-          id: q.id,
-          quote_id: q.id,
-          company_id: q.company_id || companyId,
-        customer_id: q.customer_id || '',
-        customer_email: q.customer_email || q.email || '',
+      const quotesAsOrders = (allQuotesFromTable || []).map((q: QuoteRow): AnalyticsOrderRow => ({
+        id: q.id ?? null,
+        quote_id: q.id ?? null,
+        company_id: companyId || null,
+        customer_id: q.user_id || '',
+        customer_email: q.email || '',
         customer_name: q.customer_name || q.company_name || '',
         items: q.items || [],
         subtotal: parseFloat(String(q.subtotal || q.total || 0)),
@@ -256,9 +313,10 @@ export function AnalyticsPage() {
       const allOrdersCombined = [...allOrdersFromTable, ...quotesAsOrders]
       
       // Remove duplicates (if a quote was converted to an order, prefer the order)
-      const uniqueOrders = new Map()
-      allOrdersCombined.forEach((o: any) => {
-        const key = o.quote_id || o.id
+      const uniqueOrders = new Map<string | number, AnalyticsOrderRow>()
+      allOrdersCombined.forEach((o) => {
+        const key = o.quote_id ?? o.id
+        if (key === null || key === undefined) return
         if (!uniqueOrders.has(key) || o.payment_status === 'paid' || o.status === 'paid') {
           uniqueOrders.set(key, o)
         }
@@ -267,35 +325,26 @@ export function AnalyticsPage() {
       
       // Filter for paid orders (either payment_status='paid' or status='paid' or approved quotes)
       const ordersData = allOrders.filter(
-        (o: any) => o.payment_status === 'paid' || o.status === 'paid' || o.status === 'approved'
+        (o) => o.payment_status === 'paid' || o.status === 'paid' || o.status === 'approved'
       )
 
-      // Fetch quotes for funnel (last 30 days) - Admin only
+      // Quotes for funnel (last 30 days)
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      let quotesFunnelQuery = supabase
-        .from('quotes')
-        .select('*')
-        .gte('created_at', thirtyDaysAgo.toISOString())
-      
-      // For admin, show all. For company users, filter by user_id (TEXT field)
-      if (!isAdmin && user?.id) {
-        quotesFunnelQuery = quotesFunnelQuery.eq('user_id', user.id.toString())
-      }
-      
-      const { data: quotesFunnelData } = await quotesFunnelQuery
-      const quotesData = quotesFunnelData || []
-      
-      console.log('Quotes for funnel:', { count: quotesData.length })
+      const quotesData = ((filteredQuotes as QuoteRow[] | null) || []).filter((quote) => {
+        const createdAt = quote?.created_at ? new Date(quote.created_at) : null
+        return createdAt ? createdAt >= thirtyDaysAgo : false
+      })
 
       // Fetch products for low stock (quantity < 10)
       // Products table uses 'quantity' not 'stock'
       // In this B2B model, company users (buyers) don't own products - they order from supplier
       // So show all low stock products for both admin and company users
-      let productsQuery = supabase
+      const productsQuery = supabase
         .from('products')
         .select('id, sku, name, quantity')
         .lt('quantity', 10)
+        .eq('tenant_id', tenantId)
         .order('quantity', { ascending: true })
         .limit(10)
       
@@ -304,13 +353,7 @@ export function AnalyticsPage() {
       
       const { data: productsData, error: productsError } = await productsQuery
       
-      console.log('Products fetched:', { 
-        count: productsData?.length || 0, 
-        error: productsError,
-        isAdmin,
-      })
-      
-      const finalProductsData = productsData || []
+      const finalProductsData = (productsData as ProductRow[] | null) || []
 
       // Log errors for debugging (but don't fail the whole query)
       // These are expected - orders table doesn't exist, products might not have stock column
@@ -336,14 +379,14 @@ export function AnalyticsPage() {
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
 
       const thisMonthRevenue = orders
-        .filter((o) => new Date(o.created_at) >= thisMonthStart)
+        .filter((o) => new Date(o.created_at ?? 0) >= thisMonthStart)
         .reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0)
 
       const lastMonthRevenue = orders
         .filter(
           (o) =>
-            new Date(o.created_at) >= lastMonthStart &&
-            new Date(o.created_at) <= lastMonthEnd
+            new Date(o.created_at ?? 0) >= lastMonthStart &&
+            new Date(o.created_at ?? 0) <= lastMonthEnd
         )
         .reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0)
 
@@ -360,10 +403,10 @@ export function AnalyticsPage() {
       // Count orders that came from quotes (have quote_id) or are approved quotes
       const ordersFromQuotesLast30 = allOrders.filter(
         (o) => {
-          const orderDate = new Date(o.created_at)
+          const orderDate = new Date(o.created_at ?? 0)
           return (
             orderDate >= thirtyDaysAgo &&
-            (o.quote_id || (o.status === 'approved' && quotesLast30.some((q: any) => q.id === o.id || q.id === o.quote_id)))
+            (o.quote_id || (o.status === 'approved' && quotesLast30.some((q) => q.id === o.id || q.id === o.quote_id)))
           )
         }
       ).length
@@ -379,7 +422,7 @@ export function AnalyticsPage() {
       cutoffDate.setMonth(cutoffDate.getMonth() - monthsToShow)
 
       orders.forEach((order) => {
-        const orderDate = new Date(order.created_at)
+        const orderDate = new Date(order.created_at ?? 0)
         if (orderDate >= cutoffDate || dateRange === 'alltime') {
           const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`
           revenueByMonth.set(
@@ -411,12 +454,14 @@ export function AnalyticsPage() {
       >()
 
       orders.forEach((order) => {
-        const items = order.items || []
+        const items = Array.isArray(order.items) ? (order.items as QuoteItemRow[]) : []
         if (Array.isArray(items)) {
-          items.forEach((item: any) => {
+          items.forEach((item) => {
             const sku = item.sku || 'UNKNOWN'
             const existing = productRevenue.get(sku)
-            const revenue = parseFloat(String(item.total || item.unit_price * item.quantity || 0))
+            const revenue = parseFloat(
+              String(item.total || Number(item.unit_price ?? 0) * Number(item.quantity ?? 0) || 0)
+            )
             const quantity = parseInt(String(item.quantity || 0))
 
             if (existing) {
@@ -449,7 +494,7 @@ export function AnalyticsPage() {
         const companyName = order.customer_name || 'Unknown Company'
         const existing = customerRevenue.get(customerKey)
         const revenue = parseFloat(String(order.total || 0))
-        const orderDate = order.created_at
+        const orderDate = order.created_at || ''
 
         if (existing) {
           existing.totalSpent += revenue
@@ -476,24 +521,24 @@ export function AnalyticsPage() {
         }))
 
       // Low stock products (use quantity field)
-      const lowStockProducts = (finalProductsData || []).map((p: any) => ({
-        id: p.id,
-        sku: p.sku,
-        name: p.name,
-        stock: p.quantity ?? 0,
+      const lowStockProducts = (finalProductsData || []).map((p) => ({
+        id: String(p.id ?? ''),
+        sku: String(p.sku ?? ''),
+        name: String(p.name ?? ''),
+        stock: Number(p.quantity ?? 0),
       }))
 
       // Quote funnel (last 30 days) - Admin only
       const quoteFunnel = {
         draft: quotesLast30.length,
-        sent: quotesLast30.filter((q: any) => q.status === 'pending' || q.status === 'new').length,
-        accepted: quotesLast30.filter((q: any) => q.status === 'approved').length,
+        sent: quotesLast30.filter((q) => q.status === 'pending' || q.status === 'new').length,
+        accepted: quotesLast30.filter((q) => q.status === 'approved').length,
         ordered: allOrders.filter(
-          (o: any) => {
-            const orderDate = new Date(o.created_at)
+          (o) => {
+            const orderDate = new Date(o.created_at ?? 0)
             return (
               orderDate >= thirtyDaysAgo &&
-              (o.quote_id || (o.status === 'approved' && quotesLast30.some((q: any) => q.id === o.id || q.id === o.quote_id)))
+              (o.quote_id || (o.status === 'approved' && quotesLast30.some((q) => q.id === o.id || q.id === o.quote_id)))
             )
           }
         ).length,
@@ -508,6 +553,7 @@ export function AnalyticsPage() {
           .from('quotes')
           .select('id, order_number, total, status, created_at')
           .eq('user_id', user.id.toString())
+          .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false })
           .limit(20)
 
@@ -515,36 +561,38 @@ export function AnalyticsPage() {
         
         // Quote status breakdown (these are actually orders)
         myQuotesStatus = {
-          pending: myQuotesList.filter((q: any) => q.status === 'pending' || q.status === 'new').length,
-          approved: myQuotesList.filter((q: any) => q.status === 'approved').length,
-          rejected: myQuotesList.filter((q: any) => q.status === 'rejected').length,
-          expired: myQuotesList.filter((q: any) => q.status === 'expired').length,
+          pending: myQuotesList.filter((q) => q.status === 'pending' || q.status === 'new').length,
+          approved: myQuotesList.filter((q) => q.status === 'approved').length,
+          rejected: myQuotesList.filter((q) => q.status === 'rejected').length,
+          expired: myQuotesList.filter((q) => q.status === 'expired').length,
         }
         
         // Recent orders (from quotes table)
-        myRecentQuotes = myQuotesList.slice(0, 5).map((q: any) => ({
-          id: q.id,
-          order_number: q.order_number || (typeof q.id === 'number' ? q.id : parseInt(String(q.id)) || undefined),
+        myRecentQuotes = myQuotesList.slice(0, 5).map((q) => ({
+          id: String(q.id ?? ''),
+          order_number:
+            q.order_number ??
+            (typeof q.id === 'number' ? q.id : parseInt(String(q.id ?? ''), 10) || undefined),
           total: parseFloat(String(q.total || 0)),
-          status: q.status,
-          created_at: q.created_at,
+          status: q.status || '',
+          created_at: q.created_at || '',
         }))
         
         // Pending quotes count
         myPendingQuotesCount = myQuotesStatus.pending
         
         // Order status breakdown (from user's orders/quotes)
-        const myOrdersList = allOrders.filter((o: any) => {
+        const myOrdersList = allOrders.filter((o) => {
           // Match by user_id or customer_id
           return o.customer_id === user.id || o.user_id === user.id
         })
         
         myOrderStatus = {
-          pending: myOrdersList.filter((o: any) => o.status === 'pending').length,
-          approved: myOrdersList.filter((o: any) => o.status === 'approved' || o.status === 'paid').length,
-          processing: myOrdersList.filter((o: any) => o.status === 'processing').length,
-          shipped: myOrdersList.filter((o: any) => o.status === 'shipped').length,
-          delivered: myOrdersList.filter((o: any) => o.status === 'delivered').length,
+          pending: myOrdersList.filter((o) => o.status === 'pending').length,
+          approved: myOrdersList.filter((o) => o.status === 'approved' || o.status === 'paid').length,
+          processing: myOrdersList.filter((o) => o.status === 'processing').length,
+          shipped: myOrdersList.filter((o) => o.status === 'shipped').length,
+          delivered: myOrdersList.filter((o) => o.status === 'delivered').length,
         }
       }
 
@@ -565,16 +613,6 @@ export function AnalyticsPage() {
         myPendingQuotesCount,
       }
 
-        // Debug logging
-        console.log('Analytics data:', {
-          ordersCount: orders.length,
-          allOrdersCount: allOrders.length,
-          quotesCount: quotes.length,
-          productsCount: productsData?.length || 0,
-          totalRevenue,
-          totalOrders,
-        })
-
         return result
       } catch (err) {
         console.error('Error in analytics query:', err)
@@ -593,28 +631,34 @@ export function AnalyticsPage() {
         }
       }
     },
-    enabled: !!user?.id || isAdmin,
+    enabled: !!tenantId && (!!user?.id || isAdmin),
     retry: 1,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   })
 
   // Always show dashboard - use empty data if analytics is null
   // This must be BEFORE any conditional returns to follow React hooks rules
-  const displayData: AnalyticsData = analytics || {
-    totalRevenue: 0,
-    totalRevenueMoM: 0,
-    totalOrders: 0,
-    averageOrderValue: 0,
-    quotesToOrdersConversion: 0,
-    revenueOverTime: [],
-    topProducts: [],
-    topCustomers: [],
-    lowStockProducts: [],
-    quoteFunnel: { draft: 0, sent: 0, accepted: 0, ordered: 0 },
-    myQuotesStatus: undefined,
-    myRecentQuotes: undefined,
-    myOrderStatus: undefined,
-    myPendingQuotesCount: undefined,
-  }
+  const displayData = useMemo<AnalyticsData>(
+    () =>
+      analytics || {
+        totalRevenue: 0,
+        totalRevenueMoM: 0,
+        totalOrders: 0,
+        averageOrderValue: 0,
+        quotesToOrdersConversion: 0,
+        revenueOverTime: [],
+        topProducts: [],
+        topCustomers: [],
+        lowStockProducts: [],
+        quoteFunnel: { draft: 0, sent: 0, accepted: 0, ordered: 0 },
+        myQuotesStatus: undefined,
+        myRecentQuotes: undefined,
+        myOrderStatus: undefined,
+        myPendingQuotesCount: undefined,
+      },
+    [analytics]
+  )
 
   // Generate sparkline data for metric cards (last 7 data points)
   // This must be BEFORE any conditional returns to follow React hooks rules

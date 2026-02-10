@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 export interface CategoryInfo {
   id: string // Category UUID from categories table
@@ -35,9 +36,14 @@ export interface CategoryHierarchy {
  * - Subcategories: parent_id points to parent category
  */
 export function useCategoryHierarchy(companyId?: string) {
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   return useQuery({
-    queryKey: ['category-hierarchy', companyId],
+    queryKey: ['tenant', tenantId, 'category-hierarchy', companyId],
     queryFn: async (): Promise<CategoryHierarchy> => {
+      if (!tenantId) {
+        return { mainCategories: new Map() }
+      }
       console.log('[useCategoryHierarchy] Fetching category hierarchy from categories table', {
         companyId,
         at: new Date().toISOString(),
@@ -60,6 +66,7 @@ export function useCategoryHierarchy(companyId?: string) {
             is_visible
           )
         `)
+        .eq('tenant_id', tenantId)
         .order('name')
 
       if (categoriesError) {
@@ -237,7 +244,7 @@ export function useCategoryHierarchy(companyId?: string) {
       // Sort main categories by product count (descending)
       const sortedMainCategories = new Map(
         Array.from(mainCategories.entries())
-          .filter(([_, data]) => data.productCount > 0) // Only show categories with products
+          .filter(([, data]) => data.productCount > 0) // Only show categories with products
           .sort((a, b) => b[1].productCount - a[1].productCount)
       )
 
@@ -245,7 +252,7 @@ export function useCategoryHierarchy(companyId?: string) {
       sortedMainCategories.forEach((mainCat) => {
         const sortedSubs = new Map(
           Array.from(mainCat.subcategories.entries())
-            .filter(([_, data]) => data.productCount > 0) // Only show subcategories with products
+            .filter(([, data]) => data.productCount > 0) // Only show subcategories with products
             .sort((a, b) => b[1].productCount - a[1].productCount)
         )
         mainCat.subcategories = sortedSubs
@@ -259,5 +266,6 @@ export function useCategoryHierarchy(companyId?: string) {
       return { mainCategories: sortedMainCategories }
     },
     staleTime: 0, // Always refetch on mount to ensure real-time sync with category renames
+    enabled: !!tenantId,
   })
 }

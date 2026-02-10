@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Package, ArrowRight } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 interface Category {
   name: string
@@ -18,11 +19,13 @@ interface CategoryGridProps {
 }
 
 // Convert category name to URL-safe slug
+// eslint-disable-next-line react-refresh/only-export-components
 export function categoryToSlug(name: string): string {
   return encodeURIComponent(name.toLowerCase().replace(/\s+/g, '-'))
 }
 
 // Convert slug back to category name (approximate - for display)
+// eslint-disable-next-line react-refresh/only-export-components
 export function slugToCategory(slug: string): string {
   return decodeURIComponent(slug).replace(/-/g, ' ')
 }
@@ -30,9 +33,11 @@ export function slugToCategory(slug: string): string {
 export function CategoryGrid({
   categories,
   isLoading = false,
-  basePath = '/dashboard/categories',
+  basePath,
 }: CategoryGridProps) {
   const { t } = useTranslation()
+  const { withBase } = useTenantPath()
+  const resolvedBasePath = basePath || withBase('/dashboard/categories')
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
@@ -64,7 +69,7 @@ export function CategoryGrid({
       {categories.map((category) => (
         <Link
           key={category.name}
-          to={`${basePath}/${categoryToSlug(category.name)}`}
+          to={`${resolvedBasePath}/${categoryToSlug(category.name)}`}
           className="group flex flex-col"
         >
           {/* Image container */}

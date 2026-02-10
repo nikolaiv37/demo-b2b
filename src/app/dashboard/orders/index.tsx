@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { OrderDetailsSheet } from '@/components/OrderDetailsSheet'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { AdminOrdersView } from './AdminOrdersView'
 import {
   Eye,
@@ -81,6 +82,22 @@ interface Order {
   status: OrderStatus
   created_at: string
   updated_at: string
+}
+
+interface QuoteRow {
+  id?: number | string | null
+  order_number?: number | string | null
+  user_id?: string | null
+  company_name?: string | null
+  email?: string | null
+  phone?: string | null
+  notes?: string | null
+  items?: unknown
+  total?: number | string | null
+  shipping_method?: string | null
+  status?: string | null
+  created_at?: string
+  updated_at?: string | null
 }
 
 // Dummy orders for demonstration (remove when you have real data)
@@ -306,16 +323,23 @@ function isThisMonth(dateString: string): boolean {
 }
 
 export function OrdersPage() {
-  const { t } = useTranslation()
-  const { user, isAdmin, company, profile } = useAuth()
-  const { toast } = useToast()
-  
-  // Admin sees completely different view
+  const { isAdmin } = useAuth()
+
   if (isAdmin) {
     return <AdminOrdersView />
   }
 
-  // Company users see the original orders view
+  return <CompanyOrdersView />
+}
+
+function CompanyOrdersView() {
+  const { t } = useTranslation()
+  const { user, company, profile } = useAuth()
+  const { toast } = useToast()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
+  const { withBase } = useTenantPath()
+
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -323,7 +347,6 @@ export function OrdersPage() {
   const [shippingFilter, setShippingFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<string>('all')
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
-  const [quickFilter, setQuickFilter] = useState<string | null>(null)
   const [isGeneratingBulkPdfs, setIsGeneratingBulkPdfs] = useState(false)
 
   const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
@@ -334,13 +357,17 @@ export function OrdersPage() {
   const userId = user?.id || devUserId
 
   // Fetch real orders from quotes table (Eastern Europe B2B style: quotes are orders)
-  const { data: quotesData, isLoading } = useQuery({
-    queryKey: ['orders', userId, isDevMode || isDemoMode],
-    queryFn: async () => {
+  const { data: quotesData, isLoading } = useQuery<Order[]>({
+    queryKey: ['tenant', tenantId, 'orders', userId, isDevMode || isDemoMode],
+    queryFn: async (): Promise<Order[]> => {
+      if (!tenantId) {
+        return []
+      }
       // In dev/demo mode, show all orders. In production, filter by user_id
       let query = supabase
         .from('quotes')
-        .select('*')
+        .select('id, order_number, user_id, company_name, email, phone, notes, items, total, shipping_method, status, created_at, updated_at')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       // Only filter by user_id in production mode
@@ -356,7 +383,11 @@ export function OrdersPage() {
       }
 
       // Map quotes to orders format
-      return (data || []).map((quote: any) => {
+      const rows = (data as QuoteRow[] | null) ?? []
+
+      return rows.map((quote) => {
+        const rawStatus = typeof quote.status === 'string' ? quote.status : 'processing'
+
         // Map database status values to new UI status system
         const statusMap: Record<string, OrderStatus> = {
           new: 'processing',           // Processing
@@ -372,31 +403,49 @@ export function OrdersPage() {
         }
 
         // Default status if not in map
-        const mappedStatus = statusMap[quote.status] || 'processing'
+        const mappedStatus = statusMap[rawStatus] || 'processing'
+
+        const parsedId =
+          typeof quote.id === 'number' ? quote.id : parseInt(String(quote.id ?? ''), 10) || 0
+        const orderNumberRaw = quote.order_number ?? parsedId
+        const parsedOrderNumber =
+          typeof orderNumberRaw === 'number'
+            ? orderNumberRaw
+            : parseInt(String(orderNumberRaw ?? ''), 10) || parsedId
+
+        const shippingMethod =
+          quote.shipping_method === 'warehouse_pickup' ||
+          quote.shipping_method === 'transport_company' ||
+          quote.shipping_method === 'dropshipping' ||
+          quote.shipping_method === 'shop_delivery'
+            ? quote.shipping_method
+            : 'shop_delivery'
 
         return {
-          id: typeof quote.id === 'number' ? quote.id : parseInt(quote.id) || 0,
-          order_number: quote.order_number || (typeof quote.id === 'number' ? quote.id : parseInt(quote.id) || 0),
-          user_id: quote.user_id,
+          id: parsedId,
+          order_number: parsedOrderNumber,
+          user_id: quote.user_id || '',
           company_name: quote.company_name || 'Unknown Company',
           email: quote.email || '',
           phone: quote.phone || null,
           address: null, // Address not stored in quotes table yet
           notes: quote.notes || null,
-          items: Array.isArray(quote.items) ? quote.items : [],
-          total: parseFloat(quote.total) || 0,
-          shipping_method: quote.shipping_method || 'shop_delivery',
+          items: Array.isArray(quote.items) ? (quote.items as OrderItem[]) : [],
+          total: Number(quote.total ?? 0),
+          shipping_method: shippingMethod,
           status: mappedStatus,
-          created_at: quote.created_at,
-          updated_at: quote.updated_at || quote.created_at,
+          created_at: quote.created_at || '',
+          updated_at: quote.updated_at || quote.created_at || '',
         } as Order
       })
     },
-    enabled: !!userId,
+    enabled: !!userId && !!tenantId,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   })
 
   // Combine real orders with dummy data for demonstration (remove DUMMY_ORDERS later)
-  const orders = quotesData || []
+  const orders = useMemo(() => quotesData ?? [], [quotesData])
 
   // Auto-open order details if coming from order submission
   useEffect(() => {
@@ -413,10 +462,10 @@ export function OrdersPage() {
         setSelectedOrder(newOrder)
         setDetailsOpen(true)
         // Clean up URL
-        window.history.replaceState({}, '', '/dashboard/orders')
+        window.history.replaceState({}, '', withBase('/dashboard/orders'))
       }
     }
-  }, [orders])
+  }, [orders, withBase])
 
   // Filter and search orders
   const filteredOrders = useMemo(() => {
@@ -452,7 +501,7 @@ export function OrdersPage() {
     }
 
     return filtered
-  }, [orders, searchQuery, statusFilter, shippingFilter, dateFilter, quickFilter])
+  }, [orders, searchQuery, statusFilter, shippingFilter, dateFilter])
 
   // Status counts for filter badges (similar to returns/complaints page)
   const statusCounts = useMemo(
@@ -502,6 +551,9 @@ export function OrdersPage() {
       setIsGeneratingBulkPdfs(true)
 
       try {
+        if (!tenantId) {
+          throw new Error('Missing tenant context')
+        }
         // Helper: parse city from address if not stored separately
         const parseCityFromAddress = (address: string | undefined | null): string | undefined => {
           if (!address) return undefined
@@ -517,6 +569,7 @@ export function OrdersPage() {
           .from('profiles')
           .select('company_id')
           .eq('role', 'admin')
+          .eq('tenant_id', tenantId)
           .single()
 
         let adminCompany: Company | null = null
@@ -525,6 +578,7 @@ export function OrdersPage() {
             .from('companies')
             .select('*')
             .eq('id', adminProfile.company_id)
+            .eq('tenant_id', tenantId)
             .single()
 
           if (adminCompanyData) {
@@ -537,6 +591,7 @@ export function OrdersPage() {
           .from('companies')
           .select('*')
           .eq('id', company.id)
+          .eq('tenant_id', tenantId)
           .single()
 
         const buyerCompany = (freshCompany as Company) || company
@@ -876,14 +931,13 @@ export function OrdersPage() {
                 <TableCell colSpan={9} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-muted-foreground">{t('orders.noOrdersFound')}</p>
-                    {searchQuery || statusFilter !== 'all' || quickFilter ? (
+                    {searchQuery || statusFilter !== 'all' ? (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
                           setSearchQuery('')
                           setStatusFilter('all')
-                          setQuickFilter(null)
                         }}
                       >
                         {t('orders.clearFilters')}

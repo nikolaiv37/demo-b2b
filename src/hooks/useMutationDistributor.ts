@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Distributor } from '@/types'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 interface UpdateDistributorData {
   id: string
@@ -15,16 +16,22 @@ interface UpdateDistributorData {
  */
 export function useMutationUpdateDistributor() {
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useMutation({
     mutationFn: async (data: UpdateDistributorData) => {
       const { id, ...updates } = data
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
 
       const { data: distributor, error } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', id)
         .eq('role', 'company') // Ensure we only update company-role profiles
+        .eq('tenant_id', tenantId)
         .select()
         .single()
 
@@ -33,11 +40,11 @@ export function useMutationUpdateDistributor() {
     },
     onSuccess: (data) => {
       // Invalidate the distributors list
-      queryClient.invalidateQueries({ queryKey: ['distributors'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'distributors'] })
       // Also invalidate the specific distributor
-      queryClient.invalidateQueries({ queryKey: ['distributors', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'distributors', data.id] })
       // Invalidate profiles queries if any component uses them
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'profiles'] })
     },
   })
 }
@@ -49,22 +56,28 @@ export function useMutationUpdateDistributor() {
  */
 export function useMutationDeleteDistributor() {
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useMutation({
     mutationFn: async (distributorId: string) => {
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
       const { error } = await supabase
         .from('profiles')
         .delete()
         .eq('id', distributorId)
         .eq('role', 'company') // Safety check: only delete company-role profiles
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
       return distributorId
     },
     onSuccess: () => {
       // Invalidate the distributors list
-      queryClient.invalidateQueries({ queryKey: ['distributors'] })
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'distributors'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'profiles'] })
     },
   })
 }
@@ -84,9 +97,12 @@ interface CreateDistributorData {
  */
 export function useMutationCreateDistributor() {
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useMutation({
     mutationFn: async (_data: CreateDistributorData) => {
+      void _data
       // Note: In a full implementation, you would:
       // 1. Create the auth user via Supabase Admin API
       // 2. Send an invite email
@@ -96,12 +112,9 @@ export function useMutationCreateDistributor() {
       throw new Error('Creating new distributors requires admin API integration. Please have the user sign up first.')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['distributors'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'distributors'] })
     },
   })
 }
-
-
-
 
 

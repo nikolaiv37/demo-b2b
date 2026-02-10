@@ -53,14 +53,15 @@ export function SignupPage() {
       })
       
       // The useAuth hook will automatically create the profile with role = 'company'
-      // Wait a moment for the auth state to update, then redirect
+      // Wait a moment for the auth state to update, then redirect to onboarding
       setTimeout(() => {
-        navigate('/dashboard/')
+        navigate('/auth/onboarding')
       }, 500)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : t('auth.signupFailedDescription')
       toast({
         title: t('auth.signupFailed'),
-        description: error.message || t('auth.signupFailedDescription'),
+        description: errorMessage || t('auth.signupFailedDescription'),
         variant: 'destructive',
       })
     } finally {

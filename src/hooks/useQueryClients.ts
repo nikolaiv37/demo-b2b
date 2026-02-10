@@ -1,16 +1,29 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Client } from '@/types'
+import { useTenant } from '@/lib/tenant/TenantProvider'
+
+interface QuoteCompanyRow {
+  user_id?: string | null
+  company_name?: string | null
+  email?: string | null
+  status?: string | null
+  total?: string | number | null
+}
 
 export function useQueryClients() {
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   return useQuery({
-    queryKey: ['clients'],
+    queryKey: ['tenant', tenantId, 'clients'],
     queryFn: async () => {
+      if (!tenantId) return []
       // Base: all company-role profiles (B2B clients)
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .eq('role', 'company')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (profilesError) throw profilesError
@@ -26,6 +39,7 @@ export function useQueryClients() {
         .from('quotes')
         .select('user_id, company_name, email, created_at, status, total')
         .not('user_id', 'is', null)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (quotesError) {
@@ -44,11 +58,11 @@ export function useQueryClients() {
         }
       >()
 
-      ;(quoteCompanies || []).forEach((quote: any) => {
-        const userId = quote.user_id as string | null
+      ;((quoteCompanies as QuoteCompanyRow[] | null) || []).forEach((quote) => {
+        const userId = quote.user_id || null
         if (!userId) return
 
-        const isUnpaid = ['new', 'pending'].includes(quote.status)
+        const isUnpaid = ['new', 'pending'].includes(quote.status || '')
         const total = Number(quote.total || 0)
 
         const existing = companyByUserId.get(userId)
@@ -85,25 +99,27 @@ export function useQueryClients() {
       return enriched
     },
     staleTime: 30 * 1000,
+    enabled: !!tenantId,
   })
 }
 
 export function useQueryClient(clientId: string) {
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   return useQuery({
-    queryKey: ['clients', clientId],
+    queryKey: ['tenant', tenantId, 'clients', clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', clientId)
         .eq('role', 'company')
+        .eq('tenant_id', tenantId)
         .single()
 
       if (error) throw error
       return data as Client
     },
-    enabled: !!clientId,
+    enabled: !!clientId && !!tenantId,
   })
 }
-
-

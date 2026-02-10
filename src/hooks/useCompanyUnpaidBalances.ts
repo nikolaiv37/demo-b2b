@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 export interface CompanyUnpaidBalance {
   /** Company name or identifier */
@@ -39,15 +40,19 @@ export interface CompanyUnpaidBalancesData {
  */
 export function useCompanyUnpaidBalances(limit: number = 10) {
   const { user, isAdmin } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useQuery<CompanyUnpaidBalancesData | null>({
-    queryKey: ['company-unpaid-balances', limit],
+    queryKey: ['tenant', tenantId, 'company-unpaid-balances', limit],
     queryFn: async () => {
+      if (!tenantId) return null
       // Fetch unpaid orders: Processing ('new') + Awaiting Payment ('pending')
       const { data: unpaidOrders, error } = await supabase
         .from('quotes')
         .select('id, total, status, created_at, user_id, company_name, email')
         .in('status', ['new', 'pending'])
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -117,7 +122,7 @@ export function useCompanyUnpaidBalances(limit: number = 10) {
       }
     },
     // Only fetch for admin users
-    enabled: isAdmin && !!user?.id,
+    enabled: isAdmin && !!user?.id && !!tenantId,
     // Refetch every 30 seconds to stay in sync
     refetchInterval: 30000,
     staleTime: 10000,
@@ -130,15 +135,19 @@ export function useCompanyUnpaidBalances(limit: number = 10) {
  */
 export function useAllCompanyUnpaidBalances() {
   const { user, isAdmin } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useQuery<CompanyUnpaidBalancesData | null>({
-    queryKey: ['all-company-unpaid-balances'],
+    queryKey: ['tenant', tenantId, 'all-company-unpaid-balances'],
     queryFn: async () => {
+      if (!tenantId) return null
       // Fetch unpaid orders: Processing ('new') + Awaiting Payment ('pending')
       const { data: unpaidOrders, error } = await supabase
         .from('quotes')
         .select('id, total, status, created_at, user_id, company_name, email')
         .in('status', ['new', 'pending'])
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -203,9 +212,8 @@ export function useAllCompanyUnpaidBalances() {
         totalOrdersCount,
       }
     },
-    enabled: isAdmin && !!user?.id,
+    enabled: isAdmin && !!user?.id && !!tenantId,
     refetchInterval: 30000,
     staleTime: 10000,
   })
 }
-

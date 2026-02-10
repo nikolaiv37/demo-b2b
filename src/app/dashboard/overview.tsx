@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { OrderStatusBadge } from '@/components/OrderStatusBadge'
 import { formatCurrency, calculatePercentageChange } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { useUnpaidBalance } from '@/hooks/useUnpaidBalance'
 import { useCompanyUnpaidBalances } from '@/hooks/useCompanyUnpaidBalances'
 import {
@@ -24,6 +25,7 @@ import {
   Building2,
   AlertTriangle,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { useEffect, useMemo } from 'react'
 import {
@@ -79,6 +81,40 @@ interface DashboardStats {
   }
 }
 
+interface QuoteRow {
+  id?: string | number | null
+  order_number?: string | number | null
+  user_id?: string | null
+  company_name?: string | null
+  email?: string | null
+  total?: string | number | null
+  status?: string | null
+  created_at?: string
+  items?: unknown
+}
+
+interface ProductRow {
+  id?: string | number | null
+  sku?: string | null
+  name?: string | null
+  quantity?: string | number | null
+  category?: string | null
+  main_image?: string | null
+  images?: string[] | null
+}
+
+interface OrderItemRow {
+  product_id?: string | number | null
+  sku?: string | null
+  total?: string | number | null
+}
+
+interface ProductCategoryRow {
+  id?: string | number | null
+  category?: string | null
+  sku?: string | null
+}
+
 const COLORS = [
   'hsl(var(--primary))',
   '#8b5cf6',
@@ -91,7 +127,10 @@ const COLORS = [
 export function DashboardOverview() {
   const { t } = useTranslation()
   const { user, isAdmin } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const navigate = useNavigate()
+  const { withBase } = useTenantPath()
   
   // Fetch unpaid balance for non-admin users
   const { data: unpaidData, isLoading: unpaidLoading } = useUnpaidBalance()
@@ -104,8 +143,9 @@ export function DashboardOverview() {
   }, [])
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard-stats', user?.id, isAdmin],
+    queryKey: ['tenant', tenantId, 'dashboard-stats', user?.id, isAdmin],
     queryFn: async () => {
+      if (!tenantId) return null
       // For admin, we can proceed without user.id (they see all data)
       // For company users, we need at least user.id (RLS will handle filtering)
       if (!isAdmin && !user?.id) return null
@@ -119,33 +159,41 @@ export function DashboardOverview() {
 
       // Fetch all quotes (treating them as orders since orders table doesn't exist)
       // Status workflow: 'new' (Processing), 'pending' (Awaiting Payment), 'shipped', 'approved' (Completed & Sent)
-      const { data: allOrders } = await supabase
+      const { data: allOrdersRaw } = await supabase
         .from('quotes')
         .select('total, created_at, user_id, items, status, id, order_number, company_name, email')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
+        .eq('tenant_id', tenantId)
+      const allOrders = (allOrdersRaw as QuoteRow[] | null) ?? []
 
       // Fetch this month's quotes
-      const { data: thisMonthOrders } = await supabase
+      const { data: thisMonthOrdersRaw } = await supabase
         .from('quotes')
         .select('total, created_at, items, status')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
         .gte('created_at', startOfMonth.toISOString())
+        .eq('tenant_id', tenantId)
+      const thisMonthOrders = (thisMonthOrdersRaw as QuoteRow[] | null) ?? []
 
       // Fetch last month's quotes
-      const { data: lastMonthOrders } = await supabase
+      const { data: lastMonthOrdersRaw } = await supabase
         .from('quotes')
         .select('total, created_at, status')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
         .gte('created_at', startOfLastMonth.toISOString())
         .lte('created_at', endOfLastMonth.toISOString())
+        .eq('tenant_id', tenantId)
+      const lastMonthOrders = (lastMonthOrdersRaw as QuoteRow[] | null) ?? []
 
       // Fetch recent orders from quotes table (last 5, newest first)
       // Admin sees all orders, company users see only their own (RLS handles this)
-      const { data: recentOrdersData, error: recentOrdersError } = await supabase
+      const { data: recentOrdersDataRaw, error: recentOrdersError } = await supabase
         .from('quotes')
         .select('id, user_id, company_name, email, total, status, created_at, order_number')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(5)
+      const recentOrdersData = (recentOrdersDataRaw as QuoteRow[] | null) ?? []
       
       if (recentOrdersError) {
         console.error('Error fetching recent orders:', recentOrdersError)
@@ -159,17 +207,20 @@ export function DashboardOverview() {
       const lowStockCountQuery = supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .gt('quantity', 0)
         .lte('quantity', 10)
       
       const outOfStockCountQuery = supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('quantity', 0)
       
       const inStockCountQuery = supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .gt('quantity', 10)
       
       // Execute count queries in parallel
@@ -186,47 +237,49 @@ export function DashboardOverview() {
       
       // Also fetch products for the low stock list (limit to reasonable number for display)
       // Use the same query structure as products page
-      const { data: lowStockProductsData, error: productsError } = await supabase
+      const { data: lowStockProductsDataRaw, error: productsError } = await supabase
         .from('products')
         .select('id, sku, name, quantity, category, weboffer_price, main_image, images')
         .gt('quantity', 0)
         .lte('quantity', 10)
+        .eq('tenant_id', tenantId)
         .order('quantity', { ascending: true })
         .limit(10) // Only need a few for display
+      const lowStockProductsData = (lowStockProductsDataRaw as ProductRow[] | null) ?? []
       
       if (productsError) {
         console.error('Error fetching low stock products:', productsError)
       }
       
       // Normalize quantity field for display products
-      const filteredProducts = (lowStockProductsData || []).map((p: any) => ({
+      const filteredProducts = (lowStockProductsData || []).map((p) => ({
         ...p,
-        quantity: p.quantity ?? 0,
+        quantity: Number(p.quantity ?? 0),
       }))
 
       // Calculate stats
       // Revenue includes all orders (Processing, Awaiting Payment, Shipped, Completed)
       // 'approved' = Completed & Sent (paid), others are in progress
-      const approvedOrders = allOrders?.filter((o: any) => 
+      const approvedOrders = allOrders.filter((o) => 
         o.status === 'approved' || o.status === 'shipped' || o.status === 'new' || o.status === 'pending'
-      ) || []
+      )
       const totalRevenue = approvedOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
       // For revenue trend, count completed orders ('approved' = Completed & Sent)
-      const thisMonthCompleted = thisMonthOrders?.filter((o: any) => o.status === 'approved') || []
+      const thisMonthCompleted = thisMonthOrders.filter((o) => o.status === 'approved')
       const thisMonthRevenue = thisMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
-      const lastMonthCompleted = lastMonthOrders?.filter((o: any) => o.status === 'approved') || []
+      const lastMonthCompleted = lastMonthOrders.filter((o) => o.status === 'approved')
       const lastMonthRevenue = lastMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
       // For order counts, show all orders
-      const totalOrders = allOrders?.length || 0
-      const thisMonthOrdersCount = thisMonthOrders?.length || 0
-      const lastMonthOrdersCount = lastMonthOrders?.length || 0
+      const totalOrders = allOrders.length
+      const thisMonthOrdersCount = thisMonthOrders.length
+      const lastMonthOrdersCount = lastMonthOrders.length
 
       // Active customers (unique user_ids or emails from quotes)
       const uniqueCustomers = new Set(
-        allOrders?.map((o: any) => o.user_id || o.email).filter(Boolean) || []
+        allOrders.map((o) => o.user_id || o.email).filter(Boolean)
       )
       const activeCustomers = uniqueCustomers.size
 
@@ -246,8 +299,8 @@ export function DashboardOverview() {
 
       // Revenue by day (this month) - only count completed orders
       const revenueByDayMap = new Map<string, number>()
-      thisMonthCompleted?.forEach((order) => {
-        const date = new Date(order.created_at).toISOString().split('T')[0]
+      thisMonthCompleted.forEach((order) => {
+        const date = new Date(order.created_at ?? 0).toISOString().split('T')[0]
         revenueByDayMap.set(date, (revenueByDayMap.get(date) || 0) + Number(order.total || 0))
       })
       const revenueByDay = Array.from(revenueByDayMap.entries())
@@ -260,8 +313,8 @@ export function DashboardOverview() {
 
       // Orders by day (last 30 days) - count all quotes
       const ordersByDayMap = new Map<string, number>()
-      allOrders?.forEach((order: any) => {
-        const orderDate = new Date(order.created_at)
+      allOrders.forEach((order) => {
+        const orderDate = new Date(order.created_at ?? 0)
         if (orderDate >= thirtyDaysAgo) {
           const date = orderDate.toISOString().split('T')[0]
           ordersByDayMap.set(date, (ordersByDayMap.get(date) || 0) + 1)
@@ -285,20 +338,46 @@ export function DashboardOverview() {
       
       // Use allOrders instead of approvedOrders for category calculation
       // This includes 'new', 'pending', and 'approved' statuses
-      allOrders?.forEach((order: any) => {
-        // Handle items - could be array or JSON string
-        let items: Array<{ product_id?: string; sku?: string; total: number }> = []
-        if (Array.isArray(order.items)) {
-          items = order.items
-        } else if (typeof order.items === 'string') {
+      const normalizeItems = (
+        rawItems: unknown
+      ): Array<{ product_id: string; sku?: string; total: number }> => {
+        const normalized: Array<{ product_id: string; sku?: string; total: number }> = []
+
+        const pushItem = (item: OrderItemRow) => {
+          const productId = item.product_id ?? null
+          if (productId === null || productId === undefined) return
+          const productIdStr = String(productId)
+          if (!productIdStr) return
+          normalized.push({
+            product_id: productIdStr,
+            sku: item.sku || undefined,
+            total: Number(item.total ?? 0),
+          })
+        }
+
+        if (Array.isArray(rawItems)) {
+          rawItems.forEach((item) => pushItem(item as OrderItemRow))
+          return normalized
+        }
+
+        if (typeof rawItems === 'string') {
           try {
-            items = JSON.parse(order.items)
+            const parsed = JSON.parse(rawItems)
+            if (Array.isArray(parsed)) {
+              parsed.forEach((item) => pushItem(item as OrderItemRow))
+            }
           } catch (e) {
-            console.warn('Failed to parse items JSON:', e, order.items)
+            console.warn('Failed to parse items JSON:', e, rawItems)
           }
         }
+
+        return normalized
+      }
+
+      allOrders.forEach((order) => {
+        const items = normalizeItems(order.items)
         
-        items?.forEach((item) => {
+        items.forEach((item) => {
           const productId = item.product_id
           const sku = item.sku
           if (productId) {
@@ -336,19 +415,18 @@ export function DashboardOverview() {
         if (productIdsInt.length > 0) {
           // Try multiple query strategies to find products
           // Strategy 1: Query by integer IDs
-          let productsForCategories: any[] | null = null
-          let productsForCategoriesError: any = null
+          let productsForCategories: ProductCategoryRow[] = []
           
           const { data, error } = await supabase
             .from('products')
             .select('id, category')
             .in('id', productIdsInt)
+            .eq('tenant_id', tenantId)
           
-          productsForCategories = data
-          productsForCategoriesError = error
+          productsForCategories = (data as ProductCategoryRow[] | null) ?? []
           
-          if (productsForCategoriesError) {
-            console.error('Error fetching products for categories (by ID):', productsForCategoriesError)
+          if (error) {
+            console.error('Error fetching products for categories (by ID):', error)
           }
           
           // Strategy 2: If no products found, try querying as strings (in case Supabase auto-converts)
@@ -357,9 +435,10 @@ export function DashboardOverview() {
               .from('products')
               .select('id, category')
               .in('id', productIdsArray) // Try with original string array
+              .eq('tenant_id', tenantId)
             
             if (!errorStr && dataStr && dataStr.length > 0) {
-              productsForCategories = dataStr
+              productsForCategories = dataStr as ProductCategoryRow[]
             }
           }
           
@@ -370,13 +449,14 @@ export function DashboardOverview() {
               .from('products')
               .select('id, category, sku')
               .in('sku', skusArray)
+              .eq('tenant_id', tenantId)
             
             if (!errorBySku && productsBySku && productsBySku.length > 0) {
-              productsForCategories = productsBySku
+              productsForCategories = productsBySku as ProductCategoryRow[]
               
               // Create a map of SKU -> category for lookup
               const skuToCategoryMap = new Map<string, string>()
-              productsBySku.forEach((p: any) => {
+              productsBySku.forEach((p) => {
                 skuToCategoryMap.set(p.sku, p.category || 'Uncategorized')
               })
               
@@ -393,7 +473,7 @@ export function DashboardOverview() {
           }
           
           if (productsForCategories && productsForCategories.length > 0) {
-            productsForCategories.forEach((p: any) => {
+            productsForCategories.forEach((p) => {
               // Store both string and integer versions for lookup
               const productIdStr = String(p.id)
               const category = p.category || 'Uncategorized'
@@ -434,8 +514,8 @@ export function DashboardOverview() {
       }
 
       // Recent orders (from quotes table)
-      const recentOrders = (recentOrdersData || []).map((order: any) => {
-        let orderNumber: number | string | undefined = order.order_number
+      const recentOrders = (recentOrdersData || []).map((order) => {
+        let orderNumber: number | string | undefined = order.order_number ?? undefined
         
         // Fallback to using first 8 chars of order id if no order_number
         if (!orderNumber) {
@@ -452,8 +532,8 @@ export function DashboardOverview() {
           customer_name: order.company_name || t('overview.unknown'),
           customer_email: order.email || '',
           total: Number(order.total || 0),
-          status: order.status,
-          created_at: order.created_at,
+          status: order.status || '',
+          created_at: order.created_at || '',
         }
       })
 
@@ -486,7 +566,7 @@ export function DashboardOverview() {
         stockStatusCounts,
       } as DashboardStats
     },
-    enabled: isAdmin || !!user?.id,
+    enabled: !!tenantId && (isAdmin || !!user?.id),
   })
 
   const revenueChange = useMemo(() => {
@@ -522,7 +602,7 @@ export function DashboardOverview() {
     title: string
     value: string
     subtitle?: string
-    icon: any
+    icon: LucideIcon
     color: string
     change?: number
     sparkline?: number[]
@@ -646,7 +726,7 @@ export function DashboardOverview() {
                 </p>
                 {unpaidData && unpaidData.unpaidOrdersCount > 0 && (
                   <button
-                    onClick={() => navigate('/dashboard/orders?filter=pending')}
+                    onClick={() => navigate(`${withBase('/dashboard/orders')}?filter=pending`)}
                     className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
                   >
                     {t('overview.viewPendingOrders')}
@@ -694,7 +774,7 @@ export function DashboardOverview() {
               </div>
             </div>
             <button
-              onClick={() => navigate('/dashboard/unpaid-balances')}
+              onClick={() => navigate(withBase('/dashboard/unpaid-balances'))}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white/5 dark:hover:bg-black/5 border border-white/10 dark:border-white/5"
             >
               {t('overview.viewAll')}
@@ -729,7 +809,11 @@ export function DashboardOverview() {
                       return (
                         <tr
                           key={company.email || company.companyName || index}
-                          onClick={() => navigate(`/dashboard/orders?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`)}
+                          onClick={() =>
+                            navigate(
+                              `${withBase('/dashboard/orders')}?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`
+                            )
+                          }
                           className="hover:bg-white/5 dark:hover:bg-black/5 cursor-pointer transition-colors"
                         >
                           <td className="py-3.5">
@@ -781,7 +865,11 @@ export function DashboardOverview() {
                   return (
                     <div
                       key={company.email || company.companyName || index}
-                      onClick={() => navigate(`/dashboard/orders?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`)}
+                      onClick={() =>
+                        navigate(
+                          `${withBase('/dashboard/orders')}?company=${encodeURIComponent(company.companyName || company.email)}&filter=pending`
+                        )
+                      }
                       className="p-4 rounded-lg bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-200 border border-white/10 dark:border-white/5 cursor-pointer"
                     >
                       <div className="flex items-start justify-between mb-3">
@@ -1147,7 +1235,7 @@ export function DashboardOverview() {
           <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/10 dark:border-white/5">
             <h2 className="text-xl font-semibold">{t('overview.recentOrders')}</h2>
             <button
-              onClick={() => navigate('/dashboard/orders')}
+              onClick={() => navigate(withBase('/dashboard/orders'))}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/5 dark:hover:bg-black/5"
             >
               {t('overview.viewAll')}
@@ -1185,7 +1273,7 @@ export function DashboardOverview() {
                       </p>
                     </div>
                     <div className="flex-shrink-0">
-                      <OrderStatusBadge status={order.status as any} />
+                      <OrderStatusBadge status={order.status} />
                     </div>
                   </div>
                   <div className="text-right ml-4 flex-shrink-0">
@@ -1303,7 +1391,7 @@ export function DashboardOverview() {
               </div>
               <div className="flex justify-end pt-3 border-t border-white/10 dark:border-white/5">
                 <button
-                  onClick={() => navigate('/dashboard/products?filter=low-stock')}
+                  onClick={() => navigate(`${withBase('/dashboard/products')}?filter=low-stock`)}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/5 dark:hover:bg-black/5"
                 >
                   {t('overview.viewAllProducts')}

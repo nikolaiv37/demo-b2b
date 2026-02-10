@@ -65,15 +65,18 @@ function parseCategory(categoryText: string | null | undefined): {
  * 
  * @param products - Array of products with category text
  * @param companyId - The company ID to create categories under
+ * @param tenantId - The tenant ID used for scoping categories
  * @returns CategorySyncResult with the mapping and stats
  */
 export async function syncCategoriesFromImport(
   products: ProductWithCategory[],
-  companyId: string
+  companyId: string,
+  tenantId: string
 ): Promise<CategorySyncResult> {
   console.log('[CategorySync] Starting non-destructive category sync', {
     productCount: products.length,
     companyId,
+    tenantId,
   })
 
   const result: CategorySyncResult = {
@@ -106,6 +109,7 @@ export async function syncCategoriesFromImport(
     const { data: existingCategories, error: fetchError } = await supabase
       .from('categories')
       .select('id, name, slug, parent_id')
+      .eq('tenant_id', tenantId)
 
     if (fetchError) {
       result.errors.push(`Failed to fetch existing categories: ${fetchError.message}`)
@@ -159,6 +163,7 @@ export async function syncCategoriesFromImport(
           .from('categories')
           .insert({
             company_id: companyId,
+            tenant_id: tenantId,
             name: mainCategory,
             slug: newSlug,
             parent_id: null,
@@ -175,6 +180,7 @@ export async function syncCategoriesFromImport(
               .select('id, name, slug')
               .eq('name', mainCategory)
               .is('parent_id', null)
+              .eq('tenant_id', tenantId)
               .single()
 
             if (existingCat) {
@@ -217,6 +223,7 @@ export async function syncCategoriesFromImport(
             .from('categories')
             .insert({
               company_id: companyId,
+              tenant_id: tenantId,
               name: subcategory,
               slug: newSlug,
               parent_id: mainCat.id,
@@ -232,6 +239,7 @@ export async function syncCategoriesFromImport(
                 .select('id, name, slug')
                 .eq('name', subcategory)
                 .eq('parent_id', mainCat.id)
+                .eq('tenant_id', tenantId)
                 .single()
 
               if (existingCat) {
@@ -291,7 +299,8 @@ export async function syncCategoriesFromImport(
  */
 export async function linkProductsToCategories(
   products: ProductWithCategory[],
-  categoryMap: Map<string, string>
+  categoryMap: Map<string, string>,
+  tenantId: string
 ): Promise<{ updated: number; errors: string[] }> {
   console.log('[CategorySync] Linking products to categories', {
     productCount: products.length,
@@ -328,6 +337,7 @@ export async function linkProductsToCategories(
         .from('products')
         .update({ category_id: categoryId })
         .in('sku', chunk)
+        .eq('tenant_id', tenantId)
 
       if (error) {
         errors.push(`Failed to link ${chunk.length} products to category ${categoryId}: ${error.message}`)
@@ -348,17 +358,18 @@ export async function linkProductsToCategories(
  */
 export async function syncAndLinkCategories(
   products: ProductWithCategory[],
-  companyId: string
+  companyId: string,
+  tenantId: string
 ): Promise<CategorySyncResult & { productsLinked: number }> {
   // Step 1: Sync categories
-  const syncResult = await syncCategoriesFromImport(products, companyId)
+  const syncResult = await syncCategoriesFromImport(products, companyId, tenantId)
 
   if (!syncResult.success || syncResult.categoryMap.size === 0) {
     return { ...syncResult, productsLinked: 0 }
   }
 
   // Step 2: Link products to categories
-  const linkResult = await linkProductsToCategories(products, syncResult.categoryMap)
+  const linkResult = await linkProductsToCategories(products, syncResult.categoryMap, tenantId)
 
   syncResult.productsLinked = linkResult.updated
   syncResult.errors.push(...linkResult.errors)
@@ -379,13 +390,14 @@ export async function syncAndLinkCategories(
  */
 export async function prepareProductsWithCategoryId(
   products: ProductWithCategory[],
-  companyId: string
+  companyId: string,
+  tenantId: string
 ): Promise<{
   products: Array<ProductWithCategory & { category_id?: string }>
   syncResult: CategorySyncResult
 }> {
   // First sync categories to get the mapping
-  const syncResult = await syncCategoriesFromImport(products, companyId)
+  const syncResult = await syncCategoriesFromImport(products, companyId, tenantId)
 
   // Add category_id to each product based on its category text
   const productsWithCategoryId = products.map(product => {
@@ -406,4 +418,3 @@ export async function prepareProductsWithCategoryId(
     syncResult,
   }
 }
-

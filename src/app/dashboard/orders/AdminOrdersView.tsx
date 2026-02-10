@@ -33,6 +33,7 @@ import { Eye, Search, Building2, X } from 'lucide-react'
 import { SHIPPING_METHOD_CONFIG } from '@/types'
 import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 import { formatPrice, formatDateTime, cn } from '@/lib/utils'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 // Proforma PDFs are generated only from company user accounts (see OrdersPage/OrderDetailsSheet)
 
 interface OrderItem {
@@ -61,6 +62,23 @@ interface Order {
   status: 'processing' | 'awaiting_payment' | 'shipped' | 'completed' | 'rejected'
   created_at: string
   updated_at: string
+}
+
+interface QuoteRow {
+  id?: number | string | null
+  order_number?: number | string | null
+  user_id?: string | null
+  company_name?: string | null
+  email?: string | null
+  phone?: string | null
+  notes?: string | null
+  internal_notes?: string | null
+  items?: unknown
+  total?: number | string | null
+  shipping_method?: string | null
+  status?: string | null
+  created_at?: string
+  updated_at?: string | null
 }
 
 // Map old database status values to new UI statuses
@@ -150,6 +168,8 @@ export function AdminOrdersView() {
   const [dateFilter, setDateFilter] = useState<string>('all')
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   // Handle URL query parameters for filtering
   useEffect(() => {
@@ -169,11 +189,13 @@ export function AdminOrdersView() {
 
   // Fetch all orders (admin sees all via RLS)
   const { data: orders, isLoading } = useQuery({
-    queryKey: ['admin-orders'],
+    queryKey: ['tenant', tenantId, 'admin-orders'],
     queryFn: async () => {
+      if (!tenantId) return []
       const { data, error } = await supabase
         .from('quotes')
-        .select('*')
+        .select('id, order_number, user_id, company_name, email, phone, notes, items, total, shipping_method, status, created_at, updated_at, internal_notes')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -181,27 +203,51 @@ export function AdminOrdersView() {
         throw error
       }
 
-      // Fetch company names for each order
-      const ordersWithDetails = await Promise.all(
-        (data || []).map(async (quote: any) => {
-          let companyName = quote.company_name || 'Unknown Company'
+      const rows = (data as QuoteRow[] | null) || []
+      const missingCompanyNameUserIds = Array.from(
+        new Set(
+          rows
+            .filter((quote) => !quote.company_name && quote.user_id)
+            .map((quote) => quote.user_id)
+            .filter((id): id is string => !!id)
+        )
+      )
+      const companyNameByUserId = new Map<string, string>()
 
-          // Try to get company name from profile if not in quote
-          if (!companyName && quote.user_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('company_name')
-              .eq('id', quote.user_id)
-              .single()
+      if (missingCompanyNameUserIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, company_name')
+          .in('id', missingCompanyNameUserIds)
+          .eq('tenant_id', tenantId)
 
-            if (profile?.company_name) {
-              companyName = profile.company_name
+        if (profilesError) {
+          console.warn('Error fetching profiles for orders:', profilesError)
+        } else {
+          for (const profile of profiles || []) {
+            if (profile?.id && profile?.company_name) {
+              companyNameByUserId.set(profile.id, profile.company_name)
             }
           }
+        }
+      }
+
+      const ordersWithDetails = rows.map((quote) => {
+        const fallbackCompanyName =
+          (quote.user_id ? companyNameByUserId.get(quote.user_id) : undefined) || 'Unknown Company'
+        const companyName = quote.company_name || fallbackCompanyName
+
+          const parsedId =
+            typeof quote.id === 'number' ? quote.id : parseInt(String(quote.id ?? ''), 10) || 0
+          const orderNumberRaw = quote.order_number ?? parsedId
+          const parsedOrderNumber =
+            typeof orderNumberRaw === 'number'
+              ? orderNumberRaw
+              : parseInt(String(orderNumberRaw ?? ''), 10) || parsedId
 
           return {
-            id: typeof quote.id === 'number' ? quote.id : parseInt(quote.id) || 0,
-            order_number: quote.order_number || (typeof quote.id === 'number' ? quote.id : parseInt(quote.id) || 0),
+            id: parsedId,
+            order_number: parsedOrderNumber,
             user_id: quote.user_id,
             company_name: companyName,
             email: quote.email || '',
@@ -209,18 +255,26 @@ export function AdminOrdersView() {
             address: null,
             notes: quote.notes || null,
             internal_notes: quote.internal_notes || '',
-            items: Array.isArray(quote.items) ? quote.items : [],
-            total: parseFloat(quote.total) || 0,
-            shipping_method: quote.shipping_method || 'shop_delivery',
-            status: mapStatus(quote.status),
-            created_at: quote.created_at,
-            updated_at: quote.updated_at || quote.created_at,
+            items: Array.isArray(quote.items) ? (quote.items as OrderItem[]) : [],
+            total: Number(quote.total ?? 0),
+            shipping_method:
+              quote.shipping_method === 'warehouse_pickup' ||
+              quote.shipping_method === 'transport_company' ||
+              quote.shipping_method === 'dropshipping' ||
+              quote.shipping_method === 'shop_delivery'
+                ? quote.shipping_method
+                : 'shop_delivery',
+            status: mapStatus(quote.status || ''),
+            created_at: quote.created_at || '',
+            updated_at: quote.updated_at || quote.created_at || '',
           } as Order
-        })
-      )
+      })
 
       return ordersWithDetails
     },
+    enabled: !!tenantId,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   })
 
   // Set up real-time subscription for orders
@@ -236,7 +290,7 @@ export function AdminOrdersView() {
         },
         () => {
           // Refetch orders when any change occurs
-          queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+          queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
         }
       )
       .subscribe()
@@ -244,7 +298,7 @@ export function AdminOrdersView() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [queryClient])
+  }, [queryClient, tenantId])
 
   // Update status mutation
   const updateStatusMutation = useMutation({
@@ -254,11 +308,12 @@ export function AdminOrdersView() {
         .from('quotes')
         .update({ status: dbStatus })
         .eq('id', id)
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
       toast({
         title: 'Status updated',
         description: 'The order status has been updated.',
@@ -280,11 +335,12 @@ export function AdminOrdersView() {
         .from('quotes')
         .update({ internal_notes: notes })
         .eq('id', id)
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
       toast({
         title: 'Notes updated',
         description: 'Internal notes have been saved.',
@@ -816,4 +872,3 @@ export function AdminOrdersView() {
     </>
   )
 }
-

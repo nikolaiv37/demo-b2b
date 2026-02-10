@@ -25,6 +25,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { Product } from '@/types'
 import { Search, X, ChevronLeft, ChevronRight, Grid3X3, Package } from 'lucide-react'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 
 const ITEMS_PER_PAGE = 24
 
@@ -32,6 +33,9 @@ export function CategoriesPage() {
   const { t } = useTranslation()
   const { mainCategory, subCategory } = useParams<{ mainCategory?: string; subCategory?: string }>()
   const navigate = useNavigate()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
+  const { withBase } = useTenantPath()
 
   // Decode URL parameters
   const decodedMainCategory = mainCategory ? decodeURIComponent(mainCategory) : null
@@ -174,6 +178,8 @@ export function CategoriesPage() {
   // Fetch products when viewing product level (using normalized category_id)
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: [
+      'tenant',
+      tenantId,
       'category-products',
       categoryIds,
       searchQuery,
@@ -182,9 +188,10 @@ export function CategoriesPage() {
       currentPage,
     ],
     queryFn: async () => {
-      if (categoryIds.length === 0) return { products: [], count: 0 }
+      if (!tenantId || categoryIds.length === 0) return { products: [], count: 0 }
 
       let query = supabase.from('products').select('*', { count: 'exact' })
+        .eq('tenant_id', tenantId)
 
       // Category filter using category_id (normalized architecture)
       query = query.in('category_id', categoryIds)
@@ -224,20 +231,21 @@ export function CategoriesPage() {
       if (error) throw error
       return { products: data as Product[], count: count || 0 }
     },
-    enabled: categoryIds.length > 0,
+    enabled: !!tenantId && categoryIds.length > 0,
   })
 
   // Fetch manufacturers for filter (using normalized category_id)
   const { data: manufacturers = [] } = useQuery({
-    queryKey: ['category-manufacturers', categoryIds],
+    queryKey: ['tenant', tenantId, 'category-manufacturers', categoryIds],
     queryFn: async () => {
-      if (categoryIds.length === 0) return []
+      if (!tenantId || categoryIds.length === 0) return []
       
       const { data, error } = await supabase
         .from('products')
         .select('manufacturer')
         .in('category_id', categoryIds)
         .eq('is_visible', true)
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
       
@@ -247,7 +255,7 @@ export function CategoriesPage() {
       
       return uniqueManufacturers
     },
-    enabled: categoryIds.length > 0 && viewLevel === 'products',
+    enabled: !!tenantId && categoryIds.length > 0 && viewLevel === 'products',
   })
 
   const products = productsData?.products || []
@@ -257,11 +265,15 @@ export function CategoriesPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (productId: string | number) => {
-      const { error } = await supabase.from('products').delete().eq('id', productId)
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+        .eq('tenant_id', tenantId)
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['category-products'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-products'] })
       toast({ title: t('products.productDeleted'), description: t('products.productRemoved') })
     },
     onError: () => {
@@ -300,7 +312,7 @@ export function CategoriesPage() {
       if (selectedSubcategoryData) {
         items.push({
           label: selectedMainCategoryData.name,
-          href: `/dashboard/categories/${mainSlug}`,
+          href: withBase(`/dashboard/categories/${mainSlug}`),
         })
         items.push({ label: selectedSubcategoryData.name })
       } else {
@@ -309,7 +321,7 @@ export function CategoriesPage() {
     }
     
     return items
-  }, [selectedMainCategoryData, selectedSubcategoryData])
+  }, [selectedMainCategoryData, selectedSubcategoryData, withBase])
 
   // Render main categories view
   if (viewLevel === 'main') {
@@ -332,7 +344,7 @@ export function CategoriesPage() {
         <CategoryGrid
           categories={mainCategories}
           isLoading={categoriesLoading}
-          basePath="/dashboard/categories"
+          basePath={withBase('/dashboard/categories')}
         />
       </div>
     )
@@ -367,7 +379,7 @@ export function CategoriesPage() {
                 const [subName, data] = subData
                 const mainSlug = selectedMainCategoryData.slug || encodeURIComponent(selectedMainCategoryData.name)
                 const subSlug = data.slug || encodeURIComponent(subName)
-                navigate(`/dashboard/categories/${mainSlug}/${subSlug}`)
+                navigate(withBase(`/dashboard/categories/${mainSlug}/${subSlug}`))
               }
             }
           }}
@@ -572,7 +584,7 @@ export function CategoriesPage() {
           <p className="text-muted-foreground mb-4">
             {t('categories.categoryDoesNotExist')}
           </p>
-          <Button onClick={() => navigate('/dashboard/categories')}>
+          <Button onClick={() => navigate(withBase('/dashboard/categories'))}>
             {t('categories.browseAllCategories')}
           </Button>
         </div>
@@ -580,4 +592,3 @@ export function CategoriesPage() {
     </div>
   )
 }
-
