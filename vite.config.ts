@@ -17,6 +17,6 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
-    allowedHosts: ['evromar.local', 'hotfarms.local'],
+    allowedHosts: ['evromar.local', 'hotfarms.local', 'platform.centivon.local', 'centivon.local'],
   },
 })

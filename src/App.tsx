@@ -17,6 +17,7 @@ import { useTenant } from '@/lib/tenant/TenantProvider'
 
 // Auth Pages
 import { LoginPage } from '@/app/auth/login'
+import { PlatformLoginPage } from '@/app/auth/platform-login'
 import { SignupPage } from '@/app/auth/signup'
 import { OnboardingPage } from '@/app/auth/onboarding'
 
@@ -64,6 +65,19 @@ function RootRoute() {
   return <PortalNotFound />
 }
 
+/**
+ * Domain-aware login router.
+ * Platform host (domainKind === 'app', no tenant context) → PlatformLoginPage
+ * Tenant hosts + /t/:slug routes → original LoginPage (unchanged)
+ */
+function LoginRouter() {
+  const { domainKind, tenant } = useTenant()
+  if (domainKind === 'app' && !tenant) {
+    return <PlatformLoginPage />
+  }
+  return <LoginPage />
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -109,7 +123,7 @@ function App() {
                   />
 
                   {/* Auth Routes */}
-                  <Route path="/auth/login" element={<LoginPage />} />
+                  <Route path="/auth/login" element={<LoginRouter />} />
                   <Route
                     path="/auth/signup"
                     element={

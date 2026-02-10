@@ -7,7 +7,7 @@ export const MARKETING_HOSTS = new Set([
 /** App hosts — tenant resolution via /t/:slug pattern */
 export const APP_HOSTS = new Set([
   'centivon.vercel.app',
-  ...(import.meta.env.DEV ? ['centivon.local'] : []),
+  ...(import.meta.env.DEV ? ['platform.centivon.local', 'centivon.local'] : []),
 ])
 
 /** All platform-owned hosts (union of marketing + app) */

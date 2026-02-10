@@ -2,11 +2,11 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTenantMemberships } from '@/hooks/useTenantMemberships'
 import { TenantSelector } from '@/pages/TenantSelector'
 import { NoTenantState } from '@/pages/NoTenantState'
-import { LoginPage } from '@/app/auth/login'
+import { PlatformLoginPage } from '@/app/auth/platform-login'
 
 /**
  * Shown on the app host (centivon.vercel.app) when no tenant is resolved.
- * Unauthenticated → login screen.
+ * Unauthenticated → platform email-first login.
  * Authenticated   → workspace selector (no auto-redirect).
  */
 export function MainIndexRoute() {
@@ -14,7 +14,7 @@ export function MainIndexRoute() {
   const { data: memberships = [], isLoading: membershipsLoading } = useTenantMemberships()
 
   if (!isAuthenticated) {
-    return <LoginPage />
+    return <PlatformLoginPage />
   }
 
   if (isLoading || membershipsLoading) {
