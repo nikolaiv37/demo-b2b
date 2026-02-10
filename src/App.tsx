@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HelmetProvider } from 'react-helmet-async'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Toaster } from '@/components/ui/toaster'
 import { ErrorFallback } from '@/components/ErrorFallback'
 import { AuthGuard } from '@/components/AuthGuard'
-import { supabase } from '@/lib/supabase/client'
+import { TenantProvider } from '@/lib/tenant/TenantProvider'
+import { TenantBootstrapGate } from '@/components/guards/TenantBootstrapGate'
+import { DomainGuardMainOnly } from '@/components/guards/DomainGuardMainOnly'
+import { DomainGuardTenantOnly } from '@/components/guards/DomainGuardTenantOnly'
+import { TenantActiveGuard } from '@/components/guards/TenantActiveGuard'
+import { MembershipGuard } from '@/components/guards/MembershipGuard'
+import { SignupGuard } from '@/components/guards/SignupGuard'
+import { SlugOnlyGuard } from '@/components/guards/SlugOnlyGuard'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 // Auth Pages
 import { LoginPage } from '@/app/auth/login'
@@ -33,50 +40,22 @@ import { ClientsPage } from '@/app/dashboard/clients'
 
 import LandingPage from '@/pages/LandingPage'
 import { NotFound } from '@/pages/NotFound'
+import { TenantEntry } from '@/pages/TenantEntry'
+import { MainIndexRoute } from '@/pages/MainIndexRoute'
+import { PortalNotFound } from '@/pages/PortalNotFound'
 
-/**
- * IndexRoute: Shows landing page for guests, redirects to dashboard for authenticated users
- */
-function IndexRoute() {
-  const navigate = useNavigate()
-  const [checking, setChecking] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+function RootRoute() {
+  const { domainKind, tenant } = useTenant()
 
-  useEffect(() => {
-    let mounted = true
-
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!mounted) return
-        
-        if (session?.user) {
-          setIsAuthenticated(true)
-          navigate('/dashboard', { replace: true })
-        } else {
-          setChecking(false)
-        }
-      } catch {
-        if (mounted) setChecking(false)
-      }
-    }
-
-    checkAuth()
-
-    return () => { mounted = false }
-  }, [navigate])
-
-  // Show nothing while checking auth (fast check)
-  if (checking && !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[color:var(--base)]">
-        <div className="h-6 w-6 border-2 border-[color:var(--ink-12)] border-t-[color:var(--landing-accent)] rounded-full animate-spin" />
-      </div>
-    )
+  if (domainKind === 'tenant' && tenant) {
+    return <TenantEntry />
   }
 
-  // User is not authenticated - show landing page
-  return <LandingPage />
+  if (domainKind === 'main') {
+    return <MainIndexRoute />
+  }
+
+  return <PortalNotFound />
 }
 
 const queryClient = new QueryClient({
@@ -103,52 +82,124 @@ function App() {
       onError={handleError}
       onReset={() => {
         // Reset app state if needed
-        window.location.href = '/dashboard'
+        window.location.reload()
       }}
     >
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <Routes>
-              {/* Landing / Index Route - Auth-aware */}
-              <Route path="/" element={<IndexRoute />} />
-              <Route path="/landing" element={<LandingPage />} />
+            <TenantProvider>
+              <TenantBootstrapGate>
+                <Routes>
+                  {/* Root Route - domain aware */}
+                  <Route path="/" element={<RootRoute />} />
+                  <Route
+                    path="/landing"
+                    element={
+                      <DomainGuardMainOnly>
+                        <LandingPage />
+                      </DomainGuardMainOnly>
+                    }
+                  />
 
-              {/* Auth Routes */}
-              <Route path="/auth/login" element={<LoginPage />} />
-              <Route path="/auth/signup" element={<SignupPage />} />
-              <Route path="/auth/onboarding" element={<OnboardingPage />} />
+                  {/* Auth Routes */}
+                  <Route path="/auth/login" element={<LoginPage />} />
+                  <Route
+                    path="/auth/signup"
+                    element={
+                      <DomainGuardMainOnly>
+                        <SignupGuard>
+                          <SignupPage />
+                        </SignupGuard>
+                      </DomainGuardMainOnly>
+                    }
+                  />
+                  <Route path="/auth/onboarding" element={<OnboardingPage />} />
 
-              {/* Dashboard Routes - Protected by AuthGuard */}
-              <Route
-                path="/dashboard"
-                element={
-                  <AuthGuard>
-                    <DashboardLayout />
-                  </AuthGuard>
-                }
-              >
-                <Route index element={<DashboardOverview />} />
-                <Route path="categories" element={<CategoriesPage />} />
-                <Route path="categories/:mainCategory" element={<CategoriesPage />} />
-                <Route path="categories/:mainCategory/:subCategory" element={<CategoriesPage />} />
-                <Route path="categories/manage" element={<ManageCategoriesPage />} />
-                <Route path="products" element={<ProductsPage />} />
-                <Route path="products/:sku" element={<ProductDetailPage />} />
-                <Route path="wishlist" element={<WishlistPage />} />
-                <Route path="orders" element={<OrdersPage />} />
-                <Route path="complaints" element={<ComplaintsPage />} />
-                <Route path="quotes" element={<QuotesPage />} />
-                <Route path="csv-import" element={<CSVImportPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="analytics" element={<AnalyticsPage />} />
-                <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
-                <Route path="clients" element={<ClientsPage />} />
-              </Route>
+                  {/* Tenant Dashboard Routes - Protected */}
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <DomainGuardTenantOnly>
+                        <TenantActiveGuard>
+                          <AuthGuard>
+                            <MembershipGuard>
+                              <DashboardLayout />
+                            </MembershipGuard>
+                          </AuthGuard>
+                        </TenantActiveGuard>
+                      </DomainGuardTenantOnly>
+                    }
+                  >
+                    <Route index element={<DashboardOverview />} />
+                    <Route path="categories" element={<CategoriesPage />} />
+                    <Route path="categories/:mainCategory" element={<CategoriesPage />} />
+                    <Route path="categories/:mainCategory/:subCategory" element={<CategoriesPage />} />
+                    <Route path="categories/manage" element={<ManageCategoriesPage />} />
+                    <Route path="products" element={<ProductsPage />} />
+                    <Route path="products/:sku" element={<ProductDetailPage />} />
+                    <Route path="wishlist" element={<WishlistPage />} />
+                    <Route path="orders" element={<OrdersPage />} />
+                    <Route path="complaints" element={<ComplaintsPage />} />
+                    <Route path="quotes" element={<QuotesPage />} />
+                    <Route path="csv-import" element={<CSVImportPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                    <Route path="analytics" element={<AnalyticsPage />} />
+                    <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
+                    <Route path="clients" element={<ClientsPage />} />
+                  </Route>
 
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                  {/* Slug Fallback Routes */}
+                  <Route
+                    path="/:slug"
+                    element={
+                      <SlugOnlyGuard>
+                        <Outlet />
+                      </SlugOnlyGuard>
+                    }
+                  >
+                    <Route index element={<TenantEntry />} />
+                    <Route path="auth/login" element={<LoginPage />} />
+                    <Route path="auth/onboarding" element={<OnboardingPage />} />
+                    <Route
+                      path="dashboard"
+                      element={
+                        <DomainGuardTenantOnly>
+                          <TenantActiveGuard>
+                            <AuthGuard>
+                              <MembershipGuard>
+                                <DashboardLayout />
+                              </MembershipGuard>
+                            </AuthGuard>
+                          </TenantActiveGuard>
+                        </DomainGuardTenantOnly>
+                      }
+                    >
+                      <Route index element={<DashboardOverview />} />
+                      <Route path="categories" element={<CategoriesPage />} />
+                      <Route path="categories/:mainCategory" element={<CategoriesPage />} />
+                      <Route path="categories/:mainCategory/:subCategory" element={<CategoriesPage />} />
+                      <Route path="categories/manage" element={<ManageCategoriesPage />} />
+                      <Route path="products" element={<ProductsPage />} />
+                      <Route path="products/:sku" element={<ProductDetailPage />} />
+                      <Route path="wishlist" element={<WishlistPage />} />
+                      <Route path="orders" element={<OrdersPage />} />
+                      <Route path="complaints" element={<ComplaintsPage />} />
+                      <Route path="quotes" element={<QuotesPage />} />
+                      <Route path="csv-import" element={<CSVImportPage />} />
+                      <Route path="settings" element={<SettingsPage />} />
+                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
+                      <Route path="clients" element={<ClientsPage />} />
+                    </Route>
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
+
+                  {/* 404 */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </TenantBootstrapGate>
+            </TenantProvider>
           </BrowserRouter>
           <Toaster />
         </QueryClientProvider>

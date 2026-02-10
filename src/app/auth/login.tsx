@@ -10,15 +10,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Loader2, Package } from 'lucide-react'
+import { AlertTriangle, Loader2, Package } from 'lucide-react'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 
 export function LoginPage() {
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [accessDeniedMsg, setAccessDeniedMsg] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { tenant } = useTenant()
+  const { withBase } = useTenantPath()
 
   const loginSchema = z.object({
     email: z.string().email(t('auth.invalidEmail')),
@@ -35,6 +40,24 @@ export function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   })
+
+  // After login, go to tenant root (TenantEntry handles membership gate)
+  // rather than /dashboard directly — this avoids a duplicate membership
+  // query that can race with session propagation and produce false negatives.
+  const postLoginPath = tenant ? withBase('/') : '/'
+
+  // Pick up ?reason=no-membership from auto-signout redirect, then clean the URL
+  useEffect(() => {
+    const reason = searchParams.get('reason')
+    if (reason === 'no-membership') {
+      setAccessDeniedMsg(
+        "This account isn't allowed in this portal. Please sign in with a different account."
+      )
+      searchParams.delete('reason')
+      setSearchParams(searchParams, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Check for email verification confirmation
   useEffect(() => {
@@ -65,15 +88,19 @@ export function LoginPage() {
           window.history.replaceState({}, '', window.location.pathname)
           // Redirect to dashboard
           setTimeout(() => {
-            navigate('/dashboard/')
+            navigate(postLoginPath)
           }, 1000)
         }
       })
     }
-  }, [searchParams, setSearchParams, navigate, toast])
+  }, [searchParams, setSearchParams, navigate, toast, postLoginPath, t])
 
   const onSubmit = async (data: LoginFormData) => {
+    // Clear previous inline errors on new submit
+    setLoginError(null)
+    setAccessDeniedMsg(null)
     setIsLoading(true)
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
@@ -81,39 +108,29 @@ export function LoginPage() {
       })
 
       if (error) {
-        // Provide more helpful error messages
-        let errorMessage = error.message || t('auth.invalidEmailPassword')
-        
+        // Show user-friendly inline error instead of a toast
         if (error.message?.includes('Email not confirmed') || error.message?.includes('email_not_confirmed')) {
-          errorMessage = t('auth.checkEmailConfirm')
+          setLoginError(t('auth.checkEmailConfirm'))
         } else if (error.message?.includes('Invalid login credentials') || error.message?.includes('invalid_credentials')) {
-          errorMessage = t('auth.invalidCredentials')
+          setLoginError(t('auth.invalidCredentials'))
+        } else {
+          setLoginError(error.message || t('auth.invalidEmailPassword'))
         }
-        
-        toast({
-          title: t('auth.loginFailed'),
-          description: errorMessage,
-          variant: 'destructive',
-        })
         return
       }
 
-      // Success! Show toast
+      // Login succeeded — redirect immediately.
+      // Membership is checked by TenantEntry / MembershipGuard after the
+      // redirect, using TenantProvider's refresh (which fires on the
+      // onAuthStateChange event). This avoids a duplicate membership query
+      // that can race with session propagation and intermittently fail.
       toast({
         title: t('auth.welcomeBack'),
         description: t('auth.successfullyLoggedIn'),
       })
-      
-      // Use window.location for reliable redirect after login
-      // This ensures the session is properly recognized
-      window.location.href = '/dashboard/'
+      window.location.href = postLoginPath
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : t('auth.unexpectedError')
-      toast({
-        title: t('auth.loginFailed'),
-        description: errorMessage,
-        variant: 'destructive',
-      })
+      setLoginError(error instanceof Error ? error.message : t('auth.unexpectedError'))
     } finally {
       setIsLoading(false)
     }
@@ -162,11 +179,20 @@ export function LoginPage() {
           <div className="flex items-center justify-center mb-4">
             <Package className="w-12 h-12 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">{t('auth.welcomeToFurniTrade')}</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {tenant?.name ? `${t('auth.welcomeBack')} • ${tenant.name}` : t('auth.welcomeToFurniTrade')}
+          </h1>
           <p className="text-muted-foreground">
             {t('auth.signInToAccount')}
           </p>
         </div>
+
+        {accessDeniedMsg && (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 mb-4 text-sm text-destructive">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>{accessDeniedMsg}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -175,7 +201,7 @@ export function LoginPage() {
               id="email"
               type="email"
               placeholder={t('auth.emailPlaceholder')}
-              {...register('email')}
+              {...register('email', { onChange: () => setLoginError(null) })}
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email.message}</p>
@@ -198,7 +224,7 @@ export function LoginPage() {
               id="password"
               type="password"
               placeholder="••••••••"
-              {...register('password')}
+              {...register('password', { onChange: () => setLoginError(null) })}
             />
             {errors.password && (
               <p className="text-sm text-destructive">
@@ -207,26 +233,34 @@ export function LoginPage() {
             )}
           </div>
 
+          {loginError && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>{loginError}</span>
+            </div>
+          )}
+
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t('auth.signIn')}
           </Button>
         </form>
 
-        <div className="mt-6 text-center text-sm">
-          <p className="text-muted-foreground">
-            {t('auth.dontHaveAccount')}{' '}
-            <Link
-              to="/auth/signup"
-              className="text-primary font-semibold hover:underline"
-            >
-              {t('auth.signUp')}
-            </Link>
-          </p>
-        </div>
+        {!tenant && (
+          <div className="mt-6 text-center text-sm">
+            <p className="text-muted-foreground">
+              {t('auth.dontHaveAccount')}{' '}
+              <Link
+                to="/auth/signup"
+                className="text-primary font-semibold hover:underline"
+              >
+                {t('auth.signUp')}
+              </Link>
+            </p>
+          </div>
+        )}
       </GlassCard>
       </div>
     </div>
   )
 }
-

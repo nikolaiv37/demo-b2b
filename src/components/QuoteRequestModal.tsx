@@ -21,6 +21,7 @@ import { FileText, Loader2, Warehouse, Truck, Package, Store, Percent } from 'lu
 import { formatPrice } from '@/lib/utils'
 import { ShippingMethod, SHIPPING_METHOD_CONFIG } from '@/types'
 import { cn } from '@/lib/utils'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 interface OrderRequestModalProps {
   open: boolean
@@ -36,6 +37,8 @@ export function OrderRequestModal({
   const { items, getTotal, clearCart } = useCartStore()
   const { user, profile, company } = useAuth()
   const { hasDiscount, commissionRate } = useCommissionRate()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [notes, setNotes] = useState('')
@@ -43,6 +46,9 @@ export function OrderRequestModal({
 
   const quoteMutation = useMutation({
     mutationFn: async () => {
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
       const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
       const devUserId = isDevMode ? 'dev-user-123' : null
       
@@ -69,6 +75,7 @@ export function OrderRequestModal({
       const { data, error } = await supabase
         .from('quotes')
         .insert({
+          tenant_id: tenantId,
           user_id: userId,
           company_name: company?.name || profile?.full_name || 'Unknown Company',
           email: user?.email || profile?.email || 'dev@example.com',
@@ -98,7 +105,8 @@ export function OrderRequestModal({
       const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
       const devUserId = isDevMode ? 'dev-user-123' : null
       const userId = user?.id || devUserId
-      queryClient.invalidateQueries({ queryKey: ['orders', userId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'orders', userId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'orders'] })
       
       toast({
         title: 'Order submitted successfully! 🎉',
@@ -330,4 +338,3 @@ export function OrderRequestModal({
     </Dialog>
   )
 }
-

@@ -13,6 +13,7 @@ import { useCommissionRate } from '@/hooks/useCommissionRate'
 import { Eye, Package, ShoppingCart, Plus, Minus, Heart, Percent } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 interface ProductGridCardProps {
   product: Product
@@ -53,6 +54,7 @@ export function ProductGridCard({
   const { toast } = useToast()
   const { isInWishlist, toggleWishlist } = useWishlist()
   const { hasDiscount, commissionRate } = useCommissionRate()
+  const { withBase } = useTenantPath()
   
   const quantity = product.quantity ?? 0
   const mainImage = product.main_image || product.images?.[0]
@@ -110,7 +112,7 @@ export function ProductGridCard({
 
   // Check if SKU exists for navigation
   const hasSku = product.sku && product.sku.trim() !== ''
-  const detailUrl = hasSku ? `/dashboard/products/${product.sku}` : '#'
+  const detailUrl = hasSku ? withBase(`/dashboard/products/${product.sku}`) : '#'
 
   // Card links to permanent SKU-based detail page – safe forever even after full CSV re-uploads
   const CardContent = (

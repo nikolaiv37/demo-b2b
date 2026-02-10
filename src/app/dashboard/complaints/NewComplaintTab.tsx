@@ -26,6 +26,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 interface OrderItem {
   product_id?: string
@@ -59,6 +60,8 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
   const { user, profile } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   const [formData, setFormData] = useState<ComplaintFormData>({
     orderId: '',
@@ -79,15 +82,16 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
   const userId = user?.id || devUserId
 
   const { data: orders, isLoading: ordersLoading } = useQuery({
-    queryKey: ['user-orders-complaints', userId, isDevMode || isDemoMode],
+    queryKey: ['tenant', tenantId, 'user-orders-complaints', userId, isDevMode || isDemoMode],
     queryFn: async () => {
-      if (!userId) return []
+      if (!userId || !tenantId) return []
 
       // Query quotes table directly (this is the orders table in this system)
       // In dev/demo mode, show all orders. In production, filter by user_id
       let query = supabase
         .from('quotes')
         .select('id, order_number, items, created_at, user_id')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(100)
 
@@ -119,7 +123,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
         created_at: q.created_at,
       }))
     },
-    enabled: !!userId,
+    enabled: !!userId && !!tenantId,
   })
 
   // Get selected order
@@ -242,7 +246,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
   // Submit complaint
   const submitMutation = useMutation({
     mutationFn: async (data: ComplaintFormData) => {
-      if (!user?.id) throw new Error('User not authenticated')
+      if (!user?.id || !tenantId) throw new Error('Missing tenant context')
 
       // Upload photos
       const photoUrls: string[] = []
@@ -270,6 +274,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
       const { data: complaint, error } = await supabase
         .from('complaints')
         .insert({
+          tenant_id: tenantId,
           user_id: user.id,
           order_id: data.orderId,
           status: 'pending',
@@ -293,7 +298,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
         title: t('complaints.complaintSubmitted'),
         description: t('complaints.complaintSubmittedDescription'),
       })
-      queryClient.invalidateQueries({ queryKey: ['complaints', user?.id] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'complaints', user?.id] })
       onSubmitted()
       
       // Reset form

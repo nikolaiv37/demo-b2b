@@ -21,17 +21,17 @@ export function initAnalytics() {
   }
 }
 
-export function trackEvent(eventName: string, properties?: Record<string, any>) {
+export function trackEvent(eventName: string, properties?: Record<string, unknown>) {
   if (!initialized) return
   posthog.capture(eventName, properties)
 }
 
-export function identifyUser(userId: string, traits?: Record<string, any>) {
+export function identifyUser(userId: string, traits?: Record<string, unknown>) {
   if (!initialized) return
   posthog.identify(userId, traits)
 }
 
-export function trackPageView(pageName: string, properties?: Record<string, any>) {
+export function trackPageView(pageName: string, properties?: Record<string, unknown>) {
   if (!initialized) return
   posthog.capture('$pageview', { page: pageName, ...properties })
 }
@@ -67,4 +67,3 @@ export const AnalyticsEvents = {
   DASHBOARD_VIEWED: 'dashboard_viewed',
   
 }
-

@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { SHIPPING_METHOD_CONFIG } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 import { pdf } from '@react-pdf/renderer'
 import { ProformaInvoicePDF, type ProformaInvoicePDFProps } from './ProformaInvoicePDF'
 import { supabase } from '@/lib/supabase/client'
@@ -147,6 +148,8 @@ export function OrderDetailsSheet({
 }: OrderDetailsSheetProps) {
   const { t } = useTranslation()
   const { company, profile } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
   // Check if current user is a company user (not admin)
@@ -157,7 +160,7 @@ export function OrderDetailsSheet({
   // - Доставчик (Supplier) = Admin's company (the platform/seller)
   // - Получател (Buyer) = Logged-in company user's company
   const handleGenerateProforma = async () => {
-    if (!company || !isCompanyUser) {
+    if (!company || !isCompanyUser || !tenantId) {
       console.error('PDF generation only available for company users')
       return
     }
@@ -181,6 +184,7 @@ export function OrderDetailsSheet({
         .from('profiles')
         .select('company_id')
         .eq('role', 'admin')
+        .eq('tenant_id', tenantId)
         .single()
 
       if (adminProfileError) {
@@ -193,6 +197,7 @@ export function OrderDetailsSheet({
           .from('companies')
           .select('*')
           .eq('id', adminProfile.company_id)
+          .eq('tenant_id', tenantId)
           .single()
 
         if (adminCompanyError) {
@@ -209,6 +214,7 @@ export function OrderDetailsSheet({
         .from('companies')
         .select('*')
         .eq('id', company.id)
+        .eq('tenant_id', tenantId)
         .single()
 
       if (companyRefreshError) {

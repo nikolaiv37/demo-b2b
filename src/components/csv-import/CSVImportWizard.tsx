@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSmartMapping } from '@/hooks/useSmartMapping'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { parseCSVFlexible } from '@/lib/csv/parser'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
@@ -67,6 +68,9 @@ export function CSVImportWizard() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { company } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
+  const { withBase } = useTenantPath()
 
   const WIZARD_STEPS = [
     { id: 1, name: t('csvImport.wizard.upload'), icon: Upload, description: t('csvImport.wizard.uploadDetect') },
@@ -132,6 +136,9 @@ export function CSVImportWizard() {
    */
   const importMutation = useMutation({
     mutationFn: async () => {
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
       const startTime = Date.now()
       setImportProgress(0)
       setImportStatus('Preparing import...')
@@ -290,11 +297,12 @@ export function CSVImportWizard() {
       let products = productsWithoutCategoryId
       let syncResult: CategorySyncResult | null = null
 
-      if (company?.id) {
+      if (company?.id && tenantId) {
         try {
           const prepResult = await prepareProductsWithCategoryId(
             productsWithoutCategoryId as Array<{ sku: string; category?: string }>,
-            company.id
+            company.id,
+            tenantId
           )
           products = prepResult.products as Record<string, unknown>[]
           syncResult = prepResult.syncResult
@@ -317,6 +325,11 @@ export function CSVImportWizard() {
           `Please check your column mappings in Step 2.`
         )
       }
+
+      products = products.map((product) => ({
+        ...product,
+        tenant_id: tenantId,
+      }))
       
       // Log summary
       if (products.length < transformedData.length) {
@@ -370,7 +383,7 @@ export function CSVImportWizard() {
           const { error } = await supabase
             .from('products')
             .upsert(batch, {
-              onConflict: 'sku',
+              onConflict: 'tenant_id,sku',
               ignoreDuplicates: false,
             })
 
@@ -390,7 +403,7 @@ export function CSVImportWizard() {
                   const { error: singleError } = await supabase
                     .from('products')
                     .upsert([batch[j]], {
-                      onConflict: 'sku',
+                      onConflict: 'tenant_id,sku',
                       ignoreDuplicates: false,
                     })
                   
@@ -474,10 +487,10 @@ export function CSVImportWizard() {
 
       // Categories are already synced during import (non-destructive sync)
       // Just invalidate caches to refresh UI
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
-      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['products', 'categories-for-filter'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'categories'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products', 'categories-for-filter'] })
 
       trackEvent(AnalyticsEvents.CSV_IMPORT_COMPLETED, {
         productsImported: result.imported,
@@ -512,12 +525,16 @@ export function CSVImportWizard() {
    */
   const deleteAllMutation = useMutation({
     mutationFn: async () => {
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
       // First, unlink all products from categories (set category_id to null)
       // This ensures foreign key constraints don't block deletion
       const { error: unlinkError } = await supabase
         .from('products')
         .update({ category_id: null })
         .not('category_id', 'is', null)
+        .eq('tenant_id', tenantId)
 
       if (unlinkError) {
         console.error('Error unlinking products from categories', unlinkError)
@@ -529,6 +546,7 @@ export function CSVImportWizard() {
         .from('products')
         .delete()
         .not('id', 'is', null)
+        .eq('tenant_id', tenantId)
 
       if (error) {
         throw new Error(error.message)
@@ -537,11 +555,11 @@ export function CSVImportWizard() {
       let categoriesDeleted = 0
 
       // Only delete categories if preserveCategoriesOnDelete is false
-      if (!preserveCategoriesOnDelete && company?.id) {
+      if (!preserveCategoriesOnDelete && tenantId) {
         const { error: catError, count: catCount } = await supabase
           .from('categories')
           .delete()
-          .eq('company_id', company.id)
+          .eq('tenant_id', tenantId)
 
         if (catError) {
           console.error('Error deleting categories with products', catError)
@@ -553,12 +571,12 @@ export function CSVImportWizard() {
       return { deleted: count || 0, categoriesDeleted, categoriesPreserved: preserveCategoriesOnDelete }
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['products', 'categories-for-filter'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products', 'categories-for-filter'] })
       
       if (!result.categoriesPreserved) {
-        queryClient.invalidateQueries({ queryKey: ['categories'] })
+        queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'categories'] })
       }
       
       setDeleteDialogOpen(false)
@@ -630,8 +648,8 @@ export function CSVImportWizard() {
   }, [smartMapping])
 
   const handleViewProducts = useCallback(() => {
-    navigate('/dashboard/products')
-  }, [navigate])
+    navigate(withBase('/dashboard/products'))
+  }, [navigate, withBase])
 
   // Calculate overall progress
   const overallProgress = ((smartMapping.currentStep - 1) / (WIZARD_STEPS.length - 1)) * 100

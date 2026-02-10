@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react-swc'
 import svgr from 'vite-plugin-svgr'
 import path from 'path'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), svgr()],
   resolve: {
@@ -14,5 +13,10 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
+    allowedHosts: ['evromar.local', 'hotfarms.local'],
+  },
 })
-

@@ -29,6 +29,7 @@ import {
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
@@ -51,11 +52,15 @@ export function DashboardLayout() {
   const [cartOpen, setCartOpen] = useState(false)
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
   const { user, profile, isAdmin, signOut } = useAuth()
+  const { tenant } = useTenant()
+  const { withBase, stripBase } = useTenantPath()
+  const tenantId = tenant?.id
   
   // Fetch real status data for badges
   const { data: statusData } = useQuery({
-    queryKey: ['status-badges', user?.id, isAdmin],
+    queryKey: ['tenant', tenantId, 'status-badges', user?.id, isAdmin],
     queryFn: async () => {
+      if (!tenantId) return null
       if (!isAdmin && !user?.id) return null
 
       // Fetch pending orders: Processing ('new') + Awaiting Payment ('pending')
@@ -64,6 +69,7 @@ export function DashboardLayout() {
         .from('quotes')
         .select('*', { count: 'exact', head: true })
         .in('status', ['new', 'pending'])
+        .eq('tenant_id', tenantId)
 
       // Fetch low stock products (quantity 1-10)
       const { count: lowStockCount } = await supabase
@@ -71,13 +77,14 @@ export function DashboardLayout() {
         .select('*', { count: 'exact', head: true })
         .gt('quantity', 0)
         .lte('quantity', 10)
+        .eq('tenant_id', tenantId)
 
       return {
         pendingOrders: pendingCount || 0,
         lowStockItems: lowStockCount || 0,
       }
     },
-    enabled: isAdmin || !!user?.id,
+    enabled: !!tenantId && (isAdmin || !!user?.id),
     refetchInterval: 30000, // Refetch every 30 seconds
   })
 
@@ -93,7 +100,7 @@ export function DashboardLayout() {
 
   // Get current page title for breadcrumbs
   const getPageTitle = () => {
-    const path = location.pathname
+    const path = stripBase(location.pathname)
     for (const [route, key] of Object.entries(pageTitleKeys)) {
       if (path === route || (route !== '/dashboard' && path.startsWith(route))) {
         return t(key)
@@ -130,7 +137,7 @@ export function DashboardLayout() {
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <span
                   className="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(withBase('/dashboard'))}
                 >
                   {t('header.home')}
                 </span>
@@ -251,7 +258,7 @@ export function DashboardLayout() {
                     <DropdownMenuItem
                       onClick={() => {
                         console.log('Account Settings clicked')
-                        navigate('/dashboard/settings')
+                        navigate(withBase('/dashboard/settings'))
                       }}
                       className="cursor-pointer"
                     >
@@ -261,7 +268,7 @@ export function DashboardLayout() {
                     <DropdownMenuItem
                       onClick={() => {
                         console.log('Company Info clicked')
-                        navigate('/dashboard/settings')
+                        navigate(withBase('/dashboard/settings'))
                       }}
                       className="cursor-pointer"
                     >
@@ -310,13 +317,12 @@ export function DashboardLayout() {
           setCartOpen(false)
           // Redirect to orders page with new order highlight
           if (orderId) {
-            navigate(`/dashboard/orders?newOrder=${orderId}`)
+            navigate(`${withBase('/dashboard/orders')}?newOrder=${orderId}`)
           } else {
-            navigate('/dashboard/orders')
+            navigate(withBase('/dashboard/orders'))
           }
         }}
       />
     </div>
   )
 }
-

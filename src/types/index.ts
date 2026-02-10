@@ -21,6 +21,39 @@ export interface Company {
   updated_at: string
 }
 
+export type TenantStatus = 'active' | 'inactive'
+
+export interface TenantBranding {
+  logo_url?: string | null
+  primary_color?: string | null
+  accent_color?: string | null
+  [key: string]: unknown
+}
+
+export interface Tenant {
+  id: string
+  name: string
+  slug: string
+  status: TenantStatus
+  branding: TenantBranding | null
+  primary_domain?: string | null
+}
+
+export interface TenantDomain {
+  id: string
+  tenant_id: string
+  domain: string
+  verified: boolean
+  is_primary: boolean
+}
+
+export interface TenantMembership {
+  id: string
+  user_id: string
+  tenant_id: string
+  role: string
+}
+
 export type UserRole = 'admin' | 'company'
 
 export interface Profile {
@@ -208,4 +241,3 @@ export interface WishlistItem {
   product_sku: string
   created_at: string
 }
-

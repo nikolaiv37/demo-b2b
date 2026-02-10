@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
 import { useCommissionRate } from '@/hooks/useCommissionRate'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 interface ProductQuickViewModalProps {
   product: Product | null
@@ -39,6 +40,7 @@ export function ProductQuickViewModal({
   const { addItem } = useCartStore()
   const { toast } = useToast()
   const { hasDiscount, commissionRate } = useCommissionRate()
+  const { withBase } = useTenantPath()
 
   if (!product) return null
 
@@ -51,7 +53,7 @@ export function ProductQuickViewModal({
   const quantity = product.quantity ?? 0
   const isOutOfStock = quantity === 0
   const hasSku = product.sku && product.sku.trim() !== ''
-  const detailUrl = hasSku ? `/dashboard/products/${product.sku}` : '#'
+  const detailUrl = hasSku ? withBase(`/dashboard/products/${product.sku}`) : '#'
   
   // Use adjusted_price if available, otherwise fall back to weboffer_price
   const displayPrice = product.adjusted_price ?? product.weboffer_price
@@ -292,4 +294,3 @@ export function ProductQuickViewModal({
     </Dialog>
   )
 }
-

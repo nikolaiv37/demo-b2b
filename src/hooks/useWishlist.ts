@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 import { WishlistItem } from '@/types'
 
 // Wishlist is per-user, persisted forever, survives catalog re-uploads (uses SKU)
@@ -12,30 +13,33 @@ import { WishlistItem } from '@/types'
  */
 export function useWishlist() {
   const { user } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const queryClient = useQueryClient()
   const userId = user?.id
 
   // Fetch all wishlist items for the current user
   const { data: wishlistItems = [], isLoading } = useQuery({
-    queryKey: ['wishlist', userId],
+    queryKey: ['tenant', tenantId, 'wishlist', userId],
     queryFn: async () => {
-      if (!userId) return []
+      if (!userId || !tenantId) return []
 
       const { data, error } = await supabase
         .from('wishlist_items')
         .select('*')
         .eq('user_id', userId)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
       return data as WishlistItem[]
     },
-    enabled: !!userId,
+    enabled: !!userId && !!tenantId,
   })
 
   // Set up realtime subscription for wishlist changes
   useEffect(() => {
-    if (!userId) return
+    if (!userId || !tenantId) return
 
     const channel = supabase
       .channel('wishlist-changes')
@@ -45,11 +49,11 @@ export function useWishlist() {
           event: '*',
           schema: 'public',
           table: 'wishlist_items',
-          filter: `user_id=eq.${userId}`,
+          filter: `tenant_id=eq.${tenantId}`,
         },
         () => {
           // Invalidate and refetch wishlist on any change
-          queryClient.invalidateQueries({ queryKey: ['wishlist', userId] })
+          queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'wishlist', userId] })
         }
       )
       .subscribe()
@@ -57,7 +61,7 @@ export function useWishlist() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [userId, queryClient])
+  }, [userId, queryClient, tenantId])
 
   // Get set of SKUs in wishlist for quick lookup
   const wishlistSkus = new Set(wishlistItems.map((item) => item.product_sku))
@@ -68,11 +72,11 @@ export function useWishlist() {
   // Add item to wishlist (optimistic update)
   const addToWishlistMutation = useMutation({
     mutationFn: async (sku: string) => {
-      if (!userId) throw new Error('User not authenticated')
+      if (!userId || !tenantId) throw new Error('Missing tenant context')
 
       const { data, error } = await supabase
         .from('wishlist_items')
-        .insert({ user_id: userId, product_sku: sku })
+        .insert({ user_id: userId, tenant_id: tenantId, product_sku: sku })
         .select()
         .single()
 
@@ -88,10 +92,10 @@ export function useWishlist() {
     },
     onMutate: async (sku) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['wishlist', userId] })
+      await queryClient.cancelQueries({ queryKey: ['tenant', tenantId, 'wishlist', userId] })
 
       // Snapshot previous value
-      const previousItems = queryClient.getQueryData<WishlistItem[]>(['wishlist', userId])
+      const previousItems = queryClient.getQueryData<WishlistItem[]>(['tenant', tenantId, 'wishlist', userId])
 
       // Optimistically update
       if (previousItems && !previousItems.some((item) => item.product_sku === sku)) {
@@ -101,7 +105,7 @@ export function useWishlist() {
           product_sku: sku,
           created_at: new Date().toISOString(),
         }
-        queryClient.setQueryData<WishlistItem[]>(['wishlist', userId], [
+        queryClient.setQueryData<WishlistItem[]>(['tenant', tenantId, 'wishlist', userId], [
           optimisticItem,
           ...previousItems,
         ])
@@ -112,38 +116,39 @@ export function useWishlist() {
     onError: (_err, _sku, context) => {
       // Rollback on error
       if (context?.previousItems) {
-        queryClient.setQueryData(['wishlist', userId], context.previousItems)
+        queryClient.setQueryData(['tenant', tenantId, 'wishlist', userId], context.previousItems)
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['wishlist', userId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'wishlist', userId] })
     },
   })
 
   // Remove item from wishlist (optimistic update)
   const removeFromWishlistMutation = useMutation({
     mutationFn: async (sku: string) => {
-      if (!userId) throw new Error('User not authenticated')
+      if (!userId || !tenantId) throw new Error('Missing tenant context')
 
       const { error } = await supabase
         .from('wishlist_items')
         .delete()
         .eq('user_id', userId)
+        .eq('tenant_id', tenantId)
         .eq('product_sku', sku)
 
       if (error) throw error
     },
     onMutate: async (sku) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['wishlist', userId] })
+      await queryClient.cancelQueries({ queryKey: ['tenant', tenantId, 'wishlist', userId] })
 
       // Snapshot previous value
-      const previousItems = queryClient.getQueryData<WishlistItem[]>(['wishlist', userId])
+      const previousItems = queryClient.getQueryData<WishlistItem[]>(['tenant', tenantId, 'wishlist', userId])
 
       // Optimistically update
       if (previousItems) {
         queryClient.setQueryData<WishlistItem[]>(
-          ['wishlist', userId],
+          ['tenant', tenantId, 'wishlist', userId],
           previousItems.filter((item) => item.product_sku !== sku)
         )
       }
@@ -153,11 +158,11 @@ export function useWishlist() {
     onError: (_err, _sku, context) => {
       // Rollback on error
       if (context?.previousItems) {
-        queryClient.setQueryData(['wishlist', userId], context.previousItems)
+        queryClient.setQueryData(['tenant', tenantId, 'wishlist', userId], context.previousItems)
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['wishlist', userId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'wishlist', userId] })
     },
   })
 
@@ -181,4 +186,3 @@ export function useWishlist() {
     count: wishlistItems.length,
   }
 }
-

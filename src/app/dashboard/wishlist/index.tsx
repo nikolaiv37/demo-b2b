@@ -14,10 +14,14 @@ import { useCartStore } from '@/stores/cartStore'
 import { Product } from '@/types'
 import { Heart, ShoppingCart, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 
 export function WishlistPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
+  const { withBase } = useTenantPath()
   const { toast } = useToast()
   const { wishlistItems, removeFromWishlist, count: wishlistCount } = useWishlist()
   const { addItem } = useCartStore()
@@ -29,20 +33,21 @@ export function WishlistPage() {
 
   // Fetch products by SKUs
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ['wishlist-products', wishlistSkus.join(',')],
+    queryKey: ['tenant', tenantId, 'wishlist-products', wishlistSkus.join(',')],
     queryFn: async () => {
-      if (wishlistSkus.length === 0) return []
+      if (!tenantId || wishlistSkus.length === 0) return []
 
       // Fetch products by SKU - use in() filter
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .in('sku', wishlistSkus)
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
       return (data || []) as Product[]
     },
-    enabled: wishlistSkus.length > 0,
+    enabled: !!tenantId && wishlistSkus.length > 0,
   })
 
   // Remove item from wishlist
@@ -83,7 +88,7 @@ export function WishlistPage() {
         description: t('wishlist.itemsAdded', { count: addedCount, s: addedCount > 1 ? 's' : '' }) + (failedCount > 0 ? ` (${failedCount} ${t('general.failed')})` : ''),
       })
       // Navigate to cart or orders
-      navigate('/dashboard/orders')
+      navigate(withBase('/dashboard/orders'))
     } else {
       toast({
         title: t('wishlist.failedToAdd'),
@@ -116,7 +121,7 @@ export function WishlistPage() {
             <p className="text-muted-foreground mb-6">
               {t('wishlist.noItemsDescription')}
             </p>
-            <Button onClick={() => navigate('/dashboard/products')}>
+            <Button onClick={() => navigate(withBase('/dashboard/products'))}>
               <ShoppingCart className="w-4 h-4 mr-2" />
               {t('wishlist.browseProducts')}
             </Button>
@@ -194,7 +199,7 @@ export function WishlistPage() {
             <p className="text-muted-foreground mb-6">
               {t('wishlist.itemsRemovedFromCatalog')}
             </p>
-            <Button onClick={() => navigate('/dashboard/products')}>
+            <Button onClick={() => navigate(withBase('/dashboard/products'))}>
               <ShoppingCart className="w-4 h-4 mr-2" />
               {t('wishlist.browseProducts')}
             </Button>
@@ -214,4 +219,3 @@ export function WishlistPage() {
     </div>
   )
 }
-

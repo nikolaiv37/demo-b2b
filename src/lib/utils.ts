@@ -40,8 +40,8 @@ export function slugify(text: string): string {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-')
     .replace(/^-+/, '')
     .replace(/-+$/, '')
 }
@@ -64,4 +64,3 @@ export function calculatePercentageChange(current: number, previous: number): nu
   if (previous === 0) return 100
   return ((current - previous) / previous) * 100
 }
-

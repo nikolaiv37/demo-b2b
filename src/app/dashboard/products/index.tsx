@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Product } from '@/types'
 import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { applyCommissionRate, shouldApplyCommission } from '@/lib/priceUtils'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 const ITEMS_PER_PAGE = 24
 const INITIAL_LOAD_SIZE = 150 // Load 150 products initially for fast render
@@ -101,16 +102,20 @@ export function ProductsPage() {
   const { profile } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const isAdmin = profile?.role === 'admin'
 
   // Fetch categories from normalized categories table FIRST
   // (needed for category filtering in other queries)
   const { data: categoriesData = [] } = useQuery({
-    queryKey: ['products', 'categories-for-filter'],
+    queryKey: ['tenant', tenantId, 'products', 'categories-for-filter'],
     queryFn: async () => {
+      if (!tenantId) return []
       const { data, error } = await supabase
         .from('categories')
         .select('id, name, parent_id')
+        .eq('tenant_id', tenantId)
         .order('name')
 
       if (error) throw error
@@ -130,12 +135,19 @@ export function ProductsPage() {
       return result
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: !!tenantId,
   })
 
   // Build base query with filters (for both count and data queries)
   // Using normalized category_id instead of legacy text-based category
   const buildBaseQuery = () => {
-    let query = supabase.from('products').select('*', { count: 'exact' })
+    let query = supabase
+      .from('products')
+      .select('*', { count: 'exact' })
+
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId)
+    }
 
     // Search filter (server-side) - still search legacy category text for UX
     if (searchQuery) {
@@ -197,6 +209,8 @@ export function ProductsPage() {
   const range = getPaginationRange()
   const { data: products, isLoading } = useQuery({
     queryKey: [
+      'tenant',
+      tenantId,
       'products',
       'paginated',
       searchQuery,
@@ -210,6 +224,7 @@ export function ProductsPage() {
       profile?.commission_rate, // Include commission rate to refetch when it changes
     ],
     queryFn: async () => {
+      if (!tenantId) return []
       if (!range) {
         // For pages 2-7, return empty - we'll use cached page 1 data
         return []
@@ -223,12 +238,14 @@ export function ProductsPage() {
       // Apply commission-based pricing
       return applyCommissionToProducts(data as Product[], profile?.role, profile?.commission_rate)
     },
-    enabled: true,
+    enabled: !!tenantId,
     placeholderData: (previousData) => previousData, // Keep previous data while loading
   })
 
   // Get cached data from page 1 query for pages 2-7
   const cachedPage1Data = queryClient.getQueryData<Product[]>([
+    'tenant',
+    tenantId,
     'products',
     'paginated',
     searchQuery,
@@ -243,6 +260,8 @@ export function ProductsPage() {
   // Fetch total count with same filters (using normalized category_id)
   const { data: totalCount } = useQuery({
     queryKey: [
+      'tenant',
+      tenantId,
       'products',
       'count',
       searchQuery,
@@ -253,8 +272,10 @@ export function ProductsPage() {
       categoriesData, // Include categories data in query key since we use it for hierarchy
     ],
     queryFn: async () => {
+      if (!tenantId) return 0
       // Build count query - use head: true to get only count
       let countQuery = supabase.from('products').select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
 
       // Apply same filters as data query
       if (searchQuery) {
@@ -290,16 +311,18 @@ export function ProductsPage() {
       if (error) throw error
       return count ?? 0
     },
-    enabled: true,
+    enabled: !!tenantId,
   })
 
   // Fetch filter options (manufacturers, availability) from products
   const { data: filterOptions } = useQuery({
-    queryKey: ['products', 'filter-options'],
+    queryKey: ['tenant', tenantId, 'products', 'filter-options'],
     queryFn: async () => {
+      if (!tenantId) return { manufacturers: [], availabilityOptions: [] }
       const { data, error } = await supabase
         .from('products')
         .select('manufacturer, availability')
+        .eq('tenant_id', tenantId)
         .limit(10000) // Get enough to extract unique values
 
       if (error) throw error
@@ -314,6 +337,7 @@ export function ProductsPage() {
       return { manufacturers, availabilityOptions }
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: !!tenantId,
   })
 
   const { manufacturers = [], availabilityOptions = [] } = filterOptions || {}
@@ -355,13 +379,14 @@ export function ProductsPage() {
         .from('products')
         .delete()
         .eq('id', productId)
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['products', 'count'] })
-      queryClient.invalidateQueries({ queryKey: ['products', 'filter-options'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products', 'count'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products', 'filter-options'] })
       toast({
         title: t('products.productDeleted'),
         description: t('products.productRemoved'),
@@ -381,7 +406,7 @@ export function ProductsPage() {
     setIsQuickViewOpen(true)
   }
 
-  const handleEdit = (_product: Product) => {
+  const handleEdit = () => {
     // TODO: Implement edit functionality
     toast({
       title: t('products.editProduct'),

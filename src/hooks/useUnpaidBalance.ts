@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 export interface UnpaidBalanceData {
   /** Sum of all unpaid order totals */
@@ -21,11 +22,13 @@ export interface UnpaidBalanceData {
  */
 export function useUnpaidBalance() {
   const { user, isAdmin } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useQuery<UnpaidBalanceData | null>({
-    queryKey: ['unpaid-balance', user?.id],
+    queryKey: ['tenant', tenantId, 'unpaid-balance', user?.id],
     queryFn: async () => {
-      if (!user?.id) return null
+      if (!tenantId || !user?.id) return null
 
       // Fetch all orders for this user (RLS filters automatically by company)
       // Status meanings: 
@@ -37,6 +40,7 @@ export function useUnpaidBalance() {
         .from('quotes')
         .select('id, total, status')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
+        .eq('tenant_id', tenantId)
 
       if (allError) {
         console.error('Error fetching orders for unpaid balance:', allError)
@@ -64,10 +68,9 @@ export function useUnpaidBalance() {
       }
     },
     // Only fetch for non-admin users with valid user ID
-    enabled: !isAdmin && !!user?.id,
+    enabled: !isAdmin && !!user?.id && !!tenantId,
     // Refetch every 30 seconds to stay in sync with layout topbar
     refetchInterval: 30000,
     staleTime: 10000, // Consider data stale after 10 seconds
   })
 }
-

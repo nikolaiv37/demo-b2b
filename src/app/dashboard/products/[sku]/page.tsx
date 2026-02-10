@@ -26,6 +26,7 @@ import { useState } from 'react'
 import { cn, formatPrice as formatPriceUtil } from '@/lib/utils'
 import { AddToOrderModal } from './AddToOrderModal'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 /**
  * Product Detail Page
@@ -46,6 +47,7 @@ export function ProductDetailPage() {
   const { t } = useTranslation()
   const { sku } = useParams<{ sku: string }>()
   const navigate = useNavigate()
+  const { withBase } = useTenantPath()
   const { toast } = useToast()
   const { addItem } = useCartStore()
   const { isInWishlist, toggleWishlist } = useWishlist()
@@ -71,7 +73,7 @@ export function ProductDetailPage() {
             <p className="text-muted-foreground mb-6">
               The product with SKU <code className="font-mono bg-muted px-2 py-1 rounded">{sku}</code> could not be found.
             </p>
-            <Button onClick={() => navigate('/dashboard/products')} className="w-full">
+            <Button onClick={() => navigate(withBase('/dashboard/products'))} className="w-full">
               <ArrowLeft className="w-4 h-4 mr-2" />
               {t('general.backToCatalog')}
             </Button>
@@ -184,12 +186,12 @@ export function ProductDetailPage() {
       <div className="space-y-6">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to="/dashboard" className="hover:text-foreground transition-colors flex items-center gap-1">
+          <Link to={withBase('/dashboard')} className="hover:text-foreground transition-colors flex items-center gap-1">
             <Home className="w-4 h-4" />
             Dashboard
           </Link>
           <ChevronRightIcon className="w-4 h-4" />
-          <Link to="/dashboard/products" className="hover:text-foreground transition-colors">
+          <Link to={withBase('/dashboard/products')} className="hover:text-foreground transition-colors">
             Products
           </Link>
           <ChevronRightIcon className="w-4 h-4" />
@@ -495,4 +497,3 @@ export function ProductDetailPage() {
     </>
   )
 }
-

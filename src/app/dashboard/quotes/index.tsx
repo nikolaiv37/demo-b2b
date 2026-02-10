@@ -29,31 +29,40 @@ import { Quote } from '@/types'
 import { Search, CheckCircle2, XCircle, Eye } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { useTranslation } from 'react-i18next'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 export function QuotesPage() {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
-  const { company } = useAuth()
+  const { user, isAdmin } = useAuth()
   const { toast } = useToast()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const updateStatusMutation = useMutationUpdateQuoteStatus()
 
   const { data: quotes, isLoading } = useQuery({
-    queryKey: ['quotes', company?.id],
+    queryKey: ['tenant', tenantId, 'quotes', user?.id, isAdmin],
     queryFn: async () => {
-      if (!company?.id) return []
+      if (!tenantId) return []
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('quotes')
         .select('*')
-        .eq('company_id', company.id)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
+
+      if (!isAdmin && user?.id) {
+        query = query.eq('user_id', user.id)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       return data as Quote[]
     },
-    enabled: !!company?.id,
+    enabled: !!tenantId && (isAdmin || !!user?.id),
   })
 
   const filteredQuotes = quotes?.filter(

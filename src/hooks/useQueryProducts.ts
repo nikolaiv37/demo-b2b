@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 import { Product } from '@/types'
 import { useAuthStore } from '@/stores/authStore'
 import { applyCommissionRate, shouldApplyCommission } from '@/lib/priceUtils'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 /**
  * Apply commission-based price adjustments to products.
@@ -31,11 +32,17 @@ function applyCommissionToProducts(
 
 export function useQueryProducts(supplierId?: string) {
   const profile = useAuthStore((state) => state.profile)
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useQuery({
-    queryKey: ['products', supplierId, profile?.id, profile?.commission_rate],
+    queryKey: ['tenant', tenantId, 'products', supplierId, profile?.id, profile?.commission_rate],
     queryFn: async () => {
       let query = supabase.from('products').select('*').order('created_at', { ascending: false })
+
+      if (tenantId) {
+        query = query.eq('tenant_id', tenantId)
+      }
 
       if (supplierId) {
         query = query.eq('supplier_id', supplierId)
@@ -49,20 +56,23 @@ export function useQueryProducts(supplierId?: string) {
       return applyCommissionToProducts(data as Product[], profile?.role, profile?.commission_rate)
     },
     // For dev mode, always enable to show all products
-    enabled: true,
+    enabled: !!tenantId,
   })
 }
 
 export function useQueryProduct(productId: string) {
   const profile = useAuthStore((state) => state.profile)
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useQuery({
-    queryKey: ['product', productId, profile?.id, profile?.commission_rate],
+    queryKey: ['tenant', tenantId, 'product', productId, profile?.id, profile?.commission_rate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('id', productId)
+        .eq('tenant_id', tenantId)
         .single()
 
       if (error) throw error
@@ -71,7 +81,7 @@ export function useQueryProduct(productId: string) {
       const products = applyCommissionToProducts([data as Product], profile?.role, profile?.commission_rate)
       return products[0]
     },
-    enabled: !!productId,
+    enabled: !!productId && !!tenantId,
   })
 }
 
@@ -82,9 +92,11 @@ export function useQueryPublicProducts(companySlug: string, filters?: {
   maxPrice?: number
 }) {
   const profile = useAuthStore((state) => state.profile)
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useQuery({
-    queryKey: ['public-products', companySlug, filters, profile?.id, profile?.commission_rate],
+    queryKey: ['tenant', tenantId, 'public-products', companySlug, filters, profile?.id, profile?.commission_rate],
     queryFn: async () => {
       // For MVP: Show all visible products
       // TODO: Later filter by company if needed
@@ -93,6 +105,9 @@ export function useQueryPublicProducts(companySlug: string, filters?: {
         .select('*')
         .eq('is_visible', true)
         .gt('quantity', 0) // Only show in-stock products
+      if (tenantId) {
+        query = query.eq('tenant_id', tenantId)
+      }
 
       if (filters?.category) {
         query = query.eq('category', filters.category)
@@ -119,7 +134,7 @@ export function useQueryPublicProducts(companySlug: string, filters?: {
       // Apply commission-based pricing
       return applyCommissionToProducts(data as Product[], profile?.role, profile?.commission_rate)
     },
-    enabled: !!companySlug,
+    enabled: !!companySlug && !!tenantId,
   })
 }
 
@@ -128,9 +143,11 @@ export function useQueryPublicProducts(companySlug: string, filters?: {
  */
 export function useQueryProductBySku(sku: string) {
   const profile = useAuthStore((state) => state.profile)
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   return useQuery({
-    queryKey: ['product', 'sku', sku, profile?.id, profile?.commission_rate],
+    queryKey: ['tenant', tenantId, 'product', 'sku', sku, profile?.id, profile?.commission_rate],
     queryFn: async () => {
       if (!sku) throw new Error('SKU is required')
 
@@ -138,6 +155,7 @@ export function useQueryProductBySku(sku: string) {
         .from('products')
         .select('*')
         .eq('sku', sku)
+        .eq('tenant_id', tenantId)
         .single()
 
       if (error) {
@@ -152,8 +170,7 @@ export function useQueryProductBySku(sku: string) {
       const products = applyCommissionToProducts([data as Product], profile?.role, profile?.commission_rate)
       return products[0]
     },
-    enabled: !!sku,
+    enabled: !!sku && !!tenantId,
     retry: false,
   })
 }
-

@@ -6,10 +6,13 @@ import { parseCSV, csvRowToProduct, cleanProductForDatabase } from '@/lib/csv/pa
 import { validateTransformedProducts, TransformedProductData } from '@/lib/csv/validator'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { useToast } from '@/components/ui/use-toast'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 export function useCSVImport() {
   const { t } = useTranslation()
   const { toast } = useToast()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const [progress, setProgress] = useState(0)
   const [statusText, setStatusText] = useState('')
   const [previewData, setPreviewData] = useState<TransformedProductData[]>([])
@@ -118,6 +121,9 @@ export function useCSVImport() {
 
   const importMutation = useMutation({
     mutationFn: async ({ file, data }: { file: File; data: Record<string, unknown>[] }) => {
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
       setProgress(0)
       setStatusText('Starting import...')
 
@@ -129,7 +135,10 @@ export function useCSVImport() {
 
       // Data is already transformed and validated, but we need to clean it for database
       // Remove compatibility fields (moq, wholesale_price, stock) that don't exist in DB
-      const products = data.map(cleanProductForDatabase)
+      const products = data.map(cleanProductForDatabase).map((product) => ({
+        ...product,
+        tenant_id: tenantId,
+      }))
 
       if (products.length === 0) {
         throw new Error('No valid products to import. Please check your CSV file.')
@@ -158,7 +167,7 @@ export function useCSVImport() {
           const { error } = await supabase
             .from('products')
             .upsert(batch, {
-              onConflict: 'sku',
+              onConflict: 'tenant_id,sku',
               ignoreDuplicates: false, // Update existing rows instead of skipping
             })
 
@@ -211,7 +220,7 @@ export function useCSVImport() {
     },
     onSuccess: (result) => {
       // Invalidate products query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products'] })
       
       // Show success toast with detailed stats
       const messages = []
@@ -257,4 +266,3 @@ export function useCSVImport() {
     error: importMutation.error,
   }
 }
-

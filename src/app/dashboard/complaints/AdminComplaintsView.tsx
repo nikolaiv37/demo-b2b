@@ -29,6 +29,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 import { Eye, Image as ImageIcon, Search, Building2 } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 
@@ -52,6 +53,14 @@ interface Complaint {
   internal_notes?: string
   created_at: string
   updated_at: string
+}
+
+interface ComplaintRow {
+  id: string
+  user_id: string
+  order_id: string
+  status: string
+  internal_notes?: string | null
 }
 
 // Map old status values to new ones
@@ -113,14 +122,18 @@ export function AdminComplaintsView() {
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
 
   // Fetch all complaints (admin sees all via RLS)
   const { data: complaints, isLoading } = useQuery({
-    queryKey: ['admin-complaints'],
+    queryKey: ['tenant', tenantId, 'admin-complaints'],
     queryFn: async () => {
+      if (!tenantId) return []
       const { data, error } = await supabase
         .from('complaints')
-        .select('*')
+        .select('id, user_id, order_id, status, reason, message, items, photos, internal_notes, created_at, updated_at')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -128,71 +141,110 @@ export function AdminComplaintsView() {
         throw error
       }
 
-      // Fetch company names and order numbers for each complaint
-      const complaintsWithDetails = await Promise.all(
-        (data || []).map(async (complaint: any) => {
-          let orderNumber = null
-          let companyName = null
-
-          // Get user profile to get company_id, then fetch company name
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('company_id')
-            .eq('id', complaint.user_id)
-            .single()
-
-          // If profile has company_id, fetch company name from companies table
-          if (profile?.company_id) {
-            const { data: company } = await supabase
-              .from('companies')
-              .select('name')
-              .eq('id', profile.company_id)
-              .single()
-
-            if (company?.name) {
-              companyName = company.name
-            }
-          }
-
-          // Also try to get company name from quotes table as fallback
-          if (!companyName) {
-            const { data: quote } = await supabase
-              .from('quotes')
-              .select('company_name, order_number')
-              .eq('id', complaint.order_id)
-              .single()
-
-            if (quote?.company_name) {
-              companyName = quote.company_name
-            }
-            if (quote?.order_number) {
-              orderNumber = quote.order_number
-            }
-          } else {
-            // Still get order number from quotes
-            const { data: quote } = await supabase
-              .from('quotes')
-              .select('order_number')
-              .eq('id', complaint.order_id)
-              .single()
-
-            if (quote?.order_number) {
-              orderNumber = quote.order_number
-            }
-          }
-
-          return {
-            ...complaint,
-            order_number: orderNumber,
-            company_name: companyName,
-            status: mapStatus(complaint.status),
-            internal_notes: complaint.internal_notes || '',
-          } as Complaint
-        })
+      const rows = (data as ComplaintRow[] | null) || []
+      const userIds = Array.from(
+        new Set(rows.map((row) => row.user_id).filter((id): id is string => !!id))
       )
+      const orderIds = Array.from(
+        new Set(rows.map((row) => row.order_id).filter((id): id is string => !!id))
+      )
+
+      const profileByUserId = new Map<string, { company_id?: string | null; company_name?: string | null }>()
+      const companyNameByCompanyId = new Map<string, string>()
+      const quoteByOrderId = new Map<string, { order_number?: number | null; company_name?: string | null }>()
+
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, company_id, company_name')
+          .in('id', userIds)
+          .eq('tenant_id', tenantId)
+
+        if (profilesError) {
+          console.warn('Error fetching profiles for complaints:', profilesError)
+        } else {
+          for (const profile of profiles || []) {
+            if (profile?.id) {
+              profileByUserId.set(profile.id, {
+                company_id: profile.company_id ?? null,
+                company_name: profile.company_name ?? null,
+              })
+            }
+          }
+        }
+      }
+
+      const companyIds = Array.from(
+        new Set(
+          Array.from(profileByUserId.values())
+            .map((profile) => profile.company_id)
+            .filter((id): id is string => !!id)
+        )
+      )
+
+      if (companyIds.length > 0) {
+        const { data: companies, error: companiesError } = await supabase
+          .from('companies')
+          .select('id, name')
+          .in('id', companyIds)
+          .eq('tenant_id', tenantId)
+
+        if (companiesError) {
+          console.warn('Error fetching companies for complaints:', companiesError)
+        } else {
+          for (const company of companies || []) {
+            if (company?.id && company?.name) {
+              companyNameByCompanyId.set(company.id, company.name)
+            }
+          }
+        }
+      }
+
+      if (orderIds.length > 0) {
+        const { data: quotes, error: quotesError } = await supabase
+          .from('quotes')
+          .select('id, order_number, company_name')
+          .in('id', orderIds)
+          .eq('tenant_id', tenantId)
+
+        if (quotesError) {
+          console.warn('Error fetching quotes for complaints:', quotesError)
+        } else {
+          for (const quote of quotes || []) {
+            if (quote?.id) {
+              quoteByOrderId.set(String(quote.id), {
+                order_number: typeof quote.order_number === 'number' ? quote.order_number : null,
+                company_name: quote.company_name ?? null,
+              })
+            }
+          }
+        }
+      }
+
+      const complaintsWithDetails = rows.map((complaint) => {
+        const profile = profileByUserId.get(complaint.user_id)
+        const quote = quoteByOrderId.get(String(complaint.order_id))
+        const companyName =
+          profile?.company_name ||
+          (profile?.company_id ? companyNameByCompanyId.get(profile.company_id) : undefined) ||
+          quote?.company_name ||
+          null
+        const orderNumber = quote?.order_number ?? null
+
+        return {
+          ...complaint,
+          order_number: orderNumber,
+          company_name: companyName,
+          status: mapStatus(complaint.status),
+          internal_notes: complaint.internal_notes || '',
+        } as Complaint
+      })
 
       return complaintsWithDetails
     },
+    enabled: !!tenantId,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   })
 
   // Set up real-time subscription for complaints
@@ -208,7 +260,7 @@ export function AdminComplaintsView() {
         },
         () => {
           // Refetch complaints when any change occurs
-          queryClient.invalidateQueries({ queryKey: ['admin-complaints'] })
+          queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-complaints'] })
         }
       )
       .subscribe()
@@ -216,7 +268,7 @@ export function AdminComplaintsView() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [queryClient])
+  }, [queryClient, tenantId])
 
   // Update status mutation
   const updateStatusMutation = useMutation({
@@ -226,11 +278,12 @@ export function AdminComplaintsView() {
         .from('complaints')
         .update({ status: dbStatus })
         .eq('id', id)
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-complaints'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-complaints'] })
       toast({
         title: t('complaints.statusUpdated'),
         description: t('complaints.statusUpdated'),
@@ -252,11 +305,12 @@ export function AdminComplaintsView() {
         .from('complaints')
         .update({ internal_notes: notes })
         .eq('id', id)
+        .eq('tenant_id', tenantId)
 
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-complaints'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-complaints'] })
       toast({
         title: t('complaints.noteAdded'),
         description: t('complaints.noteAdded'),

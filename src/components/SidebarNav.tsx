@@ -29,6 +29,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
@@ -105,8 +106,10 @@ export function SidebarNav() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
+  const { withBase, stripBase } = useTenantPath()
   const { company, isAdmin, signOut } = useAuth()
   const { count: wishlistCount } = useWishlist()
+  const logicalPath = stripBase(location.pathname)
   // Default to open on page load
   const [settingsOpen, setSettingsOpen] = useState<string>('settings')
   const [catalogOpen, setCatalogOpen] = useState<string>('catalog')
@@ -131,9 +134,9 @@ export function SidebarNav() {
   // Check if item is active
   const isItemActive = (href: string) => {
     if (href === '/dashboard') {
-      return location.pathname === href
+      return logicalPath === href
     }
-    return location.pathname.startsWith(href)
+    return logicalPath.startsWith(href)
   }
 
   // Check if submenu item is active
@@ -141,17 +144,17 @@ export function SidebarNav() {
     // Handle hash-based settings sections
     if (href.includes('#')) {
       const [path, hash] = href.split('#')
-      if (!hash) return location.pathname === path
-      return location.pathname === path && location.hash === `#${hash}`
+      if (!hash) return logicalPath === path
+      return logicalPath === path && location.hash === `#${hash}`
     }
-    return location.pathname === href
+    return logicalPath === href
   }
 
   // Check if Catalog or any submenu is active
   const isCatalogActive = () => {
     return (
-      location.pathname === '/dashboard/products' ||
-      location.pathname === '/dashboard/wishlist' ||
+      logicalPath === '/dashboard/products' ||
+      logicalPath === '/dashboard/wishlist' ||
       catalogSubmenuItems.some((item) => isSubmenuItemActive(item.href))
     )
   }
@@ -159,7 +162,7 @@ export function SidebarNav() {
   // Check if Settings or any submenu is active
   const isSettingsActive = () => {
     return (
-      location.pathname === '/dashboard/settings' ||
+      logicalPath === '/dashboard/settings' ||
       settingsSubmenuItems.some((item) => isSubmenuItemActive(item.href))
     )
   }
@@ -183,7 +186,7 @@ export function SidebarNav() {
       setCatalogOpen('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search])
+  }, [location.pathname, location.search, logicalPath])
 
   // Auto-open Settings submenu if on settings page or any submenu, or use saved state
   useEffect(() => {
@@ -204,7 +207,7 @@ export function SidebarNav() {
       setSettingsOpen('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search])
+  }, [location.pathname, location.search, logicalPath])
 
   // Save catalog submenu state to localStorage
   const handleCatalogToggle = (value: string) => {
@@ -223,7 +226,7 @@ export function SidebarNav() {
       {/* Top Section: Company Branding */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <Link
-          to="/dashboard"
+          to={withBase('/dashboard')}
           className="flex items-center gap-3 group cursor-pointer"
         >
           {/* Company Logo */}
@@ -262,7 +265,7 @@ export function SidebarNav() {
               return (
                 <Link
                   key={item.href}
-                  to={item.href}
+                  to={withBase(item.href)}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
                     isActive
@@ -310,8 +313,8 @@ export function SidebarNav() {
                         : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                     )}
                     onClick={() => {
-                      if (location.pathname !== '/dashboard/products' && location.pathname !== '/dashboard/wishlist') {
-                        navigate('/dashboard/products')
+                      if (logicalPath !== '/dashboard/products' && logicalPath !== '/dashboard/wishlist') {
+                        navigate(withBase('/dashboard/products'))
                       }
                       handleCatalogToggle(catalogOpen === 'catalog' ? '' : 'catalog')
                     }}
@@ -371,7 +374,11 @@ export function SidebarNav() {
                       return (
                         <Link
                           key={subItem.href}
-                          to={subItem.href}
+                          to={
+                            subItem.href.includes('#')
+                              ? `${withBase(subItem.href.split('#')[0])}#${subItem.href.split('#')[1]}`
+                              : withBase(subItem.href)
+                          }
                           className={cn(
                             'flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors duration-150',
                             isSubActive
@@ -414,7 +421,7 @@ export function SidebarNav() {
             {/* CSV Import Wizard - promoted as top-level item */}
             {isAdmin && (
               <Link
-                to="/dashboard/csv-import"
+                to={withBase('/dashboard/csv-import')}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
                   isItemActive('/dashboard/csv-import')
@@ -456,8 +463,8 @@ export function SidebarNav() {
                     )}
                     onClick={() => {
                       // Navigate to settings if not already there
-                      if (location.pathname !== '/dashboard/settings') {
-                        navigate('/dashboard/settings')
+                      if (logicalPath !== '/dashboard/settings') {
+                        navigate(withBase('/dashboard/settings'))
                       }
                       // Toggle accordion
                       handleSettingsToggle(settingsOpen === 'settings' ? '' : 'settings')
@@ -524,7 +531,11 @@ export function SidebarNav() {
                         return (
                           <Link
                             key={subItem.href}
-                            to={subItem.href}
+                            to={
+                              subItem.href.includes('#')
+                                ? `${withBase(subItem.href.split('#')[0])}#${subItem.href.split('#')[1]}`
+                                : withBase(subItem.href)
+                            }
                             className={cn(
                               'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
                               isSubActive

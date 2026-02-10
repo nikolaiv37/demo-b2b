@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -201,6 +202,8 @@ export function CategoryMappingStep({
   onUpdateMapping,
 }: CategoryMappingStepProps) {
   const { t } = useTranslation()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   // State
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
@@ -239,13 +242,15 @@ export function CategoryMappingStep({
 
   // Fetch real categories from the database
   const { data: dbCategories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories-for-import'],
+    queryKey: ['tenant', tenantId, 'categories-for-import'],
     queryFn: async () => {
+      if (!tenantId) return []
       const { data, error } = await supabase
         .from('products')
         .select('category')
         .not('category', 'is', null)
         .not('category', 'eq', '')
+        .eq('tenant_id', tenantId)
 
       if (error) {
         console.error('Error fetching categories:', error)
@@ -257,6 +262,7 @@ export function CategoryMappingStep({
       )].sort()
     },
     staleTime: 30000,
+    enabled: !!tenantId,
   })
 
   // All categories including newly created

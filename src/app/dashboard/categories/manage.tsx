@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { cn, slugify } from '@/lib/utils'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 import {
   FolderKanban,
   Plus,
@@ -50,6 +51,8 @@ type CategoryFilter = 'all' | 'main' | 'sub'
 export function ManageCategoriesPage() {
   const { t } = useTranslation()
   const { company } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -68,13 +71,13 @@ export function ManageCategoriesPage() {
   const [nameError, setNameError] = useState<string | null>(null)
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
-    queryKey: ['categories'],
+    queryKey: ['tenant', tenantId, 'categories'],
     queryFn: async () => {
-      // For now, load all categories regardless of company to keep
-      // the Manage view in sync with the single-wholesaler catalog.
+      if (!tenantId) return []
       const { data, error } = await supabase
         .from('categories')
         .select('id,name,parent_id,image_url,slug')
+        .eq('tenant_id', tenantId)
         .order('name', { ascending: true })
 
       if (error) {
@@ -88,12 +91,14 @@ export function ManageCategoriesPage() {
       }
       return (data || []) as Category[]
     },
+    enabled: !!tenantId,
   })
 
   // Query product counts using category_id (normalized architecture)
   const { data: productCounts = {} } = useQuery<Record<string, number>>({
-    queryKey: ['category-product-counts'],
+    queryKey: ['tenant', tenantId, 'category-product-counts'],
     queryFn: async () => {
+      if (!tenantId) return {}
       const result: Record<string, number> = {}
 
       // Build a map of parent categories to their children for hierarchical counting
@@ -122,6 +127,7 @@ export function ManageCategoriesPage() {
           .select('*', { count: 'exact', head: true })
           .in('category_id', categoryIds)
           .eq('is_visible', true)
+          .eq('tenant_id', tenantId)
 
         if (!error && typeof count === 'number') {
           result[cat.id] = count
@@ -130,7 +136,7 @@ export function ManageCategoriesPage() {
 
       return result
     },
-    enabled: categories.length > 0,
+    enabled: !!tenantId && categories.length > 0,
   })
 
   const buildTree = (items: Category[]): CategoryWithChildren[] => {
@@ -287,8 +293,8 @@ export function ManageCategoriesPage() {
       try {
         const imageUrl = await uploadImageIfNeeded()
 
-        if (!company?.id) {
-          throw new Error('Missing company context for category operation')
+        if (!tenantId) {
+          throw new Error('Missing tenant context for category operation')
         }
 
         // Generate slug from the new name
@@ -315,6 +321,7 @@ export function ManageCategoriesPage() {
               ...(imageUrl ? { image_url: imageUrl } : {}),
             })
             .eq('id', selectedCategory.id)
+            .eq('tenant_id', tenantId)
 
           if (error) {
             // Check for unique constraint violation
@@ -334,7 +341,8 @@ export function ManageCategoriesPage() {
           return { isRenaming, isEdit: true, newSlug }
         } else {
           const { error } = await supabase.from('categories').insert({
-            company_id: company.id,
+            company_id: company?.id ?? null,
+            tenant_id: tenantId,
             name: nameInput.trim(),
             slug: newSlug,
             parent_id: effectiveParentId,
@@ -373,8 +381,8 @@ export function ManageCategoriesPage() {
       setNameError(null)
 
       // Properly invalidate category hierarchy and categories so buyer catalog picks up rename
-      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'categories'] })
     },
     onError: (error: Error) => {
       // Only show generic error toast if not a validation error
@@ -391,7 +399,7 @@ export function ManageCategoriesPage() {
 
   const deleteCategoryMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedCategory) return
+      if (!selectedCategory || !tenantId) return
 
       setIsSubmitting(true)
       try {
@@ -404,6 +412,7 @@ export function ManageCategoriesPage() {
             .from('categories')
             .select('id')
             .eq('parent_id', selectedCategory.id)
+            .eq('tenant_id', tenantId)
 
           if (subcategories) {
             categoryIdsToUnassign.push(...subcategories.map(c => c.id))
@@ -416,6 +425,7 @@ export function ManageCategoriesPage() {
           .from('products')
           .update({ category_id: null })
           .in('category_id', categoryIdsToUnassign)
+          .eq('tenant_id', tenantId)
 
         if (updateError) throw updateError
 
@@ -425,6 +435,7 @@ export function ManageCategoriesPage() {
             .from('categories')
             .delete()
             .eq('parent_id', selectedCategory.id)
+            .eq('tenant_id', tenantId)
 
           if (subDeleteError) throw subDeleteError
         }
@@ -434,6 +445,7 @@ export function ManageCategoriesPage() {
           .from('categories')
           .delete()
           .eq('id', selectedCategory.id)
+          .eq('tenant_id', tenantId)
 
         if (error) throw error
       } finally {
@@ -448,9 +460,9 @@ export function ManageCategoriesPage() {
       setDeleteModalOpen(false)
 
       // Invalidate all category-related queries
-      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
-      queryClient.invalidateQueries({ queryKey: ['category-product-counts'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'categories'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-product-counts'] })
     },
     onError: () => {
       toast({
@@ -463,7 +475,7 @@ export function ManageCategoriesPage() {
 
   const mergeCategoryMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedCategory || !targetCategoryId) return
+      if (!selectedCategory || !targetCategoryId || !tenantId) return
       if (targetCategoryId === selectedCategory.id) return
 
       const target = categories.find((c) => c.id === targetCategoryId)
@@ -480,6 +492,7 @@ export function ManageCategoriesPage() {
             .from('categories')
             .select('id')
             .eq('parent_id', selectedCategory.id)
+            .eq('tenant_id', tenantId)
 
           if (subcategories) {
             sourceCategoryIds.push(...subcategories.map(c => c.id))
@@ -491,6 +504,7 @@ export function ManageCategoriesPage() {
           .from('products')
           .update({ category_id: targetCategoryId })
           .in('category_id', sourceCategoryIds)
+          .eq('tenant_id', tenantId)
 
         if (updateError) throw updateError
 
@@ -500,6 +514,7 @@ export function ManageCategoriesPage() {
             .from('categories')
             .delete()
             .eq('parent_id', selectedCategory.id)
+            .eq('tenant_id', tenantId)
 
           if (subDeleteError) throw subDeleteError
         }
@@ -509,6 +524,7 @@ export function ManageCategoriesPage() {
           .from('categories')
           .delete()
           .eq('id', selectedCategory.id)
+          .eq('tenant_id', tenantId)
 
         if (error) throw error
       } finally {
@@ -523,9 +539,9 @@ export function ManageCategoriesPage() {
       setMergeModalOpen(false)
 
       // Invalidate all category-related queries
-      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] })
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
-      queryClient.invalidateQueries({ queryKey: ['category-product-counts'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-hierarchy'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'categories'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-product-counts'] })
     },
     onError: () => {
       toast({
@@ -896,5 +912,3 @@ export function ManageCategoriesPage() {
     </div>
   )
 }
-
-

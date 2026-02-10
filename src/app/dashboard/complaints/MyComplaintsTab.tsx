@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 import { Eye, AlertCircle, Image as ImageIcon, Filter } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -95,19 +96,22 @@ function getReasonLabel(reason: string, t: (key: string) => string) {
 export function MyComplaintsTab() {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const { data: complaints, isLoading } = useQuery({
-    queryKey: ['complaints', user?.id],
+    queryKey: ['tenant', tenantId, 'complaints', user?.id],
     queryFn: async () => {
-      if (!user?.id) return []
+      if (!user?.id || !tenantId) return []
 
       const { data, error } = await supabase
         .from('complaints')
-        .select('*')
+        .select('id, order_id, status, items, photos, reason, message, created_at, updated_at')
         .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -118,36 +122,38 @@ export function MyComplaintsTab() {
         throw error
       }
 
-      // Fetch order numbers for each complaint
-      // Skip orders table entirely - use quotes table directly (this is the orders table in this system)
-      const complaintsWithOrders = await Promise.all(
-        (data || []).map(async (complaint: any) => {
-          let orderNumber = null
+      const rows = (data as Complaint[] | null) || []
+      const orderIds = Array.from(
+        new Set(rows.map((complaint) => complaint.order_id).filter((id): id is string => !!id))
+      )
+      const orderNumberById = new Map<string, number>()
 
-          // Try quotes table directly (this is where orders are stored)
-          const { data: quote, error: quoteError } = await supabase
-            .from('quotes')
-            .select('order_number')
-            .eq('id', complaint.order_id)
-            .single()
+      if (orderIds.length > 0) {
+        const { data: quotes, error: quoteError } = await supabase
+          .from('quotes')
+          .select('id, order_number')
+          .in('id', orderIds)
+          .eq('tenant_id', tenantId)
 
-          // Only use quote if no error (or if error is not "table not found")
-          if (!quoteError || (quoteError.code !== 'PGRST205' && !quoteError.message?.includes('Could not find the table'))) {
-            if (quote?.order_number) {
-              orderNumber = quote.order_number
+        if (quoteError && quoteError.code !== 'PGRST205') {
+          console.warn('Error fetching quotes for complaints:', quoteError)
+        } else {
+          for (const quote of quotes || []) {
+            if (quote?.id && typeof quote.order_number === 'number') {
+              orderNumberById.set(String(quote.id), quote.order_number)
             }
           }
+        }
+      }
 
-          return {
-            ...complaint,
-            order_number: orderNumber,
-          } as Complaint
-        })
-      )
-
-      return complaintsWithOrders
+      return rows.map((complaint) => ({
+        ...complaint,
+        order_number: orderNumberById.get(String(complaint.order_id)) ?? null,
+      })) as Complaint[]
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!tenantId,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   })
 
   const handleViewComplaint = (complaint: Complaint) => {

@@ -1,10 +1,18 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { Profile, UserRole, Company } from '@/types'
 import { identifyUser } from '@/lib/analytics'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
+
+const blockedUserTenantPairs = new Set<string>()
+const loggedTenantMismatchPairs = new Set<string>()
+
+// Module-level flag shared across all useAuth instances.
+// When true, the onAuthStateChange SIGNED_OUT handler skips React state
+// updates so we don't get a SPA navigation racing the hard redirect.
+let _isSigningOut = false
 
 /**
  * Single source of truth for authentication state
@@ -17,8 +25,10 @@ import { identifyUser } from '@/lib/analytics'
  * - Exposes: user, profile, isAdmin, isLoading
  */
 export function useAuth() {
-  const navigate = useNavigate()
   const { user, profile, setUser, setProfile, setLoading, clear } = useAuthStore()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id ?? null
+  const { withBase } = useTenantPath()
   const initializedRef = useRef(false)
   const loadingProfileRef = useRef<string | null>(null)
   const currentProfileRef = useRef<Profile | null>(null)
@@ -87,9 +97,21 @@ export function useAuth() {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
+      // If signOut() initiated this event, skip all React state updates.
+      // signOut() will hard-redirect via window.location.replace, so
+      // updating state here would just trigger AuthGuard's <Navigate>
+      // and cause a visible double-reload.
+      if (event === 'SIGNED_OUT' && _isSigningOut) {
+        return
+      }
+
       // Reset tracking on auth changes
       if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         profileLoadStartedRef.current.clear()
+      }
+      if (event === 'SIGNED_OUT') {
+        blockedUserTenantPairs.clear()
+        loggedTenantMismatchPairs.clear()
       }
 
       setUser(session?.user ?? null)
@@ -106,6 +128,12 @@ export function useAuth() {
         
         // Skip INITIAL_SESSION if we already started loading (prevents duplicate fetches)
         if (event === 'INITIAL_SESSION' && profileLoadStartedRef.current.has(session.user.id)) {
+          return
+        }
+
+        // Token refresh should not re-run profile bootstrap on every refresh cycle.
+        if (event === 'TOKEN_REFRESHED') {
+          setLoading(false)
           return
         }
         
@@ -150,18 +178,70 @@ export function useAuth() {
       subscription.unsubscribe()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setUser, setProfile, setLoading, clear])
+  }, [setUser, setProfile, setLoading, clear, tenantId])
 
   /**
    * Loads company data from the database.
    */
   const loadCompany = async (companyId: string) => {
     try {
-      const { data: company, error } = await supabase
+      if (!tenantId) {
+        return
+      }
+      const { data: companyRows, error } = await supabase
         .from('companies')
         .select('*')
         .eq('id', companyId)
-        .single()
+        .eq('tenant_id', tenantId)
+        .limit(1)
+
+      const company = companyRows?.[0]
+
+      if (!company && !error) {
+        // Try legacy fetch without tenant filter (pre-tenant migration data)
+        const { data: legacyCompanyRows, error: legacyError } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', companyId)
+          .limit(1)
+
+        const legacyCompany = legacyCompanyRows?.[0]
+
+        if (legacyError) {
+          console.error('Error loading legacy company:', legacyError)
+          return
+        }
+
+        if (legacyCompany) {
+          if (legacyCompany.tenant_id && legacyCompany.tenant_id !== tenantId) {
+            console.warn('Company tenant mismatch; refusing to attach company', {
+              companyTenantId: legacyCompany.tenant_id,
+              currentTenantId: tenantId,
+              companyId,
+            })
+            return
+          }
+
+          let companyToUse = legacyCompany
+          if (!legacyCompany.tenant_id) {
+            const { data: updatedCompany, error: updateError } = await supabase
+              .from('companies')
+              .update({ tenant_id: tenantId })
+              .eq('id', companyId)
+              .select()
+              .limit(1)
+
+            if (updateError) {
+              console.warn('Failed to backfill tenant_id on legacy company; continuing with legacy company', updateError)
+            } else if (updatedCompany?.[0]) {
+              companyToUse = updatedCompany[0]
+            }
+          }
+
+          useAuthStore.getState().setCompany(companyToUse as Company)
+        }
+        return
+      }
 
       if (error) {
         console.error('Error loading company:', error)
@@ -182,19 +262,103 @@ export function useAuth() {
    * Bulletproof error handling - RLS errors or other issues won't hang the app.
    */
   const loadOrCreateProfile = async (user: User) => {
+    const userTenantKey = `${user.id}:${tenantId ?? 'no-tenant'}`
+    if (blockedUserTenantPairs.has(userTenantKey)) {
+      setProfile(null)
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
+      if (!tenantId) {
+        setProfile(null)
+        setLoading(false)
+        return
+      }
 
-      // Fetch existing profile
-      const { data: existingProfile, error: fetchError } = await supabase
+      // Fetch existing profile scoped to tenant
+      const { data: existingProfileRows, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .eq('tenant_id', tenantId)
+        .limit(1)
+
+      const existingProfile = existingProfileRows?.[0]
 
       // Handle "not found" case (profile doesn't exist)
-      if (fetchError && fetchError.code === 'PGRST116') {
-        // Profile doesn't exist - create it below
+      if (!existingProfile && !fetchError) {
+        // Profile doesn't exist for this tenant - try legacy lookup by id (no tenant filter)
+        const { data: legacyProfileRows, error: legacyError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .limit(1)
+
+        const legacyProfile = legacyProfileRows?.[0]
+
+        if (legacyError) {
+          console.error('Error fetching legacy profile:', {
+            code: legacyError.code,
+            message: legacyError.message,
+            details: legacyError.details,
+            hint: legacyError.hint,
+          })
+        }
+
+        if (legacyProfile) {
+          if (legacyProfile.tenant_id && legacyProfile.tenant_id !== tenantId) {
+            blockedUserTenantPairs.add(userTenantKey)
+            if (!loggedTenantMismatchPairs.has(userTenantKey)) {
+              console.warn('Profile tenant mismatch; refusing to attach profile', {
+                profileTenantId: legacyProfile.tenant_id,
+                currentTenantId: tenantId,
+                userId: user.id,
+              })
+              loggedTenantMismatchPairs.add(userTenantKey)
+            }
+            setProfile(null)
+            setLoading(false)
+            return
+          }
+
+          let profileToUse = legacyProfile
+          if (!legacyProfile.tenant_id) {
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from('profiles')
+              .update({ tenant_id: tenantId })
+              .eq('id', user.id)
+              .select()
+              .limit(1)
+
+            if (updateError) {
+              console.warn('Failed to backfill tenant_id on legacy profile; continuing with legacy profile', updateError)
+            } else if (updatedProfile?.[0]) {
+              profileToUse = updatedProfile[0]
+            }
+          }
+
+          const profileWithEmail = {
+            ...profileToUse,
+            email: user.email || undefined,
+          } as Profile
+
+          setProfile(profileWithEmail)
+
+          if (profileToUse.company_id) {
+            await loadCompany(profileToUse.company_id)
+          }
+
+          identifyUser(user.id, {
+            email: user.email || '',
+            role: profileToUse.role,
+          })
+
+          setLoading(false)
+          return
+        }
+        // Profile doesn't exist anywhere - create it below
       } else if (fetchError) {
         // Real error occurred
         console.error('Error fetching profile:', {
@@ -207,6 +371,8 @@ export function useAuth() {
         setLoading(false)
         return
       } else if (existingProfile) {
+        blockedUserTenantPairs.delete(userTenantKey)
+        loggedTenantMismatchPairs.delete(userTenantKey)
         // Profile found - return it
         const profileWithEmail = {
           ...existingProfile,
@@ -229,11 +395,12 @@ export function useAuth() {
         return
       }
       
-      // If we get here, profile doesn't exist (PGRST116) - create it
+      // If we get here, profile doesn't exist for this tenant - create it
       // Create it automatically with default role 'company'
       // Note: company_name will be set during onboarding, so it's nullable here
       const newProfile = {
         id: user.id,
+        tenant_id: tenantId,
         role: 'company' as UserRole,
         company_name: null, // Will be set during onboarding
         phone: null, // Optional
@@ -244,9 +411,56 @@ export function useAuth() {
         .from('profiles')
         .insert(newProfile)
         .select()
-        .single()
+        .limit(1)
 
       if (createError) {
+        if (createError.code === '23505') {
+          // Duplicate key - profile already exists, try to load it
+          const { data: fallbackRows, error: fallbackError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .limit(1)
+
+          const fallbackProfile = fallbackRows?.[0]
+
+          if (fallbackError) {
+            console.error('Error fetching existing profile after duplicate:', fallbackError)
+          } else if (fallbackProfile) {
+            let profileToUse = fallbackProfile
+            if (!fallbackProfile.tenant_id) {
+              const { data: updatedProfile } = await supabase
+                .from('profiles')
+                .update({ tenant_id: tenantId })
+                .eq('id', user.id)
+                .select()
+                .limit(1)
+              if (updatedProfile?.[0]) {
+                profileToUse = updatedProfile[0]
+              }
+            }
+
+            const profileWithEmail = {
+              ...profileToUse,
+              email: user.email || undefined,
+            } as Profile
+
+            setProfile(profileWithEmail)
+
+            if (profileToUse.company_id) {
+              await loadCompany(profileToUse.company_id)
+            }
+
+            identifyUser(user.id, {
+              email: user.email || '',
+              role: profileToUse.role,
+            })
+
+            setLoading(false)
+            return
+          }
+        }
+
         console.error('Error creating profile:', createError)
         // Don't throw - set profile to null and stop loading
         setProfile(null)
@@ -255,22 +469,29 @@ export function useAuth() {
       }
 
       // Add email from auth user to profile object (email is in auth.users, not profiles table)
+      if (!createdProfile?.[0]) {
+        console.error('Profile insert returned no row; stopping auth bootstrap')
+        setProfile(null)
+        setLoading(false)
+        return
+      }
+
       const profileWithEmail = {
-        ...createdProfile,
+        ...createdProfile[0],
         email: user.email || undefined,
       } as Profile
       
       setProfile(profileWithEmail)
       
       // Load company if profile has company_id
-      if (createdProfile.company_id) {
-        await loadCompany(createdProfile.company_id)
+      if (createdProfile[0].company_id) {
+        await loadCompany(createdProfile[0].company_id)
       }
       
       // Track new user
       identifyUser(user.id, {
         email: user.email || '',
-        role: createdProfile.role,
+        role: createdProfile[0].role,
       })
       
       setLoading(false)
@@ -288,15 +509,49 @@ export function useAuth() {
     }
   }
 
-  // Sign out function
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    // Do not block logout on Supabase errors (including \"session_not_found\")
-    if (error) {
-      console.warn('Supabase signOut returned error, continuing logout anyway:', error)
-    }
-    clear()
-    navigate('/auth/login')
+  // Sign out function — clears Supabase session then hard-redirects.
+  // Optional `redirectTo` overrides the default login path (useful for passing
+  // query params like ?reason=no-membership).
+  const signOut = async (redirectTo?: string) => {
+    // Prevent the SIGNED_OUT event handler (and downstream guards) from
+    // doing React state updates that would race with our hard redirect.
+    _isSigningOut = true
+
+    blockedUserTenantPairs.clear()
+    loggedTenantMismatchPairs.clear()
+
+    // Give local sign-out a brief window to clear storage before redirect.
+    await new Promise<void>((resolve) => {
+      let settled = false
+
+      supabase.auth
+        .signOut({ scope: 'local' })
+        .then(({ error }) => {
+          if (error) {
+            console.warn('Supabase signOut returned error, continuing logout anyway:', error)
+          }
+          settled = true
+          resolve()
+        })
+        .catch((error) => {
+          console.warn('Supabase signOut threw, continuing logout anyway:', error)
+          settled = true
+          resolve()
+        })
+
+      setTimeout(() => {
+        if (!settled) {
+          console.warn('Supabase signOut timed out, continuing logout anyway.')
+          settled = true
+          resolve()
+        }
+      }, 1000)
+    })
+
+    // Skip React state updates (clear, setLoading, etc.) — the hard
+    // redirect below reloads the page which starts with a fresh store.
+    const loginPath = redirectTo ?? withBase('/auth/login')
+    window.location.replace(loginPath)
   }
 
   // Computed values
@@ -313,6 +568,7 @@ export function useAuth() {
     isLoading,
     isAuthenticated,
     isAdmin,
+    isSigningOut: _isSigningOut,
     // Actions
     signOut,
   }

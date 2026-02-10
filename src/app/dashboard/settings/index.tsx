@@ -15,11 +15,14 @@ import { useAuthStore } from '@/stores/authStore'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 export function SettingsPage() {
   const { t } = useTranslation()
   const location = useLocation()
   const { company, profile, user } = useAuth()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
   const { toast } = useToast()
   const [isSaving, setIsSaving] = useState(false)
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
@@ -36,7 +39,7 @@ export function SettingsPage() {
   }, [location.hash])
 
   const handleCompanySubmit = async (data: CompanyFormData, logoUrl: string | null) => {
-    if (!user || !company) {
+    if (!user || !company || !tenantId) {
       toast({
         title: t('settings.error'),
         description: t('settings.mustBeLoggedIn'),
@@ -68,6 +71,7 @@ export function SettingsPage() {
           bic: data.bic,
         })
         .eq('id', company.id)
+        .eq('tenant_id', tenantId)
         .select()
         .single()
 
