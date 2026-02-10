@@ -17,6 +17,7 @@ import { useTenant } from '@/lib/tenant/TenantProvider'
 
 // Auth Pages
 import { LoginPage } from '@/app/auth/login'
+import { PlatformLoginPage } from '@/app/auth/platform-login'
 import { SignupPage } from '@/app/auth/signup'
 import { OnboardingPage } from '@/app/auth/onboarding'
 
@@ -51,11 +52,30 @@ function RootRoute() {
     return <TenantEntry />
   }
 
-  if (domainKind === 'main') {
+  // Marketing host — show landing page directly, no auth/tenant logic
+  if (domainKind === 'marketing') {
+    return <LandingPage />
+  }
+
+  // App host — workspace discovery / login
+  if (domainKind === 'app') {
     return <MainIndexRoute />
   }
 
   return <PortalNotFound />
+}
+
+/**
+ * Domain-aware login router.
+ * Platform host (domainKind === 'app', no tenant context) → PlatformLoginPage
+ * Tenant hosts + /t/:slug routes → original LoginPage (unchanged)
+ */
+function LoginRouter() {
+  const { domainKind, tenant } = useTenant()
+  if (domainKind === 'app' && !tenant) {
+    return <PlatformLoginPage />
+  }
+  return <LoginPage />
 }
 
 const queryClient = new QueryClient({
@@ -103,7 +123,7 @@ function App() {
                   />
 
                   {/* Auth Routes */}
-                  <Route path="/auth/login" element={<LoginPage />} />
+                  <Route path="/auth/login" element={<LoginRouter />} />
                   <Route
                     path="/auth/signup"
                     element={
@@ -149,9 +169,9 @@ function App() {
                     <Route path="clients" element={<ClientsPage />} />
                   </Route>
 
-                  {/* Slug Fallback Routes */}
+                  {/* Slug Fallback Routes – /t/:slug/* on app host */}
                   <Route
-                    path="/:slug"
+                    path="/t/:slug"
                     element={
                       <SlugOnlyGuard>
                         <Outlet />

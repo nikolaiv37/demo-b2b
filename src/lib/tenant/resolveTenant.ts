@@ -1,9 +1,9 @@
 import { supabase } from '@/lib/supabase/client'
-import { MAIN_HOSTS, RESERVED_PATHS, SUBDOMAIN_ROOT } from './constants'
+import { MARKETING_HOSTS, APP_HOSTS, SLUG_PREFIX, SUBDOMAIN_ROOT } from './constants'
 import type { Tenant } from '@/types'
 
 export type TenantSource = 'domain' | 'subdomain' | 'slug' | 'none'
-export type DomainKind = 'main' | 'tenant' | 'unknown'
+export type DomainKind = 'marketing' | 'app' | 'tenant' | 'unknown'
 
 export interface TenantResolution {
   tenant: Tenant | null
@@ -11,21 +11,20 @@ export interface TenantResolution {
   domainKind: DomainKind
 }
 
-function normalizeHost(rawHost: string): string {
+export function normalizeHost(rawHost: string): string {
   return rawHost.toLowerCase().split(':')[0]
 }
 
-function firstPathSegment(pathname: string): string | null {
-  const seg = pathname.replace(/^\/+/, '').split('/')[0]
-  return seg || null
-}
-
-function isMainHost(host: string): boolean {
-  return MAIN_HOSTS.has(host)
-}
-
-function isReservedPath(seg: string | null): boolean {
-  return !!seg && RESERVED_PATHS.has(seg)
+/**
+ * Extract tenant slug from a /t/:slug pathname.
+ * Returns the slug portion or null if the path doesn't match.
+ */
+function extractTenantSlug(pathname: string): string | null {
+  const prefix = `${SLUG_PREFIX}/`
+  if (!pathname.startsWith(prefix)) return null
+  const rest = pathname.slice(prefix.length)
+  const slug = rest.split('/')[0]
+  return slug || null
 }
 
 function getSubdomain(host: string): string | null {
@@ -79,9 +78,28 @@ function withPrimaryDomain(tenant: Tenant, primaryDomain: string | null): Tenant
 
 export async function resolveTenant(hostInput: string, pathname: string): Promise<TenantResolution> {
   const host = normalizeHost(hostInput)
-  const seg1 = firstPathSegment(pathname)
 
-  // 1) Verified custom domain
+  // ── Marketing hosts: never resolve tenants ──
+  if (MARKETING_HOSTS.has(host)) {
+    return { tenant: null, source: 'none', domainKind: 'marketing' }
+  }
+
+  // ── App host: tenant via /t/:slug ──
+  if (APP_HOSTS.has(host)) {
+    const slug = extractTenantSlug(pathname)
+    if (slug) {
+      const tenant = await fetchTenantBySlug(slug)
+      const primaryDomain = tenant ? await fetchPrimaryDomain(tenant.id) : null
+      return {
+        tenant: tenant ? withPrimaryDomain(tenant, primaryDomain) : null,
+        source: tenant ? 'slug' : 'none',
+        domainKind: 'app',
+      }
+    }
+    return { tenant: null, source: 'none', domainKind: 'app' }
+  }
+
+  // ── Custom tenant domain (verified in tenant_domains) ──
   const { data: domainRow } = await supabase
     .from('tenant_domains')
     .select('tenant_id, domain, is_primary, verified')
@@ -99,7 +117,7 @@ export async function resolveTenant(hostInput: string, pathname: string): Promis
     }
   }
 
-  // 2) Subdomain on centivon.com
+  // ── Subdomain on centivon.com (e.g. evromar.centivon.com) ──
   const subdomain = getSubdomain(host)
   if (subdomain) {
     const tenant = await fetchTenantBySlug(subdomain)
@@ -111,26 +129,9 @@ export async function resolveTenant(hostInput: string, pathname: string): Promis
     }
   }
 
-  // 3) Slug fallback only on main hosts and non-reserved paths
-  if (isMainHost(host) && seg1 && !isReservedPath(seg1)) {
-    const tenant = await fetchTenantBySlug(seg1)
-    const primaryDomain = tenant ? await fetchPrimaryDomain(tenant.id) : null
-    return {
-      tenant: tenant ? withPrimaryDomain(tenant, primaryDomain) : null,
-      source: tenant ? 'slug' : 'none',
-      domainKind: 'main',
-    }
-  }
-
-  return {
-    tenant: null,
-    source: 'none',
-    domainKind: isMainHost(host) ? 'main' : 'unknown',
-  }
+  return { tenant: null, source: 'none', domainKind: 'unknown' }
 }
 
 export function getSlugCandidate(pathname: string): string | null {
-  const seg1 = firstPathSegment(pathname)
-  if (!seg1 || isReservedPath(seg1)) return null
-  return seg1
+  return extractTenantSlug(pathname)
 }

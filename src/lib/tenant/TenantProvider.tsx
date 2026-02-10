@@ -4,7 +4,8 @@ import { useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import type { Tenant, TenantMembership } from '@/types'
-import { resolveTenant, getSlugCandidate, type TenantSource, type DomainKind } from './resolveTenant'
+import { resolveTenant, getSlugCandidate, normalizeHost, type TenantSource, type DomainKind } from './resolveTenant'
+import { MARKETING_HOSTS, APP_HOSTS, SLUG_PREFIX } from './constants'
 
 interface TenantContextValue {
   tenant: Tenant | null
@@ -25,7 +26,7 @@ function ensureLeadingSlash(path: string): string {
 }
 
 function stripSlugPrefix(pathname: string, slug: string): string {
-  const prefix = `/${slug}`
+  const prefix = `${SLUG_PREFIX}/${slug}`
   if (pathname === prefix) return '/'
   if (pathname.startsWith(`${prefix}/`)) return pathname.slice(prefix.length)
   return pathname
@@ -51,6 +52,8 @@ function shouldRedirectToCanonical(args: {
   const { primaryDomain, currentHost, source } = args
   if (!primaryDomain) return false
   if (source === 'domain') return false
+  // Safety: never redirect to a .local domain — treat as misconfiguration
+  if (primaryDomain.endsWith('.local')) return false
   return currentHost !== primaryDomain
 }
 
@@ -85,21 +88,37 @@ function withTimeout<T>(promiseLike: PromiseLike<T>, ms: number, label: string):
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const queryClient = useQueryClient()
+
+  // Detect host category synchronously so the first render never shows a
+  // spinner on pages that don't need tenant resolution.
+  const isMarketingHost = useMemo(
+    () => MARKETING_HOSTS.has(normalizeHost(window.location.host)),
+    []
+  )
+  const isAppHostNoSlug = useMemo(
+    () => APP_HOSTS.has(normalizeHost(window.location.host)) && !getSlugCandidate(window.location.pathname),
+    []
+  )
+  // Skip the blocking bootstrap spinner for marketing hosts and for the
+  // app host when there is no /t/:slug in the path (e.g. /auth/login, /).
+  // Auth state still loads in the background via refresh().
+  const skipBootstrap = isMarketingHost || isAppHostNoSlug
+
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [source, setSource] = useState<TenantSource>('none')
-  const [domainKind, setDomainKind] = useState<DomainKind>('main')
+  const [domainKind, setDomainKind] = useState<DomainKind>(isMarketingHost ? 'marketing' : 'app')
   const [session, setSession] = useState<Session | null>(null)
   const [membership, setMembership] = useState<TenantMembership | null>(null)
-  const [membershipChecked, setMembershipChecked] = useState(false)
-  const [isBootstrapping, setIsBootstrapping] = useState(true)
-  const hasBootstrappedRef = useRef(false)
+  const [membershipChecked, setMembershipChecked] = useState(skipBootstrap)
+  const [isBootstrapping, setIsBootstrapping] = useState(!skipBootstrap)
+  const hasBootstrappedRef = useRef(skipBootstrap)
   const refreshInFlightRef = useRef<Promise<void> | null>(null)
   const prevTenantIdRef = useRef<string | null>(null)
   const slugCandidate = useMemo(() => getSlugCandidate(location.pathname), [location.pathname])
 
   const tenantBasePath = useMemo(() => {
     if (tenant && source === 'slug') {
-      return `/${tenant.slug}`
+      return `${SLUG_PREFIX}/${tenant.slug}`
     }
     return ''
   }, [tenant, source])
@@ -114,6 +133,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   )
 
   const refresh = useCallback(async () => {
+    // Marketing hosts: no async work, ever.
+    if (isMarketingHost) return
+
     if (refreshInFlightRef.current) {
       return refreshInFlightRef.current
     }
@@ -250,7 +272,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         refreshInFlightRef.current = null
       }
     }
-  }, [clearTenantQueries])
+  }, [clearTenantQueries, isMarketingHost])
 
   useEffect(() => {
     let active = true
