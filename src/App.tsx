@@ -20,6 +20,8 @@ import { LoginPage } from '@/app/auth/login'
 import { PlatformLoginPage } from '@/app/auth/platform-login'
 import { SignupPage } from '@/app/auth/signup'
 import { OnboardingPage } from '@/app/auth/onboarding'
+import { AcceptInvitePage } from '@/app/auth/accept-invite'
+import { ClientSetupPage } from '@/app/auth/client-setup'
 
 // Dashboard Pages
 import { DashboardLayout } from '@/app/dashboard/layout'
@@ -135,6 +137,8 @@ function App() {
                     }
                   />
                   <Route path="/auth/onboarding" element={<OnboardingPage />} />
+                  <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
+                  <Route path="/auth/client-setup" element={<ClientSetupPage />} />
 
                   {/* Tenant Dashboard Routes - Protected */}
                   <Route
@@ -181,6 +185,7 @@ function App() {
                     <Route index element={<TenantEntry />} />
                     <Route path="auth/login" element={<LoginPage />} />
                     <Route path="auth/onboarding" element={<OnboardingPage />} />
+                    <Route path="auth/client-setup" element={<ClientSetupPage />} />
                     <Route
                       path="dashboard"
                       element={
