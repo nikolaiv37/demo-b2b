@@ -123,6 +123,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // Client members should never be forced into the admin onboarding flow.
+    // Onboarding is only for tenant admins/owners to set up company/billing details.
+    if (membershipChecked && membership?.role === 'member') {
+      setHasCheckedOnboarding(true)
+      return
+    }
+
     // If we're already on the onboarding page, don't redirect
     const logicalPath = stripBase(location.pathname)
     if (logicalPath === '/auth/onboarding') {

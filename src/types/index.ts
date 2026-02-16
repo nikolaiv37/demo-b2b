@@ -56,6 +56,8 @@ export interface TenantMembership {
 
 export type UserRole = 'admin' | 'company'
 
+export type InvitationStatus = 'active' | 'invited'
+
 export interface Profile {
   id: string
   role: UserRole
@@ -66,6 +68,7 @@ export interface Profile {
   email?: string | null
   avatar_url?: string | null
   commission_rate?: number | null
+  invitation_status?: InvitationStatus
   created_at: string
   updated_at?: string // May not exist in DB
 }

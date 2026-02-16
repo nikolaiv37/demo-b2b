@@ -28,12 +28,16 @@ import {
 import { Tooltip } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
-import { useQueryClients } from '@/hooks/useQueryClients'
+import { useQueryClients, useQueryInvitations } from '@/hooks/useQueryClients'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
 import {
   useMutationUpdateClient,
   useMutationDeleteClient,
 } from '@/hooks/useMutationClient'
+import {
+  useMutationInviteClient,
+  useMutationResendInvite,
+} from '@/hooks/useMutationInviteClient'
 import { Client } from '@/types'
 import {
   Users,
@@ -49,6 +53,10 @@ import {
   ShoppingBag,
   UserPlus,
   Sparkles,
+  Send,
+  Copy,
+  Clock,
+  RotateCcw,
 } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 12
@@ -70,13 +78,24 @@ export function ClientsPage() {
     'joinDateDesc' | 'joinDateAsc' | 'commissionDesc' | 'commissionAsc'
   >('joinDateDesc')
 
+  // Invite modal state
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    company_name: '',
+    commission_rate: 0,
+  })
+
   const [editForm, setEditForm] = useState({
     commission_rate: 0,
   })
 
   const { data: clients, isLoading, error } = useQueryClients()
+  const { data: invitations } = useQueryInvitations()
   const updateMutation = useMutationUpdateClient()
   const deleteMutation = useMutationDeleteClient()
+  const inviteMutation = useMutationInviteClient()
+  const resendMutation = useMutationResendInvite()
 
   const filteredClients = useMemo(() => {
     if (!clients) return []
@@ -206,6 +225,106 @@ export function ClientsPage() {
     }
   }
 
+  const handleInviteSubmit = async () => {
+    if (!inviteForm.email.trim()) {
+      toast({
+        title: t('distributors.error'),
+        description: t('distributors.inviteEmailRequired'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (inviteForm.commission_rate < 0 || inviteForm.commission_rate > 50) {
+      toast({
+        title: t('distributors.error'),
+        description: t('distributors.commissionRateError'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      const result = await inviteMutation.mutateAsync({
+        email: inviteForm.email.trim(),
+        company_name: inviteForm.company_name.trim() || undefined,
+        commission_rate: inviteForm.commission_rate || undefined,
+      })
+
+      if (result?.email_sent === false) {
+        // Invite record created but email wasn't sent (rate limit or existing user)
+        toast({
+          title: t('distributors.inviteSuccess'),
+          description: t('distributors.inviteNoEmail', { email: inviteForm.email }),
+        })
+      } else {
+        toast({
+          title: t('distributors.inviteSuccess'),
+          description: t('distributors.inviteSuccessDesc', { email: inviteForm.email }),
+        })
+      }
+
+      setIsInviteModalOpen(false)
+      setInviteForm({ email: '', company_name: '', commission_rate: 0 })
+
+      // Log token for dev convenience
+      if (result?.invitation?.token) {
+        console.info('[Dev] Invite token:', result.invitation.token)
+        console.info('[Dev] Invite link:', `${window.location.origin}/auth/accept-invite?token=${result.invitation.token}`)
+      }
+    } catch (err) {
+      toast({
+        title: t('distributors.error'),
+        description: err instanceof Error ? err.message : t('distributors.inviteError'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleResendInvite = async (client: Client) => {
+    try {
+      await resendMutation.mutateAsync({
+        email: client.email!,
+        company_name: client.company_name || undefined,
+      })
+      toast({
+        title: t('distributors.inviteResent'),
+        description: t('distributors.inviteResentDesc', { email: client.email }),
+      })
+    } catch (err) {
+      toast({
+        title: t('distributors.error'),
+        description: err instanceof Error ? err.message : t('distributors.inviteError'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleCopyInviteLink = (client: Client) => {
+    // Find the invitation token for this client's email
+    const invitation = invitations?.find(
+      (inv: { email: string }) => inv.email.toLowerCase() === client.email?.toLowerCase()
+    )
+    if (invitation?.token) {
+      const link = `${window.location.origin}/auth/accept-invite?token=${invitation.token}`
+      navigator.clipboard.writeText(link)
+      toast({
+        title: t('distributors.linkCopied'),
+        description: t('distributors.linkCopiedDesc'),
+      })
+    } else {
+      toast({
+        title: t('distributors.error'),
+        description: t('distributors.noTokenFound'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const isClientInvited = (client: Client) => {
+    return client.invitation_status === 'invited'
+  }
+
   const formatCommissionRate = (rate?: number | null) => {
     if (rate === undefined || rate === null || rate === 0) {
       return null
@@ -299,6 +418,13 @@ export function ClientsPage() {
             </p>
           </div>
         </div>
+        <Button
+          onClick={() => setIsInviteModalOpen(true)}
+          className="gap-2 rounded-full px-5 bg-sky-600 hover:bg-sky-700 text-white shadow-md"
+        >
+          <UserPlus className="w-4 h-4" />
+          {t('distributors.inviteClient')}
+        </Button>
       </div>
 
       {/* Info Banner */}
@@ -469,12 +595,7 @@ export function ClientsPage() {
                       <Button
                         variant="outline"
                         className="mt-2 gap-2 rounded-full px-5 border-sky-500/30 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10 hover:border-sky-500/50"
-                        onClick={() => {
-                          toast({
-                            title: t('distributors.inviteToastTitle'),
-                            description: t('distributors.inviteToastDescription'),
-                          })
-                        }}
+                        onClick={() => setIsInviteModalOpen(true)}
                       >
                         <UserPlus className="w-4 h-4" />
                         {t('distributors.inviteCta')}
@@ -505,19 +626,43 @@ export function ClientsPage() {
                     <div className="absolute inset-0 bg-gradient-to-br from-sky-500/0 to-sky-500/0 group-hover:from-sky-500/[0.02] group-hover:to-violet-500/[0.02] transition-all duration-300 pointer-events-none" />
                     
                     <CardContent className="relative p-5 flex flex-col h-full">
-                      {/* Header: Avatar + Name + Badge */}
+                      {/* Header: Avatar + Name + Status Badge */}
                       <div className="flex items-start gap-3.5">
-                        <div
-                          className={`w-11 h-11 rounded-full bg-gradient-to-br ${getAvatarColorClass(
-                            client,
-                          )} flex items-center justify-center text-white text-sm font-semibold shadow-md ring-2 ring-white/20 shrink-0`}
-                        >
-                          {getAvatarInitials(client)}
+                        <div className="relative shrink-0">
+                          <div
+                            className={`w-11 h-11 rounded-full bg-gradient-to-br ${getAvatarColorClass(
+                              client,
+                            )} flex items-center justify-center text-white text-sm font-semibold shadow-md ring-2 ring-white/20`}
+                          >
+                            {getAvatarInitials(client)}
+                          </div>
+                          {isClientInvited(client) && (
+                            <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
+                              <Clock className="w-2.5 h-2.5 text-amber-900" />
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0 space-y-0.5">
-                          <h3 className="text-sm font-semibold text-foreground truncate leading-tight">
-                            {getCompanyName(client)}
-                          </h3>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-foreground truncate leading-tight">
+                              {getCompanyName(client)}
+                            </h3>
+                            {isClientInvited(client) ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] uppercase tracking-wider px-1.5 py-0 font-medium border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 shrink-0"
+                              >
+                                {t('distributors.statusInvited')}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] uppercase tracking-wider px-1.5 py-0 font-medium border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shrink-0"
+                              >
+                                {t('distributors.statusActive')}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground truncate">
                             {getEmailDisplay(client)}
                           </p>
@@ -625,25 +770,56 @@ export function ClientsPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 rounded-full px-3 opacity-80 group-hover:opacity-100 transition-opacity text-xs"
-                            onClick={() => handleEdit(client)}
-                          >
-                            <Edit className="w-3.5 h-3.5 mr-1" />
-                            <span>{t('general.edit')}</span>
-                          </Button>
+                          {isClientInvited(client) ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-full px-3 opacity-80 group-hover:opacity-100 transition-opacity text-xs text-sky-600 hover:text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-900/20"
+                                onClick={() => handleResendInvite(client)}
+                                disabled={resendMutation.isPending}
+                              >
+                                {resendMutation.isPending ? (
+                                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                ) : (
+                                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                )}
+                                <span>{t('distributors.resendInvite')}</span>
+                              </Button>
 
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 rounded-full px-3 opacity-80 group-hover:opacity-100 transition-opacity text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            onClick={() => handleDeleteClick(client)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 mr-1" />
-                            <span>{t('general.delete')}</span>
-                          </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-full px-3 opacity-80 group-hover:opacity-100 transition-opacity text-xs"
+                                onClick={() => handleCopyInviteLink(client)}
+                              >
+                                <Copy className="w-3.5 h-3.5 mr-1" />
+                                <span>{t('distributors.copyLink')}</span>
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-full px-3 opacity-80 group-hover:opacity-100 transition-opacity text-xs"
+                                onClick={() => handleEdit(client)}
+                              >
+                                <Edit className="w-3.5 h-3.5 mr-1" />
+                                <span>{t('general.edit')}</span>
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-full px-3 opacity-80 group-hover:opacity-100 transition-opacity text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                onClick={() => handleDeleteClick(client)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                <span>{t('general.delete')}</span>
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -781,6 +957,116 @@ export function ClientsPage() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
               {t('general.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Client Modal */}
+      <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="w-5 h-5 text-sky-500" />
+              {t('distributors.inviteClient')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('distributors.inviteClientDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 py-4">
+            {/* Email field */}
+            <div className="space-y-2">
+              <Label htmlFor="invite_email" className="text-sm font-medium">
+                {t('distributors.inviteEmailLabel')} <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="invite_email"
+                  type="email"
+                  placeholder={t('distributors.inviteEmailPlaceholder')}
+                  value={inviteForm.email}
+                  onChange={(e) =>
+                    setInviteForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="pl-10 h-11"
+                />
+              </div>
+            </div>
+
+            {/* Company name field */}
+            <div className="space-y-2">
+              <Label htmlFor="invite_company" className="text-sm font-medium">
+                {t('distributors.inviteCompanyLabel')}
+              </Label>
+              <Input
+                id="invite_company"
+                type="text"
+                placeholder={t('distributors.inviteCompanyPlaceholder')}
+                value={inviteForm.company_name}
+                onChange={(e) =>
+                  setInviteForm((prev) => ({ ...prev, company_name: e.target.value }))
+                }
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('distributors.inviteCompanyHelp')}
+              </p>
+            </div>
+
+            {/* Commission rate field */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="invite_commission" className="text-sm font-medium">
+                  {t('distributors.commissionRateLabel')}
+                </Label>
+                <Tooltip content={t('distributors.commissionRateTooltip')} side="top">
+                  <button type="button" className="rounded-full hover:bg-muted p-0.5">
+                    <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </Tooltip>
+              </div>
+              <div className="relative">
+                <Input
+                  id="invite_commission"
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="0.5"
+                  value={inviteForm.commission_rate}
+                  onChange={(e) =>
+                    setInviteForm((prev) => ({
+                      ...prev,
+                      commission_rate: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  className="pr-10 h-11"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                  %
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t('distributors.commissionRateHelp')}
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsInviteModalOpen(false)}>
+              {t('general.cancel')}
+            </Button>
+            <Button
+              onClick={handleInviteSubmit}
+              disabled={inviteMutation.isPending || !inviteForm.email.trim()}
+              className="gap-2 bg-sky-600 hover:bg-sky-700"
+            >
+              {inviteMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {t('distributors.sendInvite')}
             </Button>
           </DialogFooter>
         </DialogContent>

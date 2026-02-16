@@ -103,6 +103,29 @@ export function useQueryClients() {
   })
 }
 
+/** Fetch pending invitations for the current tenant (admin only) */
+export function useQueryInvitations() {
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
+  return useQuery({
+    queryKey: ['tenant', tenantId, 'invitations'],
+    queryFn: async () => {
+      if (!tenantId) return []
+      const { data, error } = await supabase
+        .from('tenant_invitations')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    },
+    staleTime: 30 * 1000,
+    enabled: !!tenantId,
+  })
+}
+
 export function useQueryClient(clientId: string) {
   const { tenant } = useTenant()
   const tenantId = tenant?.id
