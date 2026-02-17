@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -26,27 +27,29 @@ import { ClientSetupPage } from '@/app/auth/client-setup'
 
 // Dashboard Pages
 import { DashboardLayout } from '@/app/dashboard/layout'
-import { DashboardOverview } from '@/app/dashboard/overview'
+// Heavy pages lazy-loaded (convert named exports to default):
+const DashboardOverview = lazy(() => import('@/app/dashboard/overview').then(m => ({ default: m.DashboardOverview })))
 import { ProductsPage } from '@/app/dashboard/products'
 import { ProductDetailPage } from '@/app/dashboard/products/[sku]/page'
 import { WishlistPage } from '@/app/dashboard/wishlist'
-import { OrdersPage } from '@/app/dashboard/orders'
+const OrdersPage = lazy(() => import('@/app/dashboard/orders').then(m => ({ default: m.OrdersPage })))
 import { QuotesPage } from '@/app/dashboard/quotes'
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
-import { CSVImportPage } from '@/app/dashboard/csv-import'
+const CSVImportPage = lazy(() => import('@/app/dashboard/csv-import').then(m => ({ default: m.CSVImportPage })))
 import { SettingsPage } from '@/app/dashboard/settings'
-import { AnalyticsPage } from '@/app/dashboard/analytics'
+const AnalyticsPage = lazy(() => import('@/app/dashboard/analytics').then(m => ({ default: m.AnalyticsPage })))
 import { ComplaintsPage } from '@/app/dashboard/complaints'
 import { UnpaidBalancesPage } from '@/app/dashboard/unpaid-balances'
 import { CategoriesPage } from '@/app/dashboard/categories'
 import { ManageCategoriesPage } from '@/app/dashboard/categories/manage'
 import { ClientsPage } from '@/app/dashboard/clients'
 
-import LandingPage from '@/pages/LandingPage'
+const LandingPage = lazy(() => import('@/pages/LandingPage'))
 import { NotFound } from '@/pages/NotFound'
 import { TenantEntry } from '@/pages/TenantEntry'
 import { MainIndexRoute } from '@/pages/MainIndexRoute'
 import { PortalNotFound } from '@/pages/PortalNotFound'
+import { PageLoader } from '@/components/PageLoader'
 
 function RootRoute() {
   const { domainKind, tenant } = useTenant()
@@ -57,7 +60,11 @@ function RootRoute() {
 
   // Marketing host — show landing page directly, no auth/tenant logic
   if (domainKind === 'marketing') {
-    return <LandingPage />
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <LandingPage />
+      </Suspense>
+    )
   }
 
   // App host — workspace discovery / login
@@ -120,7 +127,9 @@ function App() {
                     path="/landing"
                     element={
                       <DomainGuardMainOnly>
-                        <LandingPage />
+                        <Suspense fallback={<PageLoader />}>
+                          <LandingPage />
+                        </Suspense>
                       </DomainGuardMainOnly>
                     }
                   />
@@ -156,7 +165,7 @@ function App() {
                       </DomainGuardTenantOnly>
                     }
                   >
-                    <Route index element={<DashboardOverview />} />
+                    <Route index element={<Suspense fallback={<PageLoader />}><DashboardOverview /></Suspense>} />
                     <Route path="categories" element={<CategoriesPage />} />
                     <Route path="categories/:mainCategory" element={<CategoriesPage />} />
                     <Route path="categories/:mainCategory/:subCategory" element={<CategoriesPage />} />
@@ -164,12 +173,12 @@ function App() {
                     <Route path="products" element={<ProductsPage />} />
                     <Route path="products/:sku" element={<ProductDetailPage />} />
                     <Route path="wishlist" element={<WishlistPage />} />
-                    <Route path="orders" element={<OrdersPage />} />
+                    <Route path="orders" element={<Suspense fallback={<PageLoader />}><OrdersPage /></Suspense>} />
                     <Route path="complaints" element={<ComplaintsPage />} />
                     <Route path="quotes" element={<QuotesPage />} />
-                    <Route path="csv-import" element={<CSVImportPage />} />
+                    <Route path="csv-import" element={<Suspense fallback={<PageLoader />}><CSVImportPage /></Suspense>} />
                     <Route path="settings" element={<SettingsPage />} />
-                    <Route path="analytics" element={<AnalyticsPage />} />
+                    <Route path="analytics" element={<Suspense fallback={<PageLoader />}><AnalyticsPage /></Suspense>} />
                     <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
                     <Route path="clients" element={<ClientsPage />} />
                   </Route>
@@ -201,7 +210,7 @@ function App() {
                         </DomainGuardTenantOnly>
                       }
                     >
-                      <Route index element={<DashboardOverview />} />
+                      <Route index element={<Suspense fallback={<PageLoader />}><DashboardOverview /></Suspense>} />
                       <Route path="categories" element={<CategoriesPage />} />
                       <Route path="categories/:mainCategory" element={<CategoriesPage />} />
                       <Route path="categories/:mainCategory/:subCategory" element={<CategoriesPage />} />
@@ -209,12 +218,12 @@ function App() {
                       <Route path="products" element={<ProductsPage />} />
                       <Route path="products/:sku" element={<ProductDetailPage />} />
                       <Route path="wishlist" element={<WishlistPage />} />
-                      <Route path="orders" element={<OrdersPage />} />
+                      <Route path="orders" element={<Suspense fallback={<PageLoader />}><OrdersPage /></Suspense>} />
                       <Route path="complaints" element={<ComplaintsPage />} />
                       <Route path="quotes" element={<QuotesPage />} />
-                      <Route path="csv-import" element={<CSVImportPage />} />
+                      <Route path="csv-import" element={<Suspense fallback={<PageLoader />}><CSVImportPage /></Suspense>} />
                       <Route path="settings" element={<SettingsPage />} />
-                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="analytics" element={<Suspense fallback={<PageLoader />}><AnalyticsPage /></Suspense>} />
                       <Route path="unpaid-balances" element={<UnpaidBalancesPage />} />
                       <Route path="clients" element={<ClientsPage />} />
                     </Route>
