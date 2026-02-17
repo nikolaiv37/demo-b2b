@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useTranslation } from 'react-i18next'
 import { ShoppingCart, Plus, Minus, Loader2, Percent } from 'lucide-react'
 import { formatPrice as formatPriceUtil } from '@/lib/utils'
 
@@ -34,6 +35,7 @@ interface AddToOrderModalProps {
  * The cart acts as a draft order - items can be reviewed and submitted later.
  */
 export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps) {
+  const { t } = useTranslation()
   const { addItem } = useCartStore()
   const { toast } = useToast()
   const { hasDiscount, commissionRate } = useCommissionRate()
@@ -67,8 +69,8 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
   const handleAddToOrder = async () => {
     if (isOutOfStock) {
       toast({
-        title: 'Out of Stock',
-        description: 'This product is currently out of stock.',
+        title: t('products.outOfStockToast'),
+        description: t('products.outOfStockDescription'),
         variant: 'destructive',
       })
       return
@@ -76,8 +78,8 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
 
     if (quantity <= 0 || quantity > maxQuantity) {
       toast({
-        title: 'Invalid Quantity',
-        description: `Please enter a quantity between 1 and ${maxQuantity}.`,
+        title: t('products.invalidQuantity'),
+        description: t('products.invalidQuantityDescription', { max: maxQuantity }),
         variant: 'destructive',
       })
       return
@@ -92,15 +94,15 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
 
     if (result.success) {
       toast({
-        title: 'Added to order',
-        description: `${quantity} × ${product.name} added to your draft order.`,
+        title: t('products.addedToOrder'),
+        description: t('products.addedToOrderDescription', { count: quantity, name: product.name }),
       })
       setQuantity(1) // Reset quantity
       onClose()
     } else {
       toast({
-        title: 'Cannot add to order',
-        description: result.message || 'Unable to add product to order',
+        title: t('products.cannotAddToOrder'),
+        description: result.message || t('products.cannotAddToOrderDescription'),
         variant: 'destructive',
       })
     }
@@ -112,10 +114,10 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            Add to Order
+            {t('products.addToOrder')}
           </DialogTitle>
           <DialogDescription>
-            Select quantity and add this product to your draft order.
+            {t('products.selectQuantityAndAdd')}
           </DialogDescription>
         </DialogHeader>
 
@@ -238,12 +240,12 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
               {isAdding ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Adding...
+                  {t('products.adding')}
                 </>
               ) : (
                 <>
                   <ShoppingCart className="w-4 h-4 mr-2" />
-                  Add to Order
+                  {t('products.addToOrder')}
                 </>
               )}
             </Button>

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
+import { sendNotification } from '@/lib/notifications'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -272,7 +273,7 @@ export function AdminComplaintsView() {
 
   // Update status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: Complaint['status'] }) => {
+    mutationFn: async ({ id, status }: { id: string; status: Complaint['status']; userId?: string; companyName?: string }) => {
       const dbStatus = mapStatusToDb(status)
       const { error } = await supabase
         .from('complaints')
@@ -282,8 +283,24 @@ export function AdminComplaintsView() {
 
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-complaints'] })
+
+      // Notify the company user who filed the complaint
+      if (variables.userId) {
+        sendNotification({
+          type: 'complaint_status_changed',
+          entityType: 'complaints',
+          entityId: variables.id,
+          metadata: {
+            status: variables.status,
+            company_name: variables.companyName,
+          },
+          targetAudience: 'user',
+          targetUserId: variables.userId,
+        })
+      }
+
       toast({
         title: t('complaints.statusUpdated'),
         description: t('complaints.statusUpdated'),
@@ -384,7 +401,13 @@ export function AdminComplaintsView() {
   }
 
   const handleStatusChange = (complaintId: string, newStatus: Complaint['status']) => {
-    updateStatusMutation.mutate({ id: complaintId, status: newStatus })
+    const complaint = complaints?.find((c) => c.id === complaintId)
+    updateStatusMutation.mutate({
+      id: complaintId,
+      status: newStatus,
+      userId: complaint?.user_id,
+      companyName: complaint?.company_name,
+    })
   }
 
   const handleInternalNotesChange = (notes: string) => {

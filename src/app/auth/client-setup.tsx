@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase/client'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
+import { sendNotification } from '@/lib/notifications'
 import { Loader2, CheckCircle2, AlertCircle, Lock, Building2, Phone, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -147,7 +148,16 @@ export function ClientSetupPage() {
         }
       }
 
-      // 3. Show success and redirect
+      // 3. Notify admins that a new client joined
+      sendNotification({
+        type: 'client_registered',
+        metadata: {
+          company_name: companyName.trim() || 'New Client',
+        },
+        targetAudience: 'admins',
+      })
+
+      // 4. Show success and redirect
       setState('success')
 
       // Redirect to dashboard after a brief success message

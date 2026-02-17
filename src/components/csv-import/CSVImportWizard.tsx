@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { parseCSVFlexible } from '@/lib/csv/parser'
 import { supabase } from '@/lib/supabase/client'
+import { sendNotification } from '@/lib/notifications'
 import { useToast } from '@/components/ui/use-toast'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { prepareProductsWithCategoryId, type CategorySyncResult } from '@/lib/category-sync-from-import'
@@ -491,6 +492,18 @@ export function CSVImportWizard() {
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'category-hierarchy'] })
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products'] })
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products', 'categories-for-filter'] })
+
+      // Notify all company users about the catalog update (only if meaningful changes)
+      if ((result.imported || 0) > 0 || (result.updated || 0) > 0) {
+        sendNotification({
+          type: 'catalog_updated',
+          metadata: {
+            imported_count: result.imported || 0,
+            updated_count: result.updated || 0,
+          },
+          targetAudience: 'all_companies',
+        })
+      }
 
       trackEvent(AnalyticsEvents.CSV_IMPORT_COMPLETED, {
         productsImported: result.imported,

@@ -22,6 +22,7 @@ import { formatPrice } from '@/lib/utils'
 import { ShippingMethod, SHIPPING_METHOD_CONFIG } from '@/types'
 import { cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { sendNotification } from '@/lib/notifications'
 
 interface OrderRequestModalProps {
   open: boolean
@@ -107,6 +108,18 @@ export function OrderRequestModal({
       const userId = user?.id || devUserId
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'orders', userId] })
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'orders'] })
+
+      // Notify admins about the new order
+      sendNotification({
+        type: 'order_created',
+        entityType: 'quotes',
+        entityId: String(data.id),
+        metadata: {
+          order_number: data.order_number,
+          company_name: company?.name || profile?.full_name || 'Unknown',
+        },
+        targetAudience: 'admins',
+      })
       
       toast({
         title: 'Order submitted successfully! 🎉',

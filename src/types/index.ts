@@ -244,3 +244,40 @@ export interface WishlistItem {
   product_sku: string
   created_at: string
 }
+
+// ── Notifications ──────────────────────────────────────────
+
+export type NotificationType =
+  | 'order_created'
+  | 'order_status_changed'
+  | 'complaint_created'
+  | 'complaint_status_changed'
+  | 'client_registered'
+  | 'commission_changed'
+  | 'catalog_updated'
+
+// Structured metadata stored per notification type (used for i18n interpolation).
+// e.g. { company_name: "Acme", order_number: 1042, status: "shipped" }
+export interface NotificationMetadata {
+  company_name?: string
+  order_number?: number
+  status?: string
+  commission_rate?: number
+  imported_count?: number
+  updated_count?: number
+  [key: string]: unknown
+}
+
+// Named AppNotification to avoid collision with the browser's built-in Notification API.
+export interface AppNotification {
+  id: string
+  tenant_id: string
+  user_id: string
+  actor_id?: string
+  type: NotificationType
+  entity_type?: string
+  entity_id?: string
+  metadata: NotificationMetadata
+  read_at?: string | null
+  created_at: string
+}

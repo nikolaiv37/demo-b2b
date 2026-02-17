@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Client } from '@/types'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { sendNotification } from '@/lib/notifications'
 
 interface UpdateClientData {
   id: string
@@ -38,8 +39,7 @@ export function useMutationUpdateClient() {
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'clients', data.id] })
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'profiles'] })
       
-      // If commission_rate was updated, invalidate product queries
-      // This ensures catalog views update with new adjusted prices
+      // If commission_rate was updated, invalidate product queries and notify the user
       if (variables.commission_rate !== undefined) {
         // Invalidate all product queries so adjusted prices are recalculated
         queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'products'] })
@@ -47,6 +47,16 @@ export function useMutationUpdateClient() {
         queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'product'] })
         // Also invalidate quotes so they show updated pricing
         queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'quotes'] })
+
+        // Notify the affected company user about the commission change
+        sendNotification({
+          type: 'commission_changed',
+          metadata: {
+            commission_rate: Math.round(variables.commission_rate * 100),
+          },
+          targetAudience: 'user',
+          targetUserId: data.id,
+        })
       }
     },
   })

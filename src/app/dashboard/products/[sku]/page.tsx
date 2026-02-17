@@ -27,6 +27,7 @@ import { cn, formatPrice as formatPriceUtil } from '@/lib/utils'
 import { AddToOrderModal } from './AddToOrderModal'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
+import { HtmlContent } from '@/components/HtmlContent'
 
 /**
  * Product Detail Page
@@ -64,14 +65,14 @@ export function ProductDetailPage() {
     return (
       <>
         <Helmet>
-          <title>Product Not Found | Dev Company Wholesale</title>
+          <title>{t('products.productNotFound')} | Dev Company Wholesale</title>
         </Helmet>
         <div className="min-h-[60vh] flex items-center justify-center">
           <GlassCard className="max-w-md w-full p-8 text-center">
             <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
+            <h1 className="text-2xl font-bold mb-2">{t('products.productNotFound')}</h1>
             <p className="text-muted-foreground mb-6">
-              The product with SKU <code className="font-mono bg-muted px-2 py-1 rounded">{sku}</code> could not be found.
+              {t('products.productNotFoundDescription', { sku: sku || '' })}
             </p>
             <Button onClick={() => navigate(withBase('/dashboard/products'))} className="w-full">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -180,7 +181,7 @@ export function ProductDetailPage() {
     <>
       <Helmet>
         <title>{product.name} - {product.sku} | Dev Company Wholesale</title>
-        <meta name="description" content={product.description || `${product.name} - ${product.sku}`} />
+        <meta name="description" content={(product.description || `${product.name} - ${product.sku}`).replace(/<[^>]*>/g, '').slice(0, 160)} />
       </Helmet>
 
       <div className="space-y-6">
@@ -359,25 +360,23 @@ export function ProductDetailPage() {
             <div>
               {isOutOfStock ? (
                 <Badge variant="destructive" className="text-base px-4 py-2">
-                  Out of Stock
+                  {t('products.outOfStock')}
                 </Badge>
               ) : isLowStock ? (
                 <Badge variant="secondary" className="text-base px-4 py-2 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/50">
-                  Only {quantity} left
+                  {t('products.onlyLeft', { count: quantity })}
                 </Badge>
               ) : (
                 <Badge variant="default" className="text-base px-4 py-2 bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/50">
-                  In Stock
+                  {t('products.inStock')}
                 </Badge>
               )}
             </div>
 
             {/* Short Description */}
             {product.description && (
-              <div>
-                <p className="text-muted-foreground leading-relaxed line-clamp-3">
-                  {product.description}
-                </p>
+              <div className="line-clamp-[8] overflow-hidden">
+                <HtmlContent html={product.description} className="leading-relaxed" />
               </div>
             )}
 
@@ -409,7 +408,7 @@ export function ProductDetailPage() {
                 disabled={isOutOfStock}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
-                Add to Order
+                {t('products.addToOrder')}
               </Button>
               <Button
                 variant="outline"
@@ -419,7 +418,7 @@ export function ProductDetailPage() {
                 disabled={isOutOfStock}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Quick Add 1 pc
+                {t('products.quickAdd1Pc')}
               </Button>
             </div>
           </div>
@@ -430,39 +429,37 @@ export function ProductDetailPage() {
           {/* Full Description */}
           {product.description && (
             <GlassCard>
-              <h2 className="text-2xl font-bold mb-4">Description</h2>
-              <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
-                {product.description}
-              </div>
+              <h2 className="text-2xl font-bold mb-4">{t('products.description')}</h2>
+              <HtmlContent html={product.description} />
             </GlassCard>
           )}
 
           {/* Specs Table */}
           {(product.model || product.weight || product.transportational_weight || product.date_expected || product.specs) && (
             <GlassCard>
-              <h2 className="text-2xl font-bold mb-4">Specifications</h2>
+              <h2 className="text-2xl font-bold mb-4">{t('products.specifications')}</h2>
               <div className="space-y-3">
                 {product.model && (
                   <div className="flex justify-between py-2 border-b border-border/50">
-                    <span className="text-muted-foreground">Model</span>
+                    <span className="text-muted-foreground">{t('products.model')}</span>
                     <span className="font-medium">{product.model}</span>
                   </div>
                 )}
                 {product.weight && (
                   <div className="flex justify-between py-2 border-b border-border/50">
-                    <span className="text-muted-foreground">Weight</span>
+                    <span className="text-muted-foreground">{t('products.weight')}</span>
                     <span className="font-medium">{product.weight} kg</span>
                   </div>
                 )}
                 {product.transportational_weight && (
                   <div className="flex justify-between py-2 border-b border-border/50">
-                    <span className="text-muted-foreground">Shipping Weight</span>
+                    <span className="text-muted-foreground">{t('products.shippingWeight')}</span>
                     <span className="font-medium">{product.transportational_weight} kg</span>
                   </div>
                 )}
                 {product.date_expected && (
                   <div className="flex justify-between py-2 border-b border-border/50">
-                    <span className="text-muted-foreground">Expected Date</span>
+                    <span className="text-muted-foreground">{t('products.expectedDate')}</span>
                     <span className="font-medium">{product.date_expected}</span>
                   </div>
                 )}
@@ -483,8 +480,8 @@ export function ProductDetailPage() {
 
         {/* Related Products Placeholder */}
         <GlassCard>
-          <h2 className="text-2xl font-bold mb-4">Related Products</h2>
-          <p className="text-muted-foreground">Related products feature coming soon...</p>
+          <h2 className="text-2xl font-bold mb-4">{t('products.relatedProducts')}</h2>
+          <p className="text-muted-foreground">{t('products.relatedProductsComingSoon')}</p>
         </GlassCard>
       </div>
 

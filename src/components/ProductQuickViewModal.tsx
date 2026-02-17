@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Product } from '@/types'
 import { Link } from 'react-router-dom'
 import {
@@ -16,6 +17,7 @@ import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
 import { useCommissionRate } from '@/hooks/useCommissionRate'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
+import { HtmlContent } from '@/components/HtmlContent'
 
 interface ProductQuickViewModalProps {
   product: Product | null
@@ -50,6 +52,7 @@ export function ProductQuickViewModal({
     ? [product.main_image]
     : []
 
+  const { t } = useTranslation()
   const quantity = product.quantity ?? 0
   const isOutOfStock = quantity === 0
   const hasSku = product.sku && product.sku.trim() !== ''
@@ -63,8 +66,8 @@ export function ProductQuickViewModal({
   const handleAddToCart = () => {
     if (isOutOfStock) {
       toast({
-        title: 'Out of Stock',
-        description: 'This product is currently out of stock.',
+        title: t('products.outOfStockToast'),
+        description: t('products.outOfStockDescription'),
         variant: 'destructive',
       })
       return
@@ -74,14 +77,14 @@ export function ProductQuickViewModal({
     
     if (result.success) {
       toast({
-        title: 'Added to cart',
-        description: `1 × ${product.name} added to cart`,
+        title: t('cart.added'),
+        description: t('cart.addedDescription', { count: 1, name: product.name }),
       })
       onClose() // Close modal after adding
     } else {
       toast({
-        title: 'Cannot add to cart',
-        description: result.message || 'Unable to add product to cart',
+        title: t('cart.addFailed'),
+        description: result.message || t('cart.addFailedDescription'),
         variant: 'destructive',
       })
     }
@@ -91,9 +94,9 @@ export function ProductQuickViewModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{product.name || 'Product Details'}</DialogTitle>
+          <DialogTitle className="text-2xl">{product.name || t('products.productDetails')}</DialogTitle>
           <DialogDescription>
-            SKU: {product.sku} | {product.category || 'Uncategorized'}
+            SKU: {product.sku} | {product.category || t('products.uncategorized')}
           </DialogDescription>
         </DialogHeader>
 
@@ -215,7 +218,7 @@ export function ProductQuickViewModal({
                   ${quantity > 10 && 'bg-green-500'}
                 `}
               >
-                {quantity === 0 ? 'Out of Stock' : `${quantity} in stock`}
+                {quantity === 0 ? t('products.outOfStock') : t('products.inStockCount', { count: quantity })}
               </Badge>
               {product.availability && (
                 <Badge variant="outline">{product.availability}</Badge>
@@ -231,10 +234,10 @@ export function ProductQuickViewModal({
             {/* Description */}
             {product.description && (
               <div>
-                <h4 className="font-semibold mb-2">Description</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {product.description}
-                </p>
+                <h4 className="font-semibold mb-2">{t('products.description')}</h4>
+                <div className="max-h-48 overflow-y-auto">
+                  <HtmlContent html={product.description} className="text-sm" />
+                </div>
               </div>
             )}
 
@@ -242,25 +245,25 @@ export function ProductQuickViewModal({
             <div className="grid grid-cols-2 gap-4 text-sm">
               {product.model && (
                 <div>
-                  <span className="text-muted-foreground">Model:</span>
+                  <span className="text-muted-foreground">{t('products.model')}:</span>
                   <p className="font-medium">{product.model}</p>
                 </div>
               )}
               {product.weight && (
                 <div>
-                  <span className="text-muted-foreground">Weight:</span>
+                  <span className="text-muted-foreground">{t('products.weight')}:</span>
                   <p className="font-medium">{product.weight} kg</p>
                 </div>
               )}
               {product.transportational_weight && (
                 <div>
-                  <span className="text-muted-foreground">Shipping Weight:</span>
+                  <span className="text-muted-foreground">{t('products.shippingWeight')}:</span>
                   <p className="font-medium">{product.transportational_weight} kg</p>
                 </div>
               )}
               {product.date_expected && (
                 <div>
-                  <span className="text-muted-foreground">Expected:</span>
+                  <span className="text-muted-foreground">{t('products.expected')}:</span>
                   <p className="font-medium">{product.date_expected}</p>
                 </div>
               )}
@@ -274,18 +277,18 @@ export function ProductQuickViewModal({
                 onClick={handleAddToCart}
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
-                Add to Cart
+                {t('cart.addToCart')}
               </Button>
               {hasSku && (
                 <Link to={detailUrl} onClick={onClose}>
                   <Button variant="outline">
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    View Details
+                    {t('products.viewDetails')}
                   </Button>
                 </Link>
               )}
               <Button variant="outline" onClick={onClose}>
-                Close
+                {t('products.close')}
               </Button>
             </div>
           </div>

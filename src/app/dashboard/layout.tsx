@@ -5,6 +5,7 @@ import { SidebarNav } from '@/components/SidebarNav'
 import { CartDrawer } from '@/components/CartDrawer'
 import { OrderRequestModal } from '@/components/QuoteRequestModal'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { NotificationBell } from '@/components/NotificationBell'
 import { useAuth } from '@/hooks/useAuth'
 import { useCartStore } from '@/stores/cartStore'
 import { Button } from '@/components/ui/button'
@@ -194,6 +195,12 @@ export function DashboardLayout() {
                 {(pendingOrders > 0 || lowStockItems > 0) && (
                   <div className="hidden lg:block h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
                 )}
+
+                {/* Notification Bell */}
+                <NotificationBell />
+
+                {/* Vertical Divider */}
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
 
                 {/* Cart Icon */}
                 <Button

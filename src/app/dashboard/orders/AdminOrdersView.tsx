@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
+import { sendNotification } from '@/lib/notifications'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -302,7 +303,7 @@ export function AdminOrdersView() {
 
   // Update status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number | string; status: Order['status'] }) => {
+    mutationFn: async ({ id, status }: { id: number | string; status: Order['status']; userId?: string; orderNumber?: number; companyName?: string }) => {
       const dbStatus = mapStatusToDb(status)
       const { error } = await supabase
         .from('quotes')
@@ -312,8 +313,25 @@ export function AdminOrdersView() {
 
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
+
+      // Notify the company user who placed the order
+      if (variables.userId) {
+        sendNotification({
+          type: 'order_status_changed',
+          entityType: 'quotes',
+          entityId: String(variables.id),
+          metadata: {
+            order_number: variables.orderNumber,
+            status: variables.status,
+            company_name: variables.companyName,
+          },
+          targetAudience: 'user',
+          targetUserId: variables.userId,
+        })
+      }
+
       toast({
         title: 'Status updated',
         description: 'The order status has been updated.',
@@ -430,7 +448,14 @@ export function AdminOrdersView() {
   }
 
   const handleStatusChange = (orderId: number | string, newStatus: Order['status']) => {
-    updateStatusMutation.mutate({ id: orderId, status: newStatus })
+    const order = orders?.find((o) => o.id === orderId)
+    updateStatusMutation.mutate({
+      id: orderId,
+      status: newStatus,
+      userId: order?.user_id,
+      orderNumber: order?.order_number,
+      companyName: order?.company_name,
+    })
   }
 
   const handleInternalNotesChange = (notes: string) => {

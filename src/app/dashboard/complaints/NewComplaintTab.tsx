@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { sendNotification } from '@/lib/notifications'
 
 interface OrderItem {
   product_id?: string
@@ -57,7 +58,7 @@ interface ComplaintFormData {
 
 export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
   const { t } = useTranslation()
-  const { user, profile } = useAuth()
+  const { user, profile, company } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { tenant } = useTenant()
@@ -293,7 +294,18 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
       if (error) throw error
       return complaint
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Notify admins about the new complaint
+      sendNotification({
+        type: 'complaint_created',
+        entityType: 'complaints',
+        entityId: data?.id,
+        metadata: {
+          company_name: company?.name || profile?.company_name || profile?.full_name || user?.email || 'Unknown',
+        },
+        targetAudience: 'admins',
+      })
+
       toast({
         title: t('complaints.complaintSubmitted'),
         description: t('complaints.complaintSubmittedDescription'),
