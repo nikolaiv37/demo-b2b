@@ -36,8 +36,7 @@ import {
 import { SHIPPING_METHOD_CONFIG } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenant } from '@/lib/tenant/TenantProvider'
-import { pdf } from '@react-pdf/renderer'
-import { ProformaInvoicePDF, type ProformaInvoicePDFProps } from './ProformaInvoicePDF'
+import type { ProformaInvoicePDFProps } from './ProformaInvoicePDF'
 import { supabase } from '@/lib/supabase/client'
 import { Company } from '@/types'
 
@@ -259,6 +258,12 @@ export function OrderDetailsSheet({
           product_id: item.product_id,
         })),
       }
+
+      // Dynamically import react-pdf to avoid bundling the heavy package upfront
+      const [{ pdf }, { ProformaInvoicePDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./ProformaInvoicePDF'),
+      ])
 
       // Generate PDF blob
       const blob = await pdf(

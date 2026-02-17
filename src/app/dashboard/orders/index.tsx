@@ -44,8 +44,7 @@ import {
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
-import { pdf } from '@react-pdf/renderer'
-import { ProformaInvoicePDF, type ProformaInvoicePDFProps } from '@/components/ProformaInvoicePDF'
+import type { ProformaInvoicePDFProps } from '@/components/ProformaInvoicePDF'
 import { Company } from '@/types'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -633,6 +632,12 @@ function CompanyOrdersView() {
           })
           return
         }
+
+        // Dynamically import react-pdf to avoid bundling the heavy package upfront
+        const [{ pdf }, { ProformaInvoicePDF }] = await Promise.all([
+          import('@react-pdf/renderer'),
+          import('@/components/ProformaInvoicePDF'),
+        ])
 
         // Generate and download PDFs for each selected order
         for (let i = 0; i < ordersToProcess.length; i++) {

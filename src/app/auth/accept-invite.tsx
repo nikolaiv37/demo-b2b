@@ -325,6 +325,11 @@ export function AcceptInvitePage() {
                   Wrong Account
                 </h2>
                 <p className="text-sm text-muted-foreground">{message}</p>
+                {tenantSlug && (
+                  <p className="text-xs text-muted-foreground">
+                    Tenant: <span className="font-medium">{tenantSlug}</span>
+                  </p>
+                )}
               </div>
               <div className="space-y-3">
                 <Button
@@ -351,6 +356,11 @@ export function AcceptInvitePage() {
               <div className="space-y-2">
                 <h2 className="text-lg font-semibold">You're Invited!</h2>
                 <p className="text-sm text-muted-foreground">{message}</p>
+                {tenantSlug && (
+                  <p className="text-xs text-muted-foreground">
+                    Tenant: <span className="font-medium">{tenantSlug}</span>
+                  </p>
+                )}
               </div>
               <div className="space-y-3">
                 <Button onClick={handleGoToLogin} className="w-full gap-2 bg-sky-600 hover:bg-sky-700">
