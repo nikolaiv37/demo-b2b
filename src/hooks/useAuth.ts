@@ -26,7 +26,7 @@ let _isSigningOut = false
  */
 export function useAuth() {
   const { user, profile, setUser, setProfile, setLoading, clear } = useAuthStore()
-  const { tenant } = useTenant()
+  const { tenant, membership } = useTenant()
   const tenantId = tenant?.id ?? null
   const { withBase } = useTenantPath()
   const initializedRef = useRef(false)
@@ -556,7 +556,7 @@ export function useAuth() {
 
   // Computed values
   const isAuthenticated = !!user
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = membership?.role === 'owner' || membership?.role === 'admin'
   const isLoading = useAuthStore((state) => state.isLoading)
   const company = useAuthStore((state) => state.company)
 
