@@ -33,12 +33,14 @@ export function useQueryTeamMembers() {
       const userIds = [...new Set(memberships.map((m) => m.user_id))]
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, full_name')
         .in('id', userIds)
 
       if (profilesError) throw profilesError
 
-      const profileMap = new Map((profiles || []).map((p) => [p.id, p]))
+      const profileMap = new Map(
+        (profiles || []).map((p) => [p.id, p as { id: string; full_name?: string | null }])
+      )
 
       // For email: profiles may not have email column; try tenant_invitations for invited admins
       const { data: invites } = await supabase

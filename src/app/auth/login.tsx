@@ -22,7 +22,7 @@ export function LoginPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { tenant } = useTenant()
+  const { tenant, source, domainKind } = useTenant()
   const { withBase } = useTenantPath()
 
   const loginSchema = z.object({
@@ -49,6 +49,8 @@ export function LoginPage() {
       : tenant
         ? withBase('/')
         : '/'
+
+  const canReturnToWorkspaceSelector = domainKind === 'app' && source === 'slug' && !!tenant
 
   // Pick up ?reason=no-membership from auto-signout redirect, then clean the URL
   useEffect(() => {
@@ -249,6 +251,14 @@ export function LoginPage() {
             {t('auth.signIn')}
           </Button>
         </form>
+
+        {canReturnToWorkspaceSelector && (
+          <div className="mt-4 text-center">
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+              Back to all workspaces
+            </Link>
+          </div>
+        )}
 
         {!tenant && (
           <div className="mt-6 text-center text-sm">

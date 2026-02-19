@@ -520,7 +520,7 @@ function TeamSection() {
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                     {label
                       .split(' ')
-                      .map((w) => w[0])
+                      .map((w: string) => w[0])
                       .slice(0, 2)
                       .filter(Boolean)
                       .join('')

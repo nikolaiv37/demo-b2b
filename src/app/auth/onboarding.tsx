@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { GlassCard } from '@/components/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -30,12 +30,23 @@ export function OnboardingPage() {
   const [formData, setFormData] = useState<CompanyFormData | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
-  const { user, profile, isLoading: authLoading } = useAuth()
+  const { user, profile, isLoading: authLoading, signOut } = useAuth()
   const { tenant } = useTenant()
   const tenantId = tenant?.id ?? null
   const { withBase } = useTenantPath()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { toast } = useToast()
+  const onboardingReason = searchParams.get('reason')
+
+  const onboardingReasonMessage =
+    onboardingReason === 'missing-company-link'
+      ? 'This account is missing a linked company profile for this tenant.'
+      : onboardingReason === 'missing-company-record'
+        ? 'This account links to a company record that was not found in this tenant.'
+        : onboardingReason === 'company-onboarding-incomplete'
+          ? 'Tenant company onboarding is not completed yet.'
+          : null
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -51,6 +62,10 @@ export function OnboardingPage() {
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
+  }
+
+  const handleSwitchAccount = async () => {
+    await signOut('/auth/login')
   }
 
   const nextStep = () => {
@@ -243,6 +258,23 @@ export function OnboardingPage() {
             </div>
           </div>
         </div>
+
+        {onboardingReasonMessage && (
+          <GlassCard className="p-4 mb-4">
+            <div className="text-sm text-left">
+              <p className="font-medium mb-1">Why you are seeing onboarding</p>
+              <p className="text-muted-foreground">{onboardingReasonMessage}</p>
+              <p className="text-muted-foreground mt-1">
+                Signed in as: <span className="font-medium text-foreground">{user.email}</span>
+              </p>
+              <div className="mt-3">
+                <Button type="button" variant="outline" onClick={handleSwitchAccount}>
+                  Switch account
+                </Button>
+              </div>
+            </div>
+          </GlassCard>
+        )}
 
         <GlassCard className="p-8 md:p-12">
           {/* Step 1: Company Information */}

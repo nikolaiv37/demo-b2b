@@ -25,11 +25,10 @@ let _isSigningOut = false
  * - Exposes: user, profile, isAdmin, isLoading
  */
 export function useAuth() {
-  const { user, profile, setUser, setProfile, setLoading, clear } = useAuthStore()
+  const { user, profile, setUser, setProfile, setCompany, setLoading, clear } = useAuthStore()
   const { tenant, membership } = useTenant()
   const tenantId = tenant?.id ?? null
   const { withBase } = useTenantPath()
-  const initializedRef = useRef(false)
   const loadingProfileRef = useRef<string | null>(null)
   const currentProfileRef = useRef<Profile | null>(null)
   const profileLoadStartedRef = useRef<Set<string>>(new Set())
@@ -40,12 +39,6 @@ export function useAuth() {
   }, [profile])
 
   useEffect(() => {
-    // Prevent multiple initializations (React strict mode causes double renders)
-    if (initializedRef.current) {
-      return
-    }
-    initializedRef.current = true
-
     let mounted = true
 
     // Helper function to load profile for a user
@@ -174,7 +167,6 @@ export function useAuth() {
 
     return () => {
       mounted = false
-      initializedRef.current = false
       subscription.unsubscribe()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,6 +178,7 @@ export function useAuth() {
   const loadCompany = async (companyId: string) => {
     try {
       if (!tenantId) {
+        setCompany(null)
         return
       }
       const { data: companyRows, error } = await supabase
@@ -209,6 +202,7 @@ export function useAuth() {
 
         if (legacyError) {
           console.error('Error loading legacy company:', legacyError)
+          setCompany(null)
           return
         }
 
@@ -219,6 +213,7 @@ export function useAuth() {
               currentTenantId: tenantId,
               companyId,
             })
+            setCompany(null)
             return
           }
 
@@ -239,20 +234,26 @@ export function useAuth() {
           }
 
           useAuthStore.getState().setCompany(companyToUse as Company)
+        } else {
+          setCompany(null)
         }
         return
       }
 
       if (error) {
         console.error('Error loading company:', error)
+        setCompany(null)
         return
       }
 
       if (company) {
         useAuthStore.getState().setCompany(company as Company)
+      } else {
+        setCompany(null)
       }
     } catch (error) {
       console.error('Unexpected error loading company:', error)
+      setCompany(null)
     }
   }
 
@@ -265,6 +266,7 @@ export function useAuth() {
     const userTenantKey = `${user.id}:${tenantId ?? 'no-tenant'}`
     if (blockedUserTenantPairs.has(userTenantKey)) {
       setProfile(null)
+      setCompany(null)
       setLoading(false)
       return
     }
@@ -273,6 +275,7 @@ export function useAuth() {
       setLoading(true)
       if (!tenantId) {
         setProfile(null)
+        setCompany(null)
         setLoading(false)
         return
       }
@@ -319,6 +322,7 @@ export function useAuth() {
               loggedTenantMismatchPairs.add(userTenantKey)
             }
             setProfile(null)
+            setCompany(null)
             setLoading(false)
             return
           }
@@ -348,6 +352,8 @@ export function useAuth() {
 
           if (profileToUse.company_id) {
             await loadCompany(profileToUse.company_id)
+          } else {
+            setCompany(null)
           }
 
           identifyUser(user.id, {
@@ -368,6 +374,7 @@ export function useAuth() {
           hint: fetchError.hint,
         })
         setProfile(null)
+        setCompany(null)
         setLoading(false)
         return
       } else if (existingProfile) {
@@ -384,6 +391,8 @@ export function useAuth() {
         // Load company if profile has company_id
         if (existingProfile.company_id) {
           await loadCompany(existingProfile.company_id)
+        } else {
+          setCompany(null)
         }
         
         identifyUser(user.id, {
@@ -449,6 +458,8 @@ export function useAuth() {
 
             if (profileToUse.company_id) {
               await loadCompany(profileToUse.company_id)
+            } else {
+              setCompany(null)
             }
 
             identifyUser(user.id, {
@@ -464,6 +475,7 @@ export function useAuth() {
         console.error('Error creating profile:', createError)
         // Don't throw - set profile to null and stop loading
         setProfile(null)
+        setCompany(null)
         setLoading(false)
         return
       }
@@ -472,6 +484,7 @@ export function useAuth() {
       if (!createdProfile?.[0]) {
         console.error('Profile insert returned no row; stopping auth bootstrap')
         setProfile(null)
+        setCompany(null)
         setLoading(false)
         return
       }
@@ -486,6 +499,8 @@ export function useAuth() {
       // Load company if profile has company_id
       if (createdProfile[0].company_id) {
         await loadCompany(createdProfile[0].company_id)
+      } else {
+        setCompany(null)
       }
       
       // Track new user
@@ -502,6 +517,7 @@ export function useAuth() {
       
       // Set profile to null and stop loading - don't hang
       setProfile(null)
+      setCompany(null)
       setLoading(false)
     } finally {
       // Ensure loading is always set to false

@@ -3,11 +3,13 @@ import { useTenantMemberships } from '@/hooks/useTenantMemberships'
 import { TenantSelector } from '@/pages/TenantSelector'
 import { NoTenantState } from '@/pages/NoTenantState'
 import { PlatformLoginPage } from '@/app/auth/platform-login'
+import { Navigate } from 'react-router-dom'
+import { SLUG_PREFIX } from '@/lib/tenant/constants'
 
 /**
  * Shown on the app host (centivon.vercel.app) when no tenant is resolved.
  * Unauthenticated → platform email-first login.
- * Authenticated   → workspace selector (no auto-redirect).
+ * Authenticated   → auto-redirect when one workspace, selector when multiple.
  */
 export function MainIndexRoute() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -27,6 +29,13 @@ export function MainIndexRoute() {
 
   if (memberships.length === 0) {
     return <NoTenantState />
+  }
+
+  if (memberships.length === 1) {
+    const onlyTenant = memberships[0]?.tenant
+    if (onlyTenant?.slug) {
+      return <Navigate to={`${SLUG_PREFIX}/${onlyTenant.slug}/dashboard`} replace />
+    }
   }
 
   return <TenantSelector />

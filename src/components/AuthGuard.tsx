@@ -19,7 +19,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user, profile, company } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const { membership, membershipChecked } = useTenant()
+  const { tenant, membership, membershipChecked } = useTenant()
   const { withBase, stripBase } = useTenantPath()
   const { toast } = useToast()
   const [hasCheckedHash, setHasCheckedHash] = useState(false)
@@ -105,12 +105,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   // Check onboarding status once profile and company are loaded
   // IMPORTANT: This hook must be before any early returns to follow Rules of Hooks
   useEffect(() => {
+    let active = true
+
+    const run = async () => {
     if (
       hasCheckedOnboarding ||
       isLoading ||
       !isAuthenticated ||
       !user ||
-      !hasCheckedHash
+      !hasCheckedHash ||
+      !membershipChecked
     ) {
       return
     }
@@ -118,14 +122,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // If the user is authenticated but NOT a member of the current tenant,
     // skip the onboarding check entirely. MembershipGuard (child component)
     // will show the AccessDenied page instead.
-    if (membershipChecked && !membership) {
+    if (!membership) {
       setHasCheckedOnboarding(true)
       return
     }
 
     // Client members should never be forced into the admin onboarding flow.
     // Onboarding is only for tenant admins/owners to set up company/billing details.
-    if (membershipChecked && membership?.role === 'member') {
+    if (membership.role === 'member') {
       setHasCheckedOnboarding(true)
       return
     }
@@ -148,17 +152,57 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       (company && company.onboarding_completed === false)
 
     if (needsOnboarding && logicalPath.startsWith('/dashboard')) {
+      // Admins/owners may manage an already onboarded tenant company
+      // without having a personal profile.company_id link.
+      if (
+        (membership.role === 'owner' || membership.role === 'admin') &&
+        !profile?.company_id &&
+        tenant?.id
+      ) {
+        const { data: existingTenantCompany, error } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('tenant_id', tenant.id)
+          .eq('onboarding_completed', true)
+          .limit(1)
+
+        if (!active) return
+
+        if (error) {
+          console.warn('AuthGuard tenant company check failed, falling back to onboarding:', error)
+        } else if ((existingTenantCompany?.length ?? 0) > 0) {
+          setHasCheckedOnboarding(true)
+          return
+        }
+      }
+
       setHasCheckedOnboarding(true)
-      navigate(withBase('/auth/onboarding'), { replace: true })
+      const reason =
+        !profile?.company_id
+          ? 'missing-company-link'
+          : profile.company_id && !company
+            ? 'missing-company-record'
+            : company?.onboarding_completed === false
+              ? 'company-onboarding-incomplete'
+              : 'unknown'
+      navigate(`${withBase('/auth/onboarding')}?reason=${encodeURIComponent(reason)}`, { replace: true })
       return
     }
 
     setHasCheckedOnboarding(true)
+    }
+
+    run()
+
+    return () => {
+      active = false
+    }
   }, [
     isAuthenticated,
     user,
     profile,
     company,
+    tenant,
     isLoading,
     hasCheckedHash,
     hasCheckedOnboarding,

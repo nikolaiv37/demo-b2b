@@ -28,7 +28,6 @@ export function AcceptInvitePage() {
   const [state, setState] = useState<AcceptState>('loading')
   const [message, setMessage] = useState('')
   const [tenantSlug, setTenantSlug] = useState<string | null>(null)
-  const [inviteEmail, setInviteEmail] = useState<string | null>(null)
   const [magicLinkEmail, setMagicLinkEmail] = useState('')
   const [sendingMagicLink, setSendingMagicLink] = useState(false)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
@@ -206,7 +205,6 @@ export function AcceptInvitePage() {
         if (inviteInfo) {
           setMessage(`You've been invited to join ${inviteInfo.tenant_name}. Enter your email to receive a sign-in link.`)
           setTenantSlug(inviteInfo.tenant_slug)
-          setInviteEmail(inviteInfo.email ?? null)
           setMagicLinkEmail(inviteInfo.email ?? '')
         } else {
           setMessage('Please enter your email to receive a sign-in link.')
