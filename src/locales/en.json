@@ -770,7 +770,17 @@
       "member": "Member",
       "joined": "Joined",
       "invitedOn": "Invited on",
-      "you": "You"
+      "you": "You",
+      "unknown": "Unknown",
+      "copyLink": "Copy link",
+      "copyFailed": "Copy failed — link shown below",
+      "linkCopied": "Link copied",
+      "linkCopiedDesc": "Invite link has been copied to your clipboard. Share it with your teammate to complete the invite.",
+      "noTokenForInvite": "Unable to get invite link for this invitation.",
+      "revokeInvite": "Revoke invite",
+      "revokeInviteConfirm": "Revoke the invitation for {{email}}? The invite link will stop working and you can re-invite later.",
+      "inviteRevoked": "Invitation for {{email}} has been revoked.",
+      "revokeInviteError": "Failed to revoke invitation"
     },
     "general": {
       "loading": "Loading...",

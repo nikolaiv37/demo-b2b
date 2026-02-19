@@ -20,22 +20,44 @@ export function useQueryTeamMembers() {
     queryFn: async (): Promise<TeamMember[]> => {
       if (!tenantId) return []
 
-      const { data, error } = await supabase
+      const { data: memberships, error: membershipsError } = await supabase
         .from('tenant_memberships')
-        .select('id, user_id, role, created_at, profile:profiles(email, full_name)')
+        .select('id, user_id, role, created_at')
         .eq('tenant_id', tenantId)
         .in('role', ['owner', 'admin'])
         .order('created_at', { ascending: true })
 
-      if (error) throw error
+      if (membershipsError) throw membershipsError
+      if (!memberships?.length) return []
 
-      return (data || []).map((row) => {
-        const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile
+      const userIds = [...new Set(memberships.map((m) => m.user_id))]
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', userIds)
+
+      if (profilesError) throw profilesError
+
+      const profileMap = new Map((profiles || []).map((p) => [p.id, p]))
+
+      // For email: profiles may not have email column; try tenant_invitations for invited admins
+      const { data: invites } = await supabase
+        .from('tenant_invitations')
+        .select('profile_id, email')
+        .eq('tenant_id', tenantId)
+        .in('profile_id', userIds)
+      const inviteEmailMap = new Map(
+        (invites || []).filter((i) => i.profile_id).map((i) => [i.profile_id!, i.email])
+      )
+
+      return memberships.map((row) => {
+        const profile = profileMap.get(row.user_id)
+        const email = inviteEmailMap.get(row.user_id) ?? null
         return {
           id: row.id,
           user_id: row.user_id,
           role: row.role as TeamMember['role'],
-          email: profile?.email ?? null,
+          email,
           full_name: profile?.full_name ?? null,
           created_at: row.created_at,
         }

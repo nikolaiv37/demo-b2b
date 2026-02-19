@@ -41,10 +41,14 @@ export function LoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
-  // After login, go to tenant root (TenantEntry handles membership gate)
-  // rather than /dashboard directly — this avoids a duplicate membership
-  // query that can race with session propagation and produce false negatives.
-  const postLoginPath = tenant ? withBase('/') : '/'
+  // After login, go to redirect param (e.g. accept-invite) or tenant root
+  const redirectParam = searchParams.get('redirect')
+  const postLoginPath =
+    redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+      ? redirectParam
+      : tenant
+        ? withBase('/')
+        : '/'
 
   // Pick up ?reason=no-membership from auto-signout redirect, then clean the URL
   useEffect(() => {

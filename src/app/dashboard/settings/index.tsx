@@ -20,14 +20,17 @@ import { useToast } from '@/components/ui/use-toast'
 import { CompanyForm, CompanyFormData } from '@/components/CompanyForm'
 import { supabase } from '@/lib/supabase/client'
 import { cn, slugify } from '@/lib/utils'
-import { Building2, User, Lock, Users, UserPlus, Mail, Loader2, Shield, Crown, Clock } from 'lucide-react'
+import { Building2, User, Lock, Users, UserPlus, Mail, Loader2, Shield, Crown, Clock, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import { useQueryTeamMembers, useQueryTeamInvitations } from '@/hooks/useQueryTeamMembers'
-import { useMutationInviteTeamMember, useMutationResendTeamInvite } from '@/hooks/useMutationInviteTeamMember'
+import {
+  useMutationInviteTeamMember,
+  useMutationRevokeTeamInvite,
+} from '@/hooks/useMutationInviteTeamMember'
 
 type SettingsSection = 'company' | 'team' | 'profile'
 
@@ -417,7 +420,7 @@ function TeamSection() {
   const { data: teamMembers, isLoading: membersLoading } = useQueryTeamMembers()
   const { data: pendingInvites, isLoading: invitesLoading } = useQueryTeamInvitations()
   const inviteMutation = useMutationInviteTeamMember()
-  const resendMutation = useMutationResendTeamInvite()
+  const revokeMutation = useMutationRevokeTeamInvite()
 
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -433,7 +436,11 @@ function TeamSection() {
       const result = await inviteMutation.mutateAsync({ email })
 
       if (result?.email_sent === false) {
-        toast({ title: t('settings.success'), description: t('settings.teamInviteSentNoEmail', { email }) })
+        toast({
+          title: t('settings.success'),
+          description: t('settings.teamInviteSentNoEmail', { email }),
+          variant: 'destructive',
+        })
       } else {
         toast({ title: t('settings.success'), description: t('settings.teamInviteSent', { email }) })
       }
@@ -449,14 +456,15 @@ function TeamSection() {
     }
   }
 
-  const handleResend = async (email: string) => {
+  const handleRevoke = async (invite: { id: string; email: string }) => {
+    if (!window.confirm(t('settings.revokeInviteConfirm', { email: invite.email }))) return
     try {
-      await resendMutation.mutateAsync({ email })
-      toast({ title: t('settings.success'), description: t('settings.teamInviteSent', { email }) })
+      await revokeMutation.mutateAsync(invite.id)
+      toast({ title: t('settings.success'), description: t('settings.inviteRevoked', { email: invite.email }) })
     } catch (err) {
       toast({
         title: t('settings.error'),
-        description: err instanceof Error ? err.message : t('settings.teamInviteError'),
+        description: err instanceof Error ? err.message : t('settings.revokeInviteError'),
         variant: 'destructive',
       })
     }
@@ -501,30 +509,36 @@ function TeamSection() {
           <p className="text-sm text-muted-foreground py-4">{t('settings.noTeamMembers')}</p>
         ) : (
           <div className="divide-y divide-border rounded-lg border">
-            {teamMembers.map((member) => (
+            {teamMembers.map((member) => {
+              const isCurrentUser = member.user_id === user?.id
+              const displayName = member.full_name || member.email || (isCurrentUser ? user?.user_metadata?.full_name ?? user?.email ?? null : null) || null
+              const displayEmail = member.email || (isCurrentUser ? user?.email ?? null : null) || null
+              const label = displayName || displayEmail || t('settings.unknown')
+              return (
               <div key={member.id} className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                    {(member.full_name || member.email || '?')
+                    {label
                       .split(' ')
                       .map((w) => w[0])
                       .slice(0, 2)
+                      .filter(Boolean)
                       .join('')
-                      .toUpperCase()}
+                      .toUpperCase() || '?'}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">
-                        {member.full_name || member.email || 'Unknown'}
+                        {label}
                       </p>
-                      {member.user_id === user?.id && (
+                      {isCurrentUser && (
                         <Badge variant="outline" className="text-xs px-1.5 py-0">
                           {t('settings.you')}
                         </Badge>
                       )}
                     </div>
-                    {member.full_name && member.email && (
-                      <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                    {displayEmail && (
+                      <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
                     )}
                   </div>
                 </div>
@@ -535,7 +549,8 @@ function TeamSection() {
                   </span>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </GlassCard>
@@ -561,18 +576,22 @@ function TeamSection() {
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleResend(invite.email)}
-                  disabled={resendMutation.isPending}
-                >
-                  {resendMutation.isPending ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    t('settings.resendInvite')
-                  )}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => handleRevoke(invite)}
+                    disabled={revokeMutation.isPending}
+                    title={t('settings.revokeInvite')}
+                  >
+                    {revokeMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

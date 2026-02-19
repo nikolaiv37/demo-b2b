@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
-import { Loader2, CheckCircle2, AlertCircle, Mail, LogOut } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, Mail, LogOut, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 type AcceptState = 'loading' | 'accepting' | 'success' | 'redirecting_setup' | 'error' | 'login_required' | 'wrong_account'
@@ -26,6 +28,10 @@ export function AcceptInvitePage() {
   const [state, setState] = useState<AcceptState>('loading')
   const [message, setMessage] = useState('')
   const [tenantSlug, setTenantSlug] = useState<string | null>(null)
+  const [inviteEmail, setInviteEmail] = useState<string | null>(null)
+  const [magicLinkEmail, setMagicLinkEmail] = useState('')
+  const [sendingMagicLink, setSendingMagicLink] = useState(false)
+  const [magicLinkSent, setMagicLinkSent] = useState(false)
   const acceptedRef = useRef(false) // prevent double-accept
 
   // Core accept logic
@@ -192,16 +198,18 @@ export function AcceptInvitePage() {
 
       // No session yet
       if (token) {
-        // Have token but no session — show invitation info + login prompt
+        // Have token but no session — show invitation info + magic link / login
         const { data: inviteInfo } = await supabase.rpc('get_invitation_by_token', {
           invite_token: token,
         })
 
         if (inviteInfo) {
-          setMessage(`You've been invited to join ${inviteInfo.tenant_name}. Please check your email or log in to accept.`)
+          setMessage(`You've been invited to join ${inviteInfo.tenant_name}. Enter your email to receive a sign-in link.`)
           setTenantSlug(inviteInfo.tenant_slug)
+          setInviteEmail(inviteInfo.email ?? null)
+          setMagicLinkEmail(inviteInfo.email ?? '')
         } else {
-          setMessage('Please log in or check your email to accept this invitation.')
+          setMessage('Please enter your email to receive a sign-in link.')
         }
         setState('login_required')
       } else {
@@ -250,9 +258,33 @@ export function AcceptInvitePage() {
 
   const handleGoToLogin = () => {
     const returnUrl = token
-      ? `/auth/accept-invite?token=${token}`
-      : '/auth/accept-invite'
+      ? `${withBase('/auth/accept-invite')}?token=${token}`
+      : withBase('/auth/accept-invite')
     navigate(`${withBase('/auth/login')}?redirect=${encodeURIComponent(returnUrl)}`)
+  }
+
+  const handleSendMagicLink = async () => {
+    const email = magicLinkEmail.trim().toLowerCase()
+    if (!email || !token) return
+    setSendingMagicLink(true)
+    try {
+      const redirectTo = `${window.location.origin}${withBase('/auth/accept-invite')}?token=${token}`
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectTo,
+          shouldCreateUser: true,
+        },
+      })
+      if (error) throw error
+      setMagicLinkSent(true)
+      setMessage(`Check your email (${email}) — click the link to accept the invitation.`)
+    } catch (err) {
+      console.error('Magic link error:', err)
+      setMessage(err instanceof Error ? err.message : 'Failed to send sign-in link. Please try again.')
+    } finally {
+      setSendingMagicLink(false)
+    }
   }
 
   return (
@@ -347,7 +379,7 @@ export function AcceptInvitePage() {
             </div>
           )}
 
-          {/* Login Required */}
+          {/* Login Required — send magic link or log in with password */}
           {state === 'login_required' && (
             <div className="space-y-5">
               <div className="h-16 w-16 mx-auto rounded-full bg-sky-500/10 flex items-center justify-center">
@@ -362,14 +394,61 @@ export function AcceptInvitePage() {
                   </p>
                 )}
               </div>
-              <div className="space-y-3">
-                <Button onClick={handleGoToLogin} className="w-full gap-2 bg-sky-600 hover:bg-sky-700">
-                  Log in to accept
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Check your email for a sign-in link, or log in with your existing credentials.
-                </p>
+              {magicLinkSent ? (
+                <div className="space-y-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-4">
+                  <p className="text-sm text-sky-700 dark:text-sky-300">
+                    We've sent a sign-in link to your email. Click the link to accept the invitation.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Didn't receive it? Check spam, or{' '}
+                    <button
+                      type="button"
+                      onClick={() => setMagicLinkSent(false)}
+                      className="text-sky-600 hover:underline"
+                    >
+                      try again
+                    </button>
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="magic-email">Your email</Label>
+                    <Input
+                      id="magic-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={magicLinkEmail}
+                      onChange={(e) => setMagicLinkEmail(e.target.value)}
+                      disabled={sendingMagicLink}
+                      autoComplete="email"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSendMagicLink}
+                    disabled={sendingMagicLink || !magicLinkEmail.trim()}
+                    className="w-full gap-2 bg-sky-600 hover:bg-sky-700"
+                  >
+                    {sendingMagicLink ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    {sendingMagicLink ? 'Sending...' : 'Send sign-in link'}
+                  </Button>
+                </div>
+              )}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
               </div>
+              <Button variant="outline" onClick={handleGoToLogin} className="w-full">
+                Log in with password
+              </Button>
             </div>
           )}
         </CardContent>

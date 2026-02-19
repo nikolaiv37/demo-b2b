@@ -91,3 +91,29 @@ export function useMutationResendTeamInvite() {
     },
   })
 }
+
+export function useMutationRevokeTeamInvite() {
+  const queryClient = useQueryClient()
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
+
+  return useMutation({
+    mutationFn: async (invitationId: string) => {
+      if (!tenantId) {
+        throw new Error('Missing tenant context')
+      }
+
+      const { error } = await supabase
+        .from('tenant_invitations')
+        .update({ status: 'revoked' })
+        .eq('id', invitationId)
+        .eq('tenant_id', tenantId)
+
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'team-members'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'team-invitations'] })
+    },
+  })
+}
