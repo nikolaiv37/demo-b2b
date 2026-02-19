@@ -113,6 +113,12 @@ Deno.serve(async (req) => {
 
     // ── Accept the invitation ──
 
+    // Derive roles from target_role (backward compat: null/missing = 'company')
+    const targetRole = invitation.target_role || 'company'
+    const isTeamInvite = targetRole === 'admin'
+    const profileRole = isTeamInvite ? 'admin' : 'company'
+    const membershipRole = isTeamInvite ? 'admin' : 'member'
+
     // Update invitation
     await adminClient
       .from('tenant_invitations')
@@ -123,26 +129,26 @@ Deno.serve(async (req) => {
       })
       .eq('id', invitation.id)
 
-    // Upsert profile → still invited until client completes setup.
+    // Upsert profile (role synced from target_role)
     await adminClient
       .from('profiles')
       .upsert({
         id: user.id,
         email: user.email!,
-        role: 'company',
-        company_name: invitation.company_name || null,
-        commission_rate: invitation.commission_rate || 0,
-        invitation_status: 'invited',
+        role: profileRole,
+        company_name: isTeamInvite ? null : (invitation.company_name || null),
+        commission_rate: isTeamInvite ? 0 : (invitation.commission_rate || 0),
+        invitation_status: isTeamInvite ? 'active' : 'invited',
         tenant_id: invitation.tenant_id,
       }, { onConflict: 'id' })
 
-    // Ensure tenant membership
+    // Ensure tenant membership (role depends on invite type)
     await adminClient
       .from('tenant_memberships')
       .upsert({
         user_id: user.id,
         tenant_id: invitation.tenant_id,
-        role: 'member',
+        role: membershipRole,
       }, { onConflict: 'user_id,tenant_id' })
 
     return json({

@@ -1,15 +1,17 @@
 // supabase/functions/invite-client/index.ts
 //
 // Edge Function: invite-client
-// Called by tenant admins to invite a new client company.
+// Called by tenant admins to invite a new client company OR a team member.
 //
-// POST body: { email, company_name?, commission_rate?, tenant_id }
+// POST body: { email, company_name?, commission_rate?, tenant_id, target_role? }
+//   target_role: 'company' (default) = client invite
+//                'admin'             = team member invite
 //
 // Flow:
 //   1. Validate caller is admin/owner of the tenant
 //   2. Create (or update) the tenant_invitations record → get token
 //   3. Invite user via Supabase Auth with token in redirectTo
-//   4. Create stub profile + membership
+//   4. Create stub profile + membership (roles depend on target_role)
 //   5. Return the invitation record
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -30,7 +32,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json()
-    const { email, company_name, commission_rate, tenant_id } = body
+    const { email, company_name, commission_rate, tenant_id, target_role: rawTargetRole } = body
 
     if (!email || !tenant_id) {
       return new Response(
@@ -38,6 +40,9 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    const target_role: 'admin' | 'company' = rawTargetRole === 'admin' ? 'admin' : 'company'
+    const isTeamInvite = target_role === 'admin'
 
     const normalizedEmail = email.toLowerCase().trim()
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -67,14 +72,14 @@ Deno.serve(async (req) => {
       .single()
 
     if (!membership || !['owner', 'admin'].includes(membership.role)) {
-      return new Response(JSON.stringify({ error: 'Only tenant admins can invite clients' }), {
+      return new Response(JSON.stringify({ error: 'Only tenant admins can send invitations' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Commission as decimal 0.00–0.50
-    const commissionDecimal = commission_rate
+    // Commission as decimal 0.00–0.50 (only relevant for client invites)
+    const commissionDecimal = (!isTeamInvite && commission_rate)
       ? Math.min(Math.max(Number(commission_rate) / 100, 0), 0.5)
       : 0
 
@@ -99,8 +104,9 @@ Deno.serve(async (req) => {
     const invitationPayload = {
       tenant_id,
       email: normalizedEmail,
-      company_name: company_name || null,
+      company_name: isTeamInvite ? null : (company_name || null),
       commission_rate: commissionDecimal,
+      target_role,
       invited_by: user.id,
       status: 'pending' as const,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -149,14 +155,16 @@ Deno.serve(async (req) => {
     const siteUrl = rawSiteUrl.replace(/\/+$/, '')
     const redirectUrl = `${siteUrl}/auth/accept-invite?token=${invitation!.token}`
 
+    const profileRole = isTeamInvite ? 'admin' : 'company'
+
     const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
       normalizedEmail,
       {
         redirectTo: redirectUrl,
         data: {
           tenant_id,
-          role: 'company',
-          company_name: company_name || null,
+          role: profileRole,
+          company_name: isTeamInvite ? null : (company_name || null),
           invitation_token: invitation!.token,
         },
       }
@@ -172,15 +180,17 @@ Deno.serve(async (req) => {
     const authUserId = inviteData?.user?.id
     let profileId: string | null = null
 
+    const membershipRole = isTeamInvite ? 'admin' : 'member'
+
     if (authUserId) {
-      // Create / update profile
+      // Create / update profile (role synced from target_role)
       const { data: profileData, error: profileError } = await adminClient
         .from('profiles')
         .upsert({
           id: authUserId,
           email: normalizedEmail,
-          role: 'company',
-          company_name: company_name || null,
+          role: profileRole,
+          company_name: isTeamInvite ? null : (company_name || null),
           commission_rate: commissionDecimal,
           invitation_status: 'invited',
           tenant_id,
@@ -194,13 +204,13 @@ Deno.serve(async (req) => {
         profileId = profileData?.id ?? null
       }
 
-      // Ensure tenant membership
+      // Ensure tenant membership (role depends on invite type)
       const { error: membershipError } = await adminClient
         .from('tenant_memberships')
         .upsert({
           user_id: authUserId,
           tenant_id,
-          role: 'member',
+          role: membershipRole,
         }, { onConflict: 'user_id,tenant_id' })
 
       if (membershipError) {

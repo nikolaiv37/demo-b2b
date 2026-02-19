@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import type { Tenant, TenantMembership } from '@/types'
 import { resolveTenant, getSlugCandidate, normalizeHost, type TenantSource, type DomainKind } from './resolveTenant'
-import { MARKETING_HOSTS, APP_HOSTS, SLUG_PREFIX } from './constants'
+import { MARKETING_HOSTS, APP_HOSTS, PLATFORM_HOSTS, SLUG_PREFIX } from './constants'
 
 interface TenantContextValue {
   tenant: Tenant | null
@@ -51,10 +51,13 @@ function shouldRedirectToCanonical(args: {
 }): boolean {
   const { primaryDomain, currentHost, source } = args
   if (!primaryDomain) return false
+  const normalizedPrimary = normalizeHost(primaryDomain)
   if (source === 'domain') return false
-  // Safety: never redirect to a .local domain — treat as misconfiguration
-  if (primaryDomain.endsWith('.local')) return false
-  return currentHost !== primaryDomain
+  // Safety: never redirect to local or platform-owned hosts.
+  if (normalizedPrimary.endsWith('.local')) return false
+  if (normalizedPrimary === 'localhost' || normalizedPrimary === '127.0.0.1') return false
+  if (PLATFORM_HOSTS.has(normalizedPrimary)) return false
+  return currentHost !== normalizedPrimary
 }
 
 class TimeoutError extends Error {

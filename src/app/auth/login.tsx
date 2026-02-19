@@ -22,7 +22,7 @@ export function LoginPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { tenant } = useTenant()
+  const { tenant, source, domainKind } = useTenant()
   const { withBase } = useTenantPath()
 
   const loginSchema = z.object({
@@ -41,10 +41,16 @@ export function LoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
-  // After login, go to tenant root (TenantEntry handles membership gate)
-  // rather than /dashboard directly — this avoids a duplicate membership
-  // query that can race with session propagation and produce false negatives.
-  const postLoginPath = tenant ? withBase('/') : '/'
+  // After login, go to redirect param (e.g. accept-invite) or tenant root
+  const redirectParam = searchParams.get('redirect')
+  const postLoginPath =
+    redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+      ? redirectParam
+      : tenant
+        ? withBase('/')
+        : '/'
+
+  const canReturnToWorkspaceSelector = domainKind === 'app' && source === 'slug' && !!tenant
 
   // Pick up ?reason=no-membership from auto-signout redirect, then clean the URL
   useEffect(() => {
@@ -245,6 +251,14 @@ export function LoginPage() {
             {t('auth.signIn')}
           </Button>
         </form>
+
+        {canReturnToWorkspaceSelector && (
+          <div className="mt-4 text-center">
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+              Back to all workspaces
+            </Link>
+          </div>
+        )}
 
         {!tenant && (
           <div className="mt-6 text-center text-sm">

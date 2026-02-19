@@ -1,42 +1,61 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { format } from 'date-fns'
 import { GlassCard } from '@/components/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { CompanyForm, CompanyFormData } from '@/components/CompanyForm'
 import { supabase } from '@/lib/supabase/client'
 import { cn, slugify } from '@/lib/utils'
-import { Building2, User, Lock } from 'lucide-react'
+import { Building2, User, Lock, Users, UserPlus, Mail, Loader2, Shield, Crown, Clock, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { useQueryTeamMembers, useQueryTeamInvitations } from '@/hooks/useQueryTeamMembers'
+import {
+  useMutationInviteTeamMember,
+  useMutationRevokeTeamInvite,
+} from '@/hooks/useMutationInviteTeamMember'
+
+type SettingsSection = 'company' | 'team' | 'profile'
 
 export function SettingsPage() {
   const { t } = useTranslation()
   const location = useLocation()
-  const { company, profile, user } = useAuth()
+  const { company, profile, user, isAdmin } = useAuth()
   const { tenant } = useTenant()
   const tenantId = tenant?.id
   const { toast } = useToast()
   const [isSaving, setIsSaving] = useState(false)
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
-  const [activeSection, setActiveSection] = useState<'company' | 'profile'>('company')
+  const [activeSection, setActiveSection] = useState<SettingsSection>('company')
 
-  // Sync active section with location hash (#company / #profile)
+  // Sync active section with location hash (#company / #team / #profile)
   useEffect(() => {
     if (location.hash === '#profile') {
       setActiveSection('profile')
+    } else if (location.hash === '#team' && isAdmin) {
+      setActiveSection('team')
     } else {
       setActiveSection('company')
     }
-  }, [location.hash])
+  }, [location.hash, isAdmin])
 
   const handleCompanySubmit = async (data: CompanyFormData, logoUrl: string | null) => {
     if (!user || !company || !tenantId) {
@@ -203,6 +222,27 @@ export function SettingsPage() {
               <span>{t('nav.company')}</span>
             </button>
 
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection('team')
+                  if (location.hash !== '#team') {
+                    window.history.replaceState({}, '', `${location.pathname}#team`)
+                  }
+                }}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                  activeSection === 'team'
+                    ? 'bg-primary/10 text-primary'
+                    : 'hover:bg-muted text-muted-foreground'
+                )}
+              >
+                <Users className="w-4 h-4" />
+                <span>{t('nav.team')}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -239,6 +279,10 @@ export function SettingsPage() {
                 mode="edit"
               />
             </GlassCard>
+          )}
+
+          {activeSection === 'team' && isAdmin && (
+            <TeamSection />
           )}
 
           {activeSection === 'profile' && (
@@ -366,5 +410,233 @@ export function SettingsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function TeamSection() {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const { user } = useAuth()
+  const { data: teamMembers, isLoading: membersLoading } = useQueryTeamMembers()
+  const { data: pendingInvites, isLoading: invitesLoading } = useQueryTeamInvitations()
+  const inviteMutation = useMutationInviteTeamMember()
+  const revokeMutation = useMutationRevokeTeamInvite()
+
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+
+  const handleInvite = async () => {
+    const email = inviteEmail.trim()
+    if (!email) {
+      toast({ title: t('settings.error'), description: t('settings.teamEmailRequired'), variant: 'destructive' })
+      return
+    }
+
+    try {
+      const result = await inviteMutation.mutateAsync({ email })
+
+      if (result?.email_sent === false) {
+        toast({
+          title: t('settings.success'),
+          description: t('settings.teamInviteSentNoEmail', { email }),
+          variant: 'destructive',
+        })
+      } else {
+        toast({ title: t('settings.success'), description: t('settings.teamInviteSent', { email }) })
+      }
+
+      setIsInviteOpen(false)
+      setInviteEmail('')
+    } catch (err) {
+      toast({
+        title: t('settings.error'),
+        description: err instanceof Error ? err.message : t('settings.teamInviteError'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleRevoke = async (invite: { id: string; email: string }) => {
+    if (!window.confirm(t('settings.revokeInviteConfirm', { email: invite.email }))) return
+    try {
+      await revokeMutation.mutateAsync(invite.id)
+      toast({ title: t('settings.success'), description: t('settings.inviteRevoked', { email: invite.email }) })
+    } catch (err) {
+      toast({
+        title: t('settings.error'),
+        description: err instanceof Error ? err.message : t('settings.revokeInviteError'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const roleBadge = (role: string) => {
+    if (role === 'owner') {
+      return (
+        <Badge variant="default" className="gap-1 bg-amber-600 hover:bg-amber-700">
+          <Crown className="w-3 h-3" />
+          {t('settings.owner')}
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <Shield className="w-3 h-3" />
+        {t('settings.admin')}
+      </Badge>
+    )
+  }
+
+  return (
+    <>
+      <GlassCard className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold mb-1">{t('settings.teamTitle')}</h2>
+            <p className="text-sm text-muted-foreground">{t('settings.teamDescription')}</p>
+          </div>
+          <Button onClick={() => setIsInviteOpen(true)} size="sm" className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            {t('settings.inviteTeammate')}
+          </Button>
+        </div>
+
+        {membersLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : !teamMembers?.length ? (
+          <p className="text-sm text-muted-foreground py-4">{t('settings.noTeamMembers')}</p>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border">
+            {teamMembers.map((member) => {
+              const isCurrentUser = member.user_id === user?.id
+              const displayName = member.full_name || member.email || (isCurrentUser ? user?.user_metadata?.full_name ?? user?.email ?? null : null) || null
+              const displayEmail = member.email || (isCurrentUser ? user?.email ?? null : null) || null
+              const label = displayName || displayEmail || t('settings.unknown')
+              return (
+              <div key={member.id} className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                    {label
+                      .split(' ')
+                      .map((w: string) => w[0])
+                      .slice(0, 2)
+                      .filter(Boolean)
+                      .join('')
+                      .toUpperCase() || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium truncate">
+                        {label}
+                      </p>
+                      {isCurrentUser && (
+                        <Badge variant="outline" className="text-xs px-1.5 py-0">
+                          {t('settings.you')}
+                        </Badge>
+                      )}
+                    </div>
+                    {displayEmail && (
+                      <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  {roleBadge(member.role)}
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {t('settings.joined')} {format(new Date(member.created_at), 'MMM d, yyyy')}
+                  </span>
+                </div>
+              </div>
+              )
+            })}
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Pending team invitations */}
+      {!invitesLoading && pendingInvites && pendingInvites.length > 0 && (
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">{t('settings.pendingTeamInvites')}</h3>
+          </div>
+          <div className="divide-y divide-border rounded-lg border">
+            {pendingInvites.map((invite) => (
+              <div key={invite.id} className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{invite.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('settings.invitedOn')} {format(new Date(invite.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => handleRevoke(invite)}
+                    disabled={revokeMutation.isPending}
+                    title={t('settings.revokeInvite')}
+                  >
+                    {revokeMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Invite teammate modal */}
+      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              {t('settings.inviteTeammate')}
+            </DialogTitle>
+            <DialogDescription>{t('settings.inviteTeammateDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="team-email">{t('auth.email')}</Label>
+              <Input
+                id="team-email"
+                type="email"
+                placeholder={t('settings.teamEmailPlaceholder')}
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleInvite()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInviteOpen(false)}>
+              {t('general.cancel')}
+            </Button>
+            <Button onClick={handleInvite} disabled={inviteMutation.isPending} className="gap-2">
+              {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {t('settings.inviteTeammate')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
