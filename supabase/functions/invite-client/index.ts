@@ -8,11 +8,12 @@
 //                'admin'             = team member invite
 //
 // Flow:
-//   1. Validate caller is admin/owner of the tenant
-//   2. Create (or update) the tenant_invitations record → get token
-//   3. Invite user via Supabase Auth with token in redirectTo
-//   4. Create stub profile + membership (roles depend on target_role)
-//   5. Return the invitation record
+//   1. Validate caller is admin/owner of the tenant (or platform admin)
+//   2. Check single-tenant membership rule for the target email
+//   3. Create (or update) the tenant_invitations record -> get token
+//   4. Invite user via Supabase Auth with token in redirectTo
+//   5. Create stub profile (NO membership -- that happens on accept only)
+//   6. Return the invitation record
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -48,7 +49,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    // Verify caller identity
     const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } },
     })
@@ -60,30 +60,61 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Admin client (service role — bypasses RLS)
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
-    // Verify caller is admin/owner
-    const { data: membership } = await adminClient
-      .from('tenant_memberships')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('tenant_id', tenant_id)
+    // Check caller authorization: must be tenant admin/owner OR platform admin
+    const { data: callerProfile } = await adminClient
+      .from('profiles')
+      .select('is_platform_admin')
+      .eq('id', user.id)
       .single()
 
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
-      return new Response(JSON.stringify({ error: 'Only tenant admins can send invitations' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    const isPlatformAdmin = callerProfile?.is_platform_admin === true
+
+    if (!isPlatformAdmin) {
+      const { data: membership } = await adminClient
+        .from('tenant_memberships')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenant_id)
+        .single()
+
+      if (!membership || !['owner', 'admin'].includes(membership.role)) {
+        return new Response(JSON.stringify({ error: 'Only tenant admins can send invitations' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
     }
 
-    // Commission as decimal 0.00–0.50 (only relevant for client invites)
     const commissionDecimal = (!isTeamInvite && commission_rate)
       ? Math.min(Math.max(Number(commission_rate) / 100, 0), 0.5)
       : 0
 
-    // ── Step 1: Create / update invitation record FIRST (to get the token) ──
+    // ── Single-tenant membership check ──
+    // Look up whether the target email already belongs to a user with a
+    // membership in a DIFFERENT tenant. If so, block the invite.
+    const { data: existingAuthUser } = await adminClient.auth.admin.listUsers()
+    const matchedUser = existingAuthUser?.users?.find(
+      (u) => u.email?.toLowerCase() === normalizedEmail
+    )
+
+    if (matchedUser) {
+      const { data: existingMembership } = await adminClient
+        .from('tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', matchedUser.id)
+        .single()
+
+      if (existingMembership && existingMembership.tenant_id !== tenant_id) {
+        return new Response(
+          JSON.stringify({ error: 'This email already belongs to another workspace.' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
+    // ── Step 1: Create / update invitation record ──
 
     const { data: existingInvite } = await adminClient
       .from('tenant_invitations')
@@ -113,7 +144,6 @@ Deno.serve(async (req) => {
     }
 
     if (existingInvite) {
-      // Resend — update but keep token
       const { data, error } = await adminClient
         .from('tenant_invitations')
         .update({
@@ -132,7 +162,6 @@ Deno.serve(async (req) => {
       }
       invitation = data
     } else {
-      // New invitation
       const { data, error } = await adminClient
         .from('tenant_invitations')
         .insert(invitationPayload)
@@ -149,8 +178,6 @@ Deno.serve(async (req) => {
     }
 
     // ── Step 2: Invite user via Supabase Auth ──
-    // Build redirect URL including the invitation token
-    // Strip trailing slashes to avoid double-slash in the URL (e.g. https://x.com//auth)
     const rawSiteUrl = Deno.env.get('SITE_URL') || req.headers.get('origin') || supabaseUrl
     const siteUrl = rawSiteUrl.replace(/\/+$/, '')
     const redirectUrl = `${siteUrl}/auth/accept-invite?token=${invitation!.token}`
@@ -172,18 +199,14 @@ Deno.serve(async (req) => {
 
     if (inviteError) {
       console.error('inviteUserByEmail error:', inviteError)
-      // Don't fail entirely — the invitation record exists, admin can share the link manually
       console.warn('Auth invite email failed, but invitation record was created.')
     }
 
-    // ── Step 3: Create stub profile + membership ──
+    // ── Step 3: Create stub profile (NO membership) ──
     const authUserId = inviteData?.user?.id
     let profileId: string | null = null
 
-    const membershipRole = isTeamInvite ? 'admin' : 'member'
-
     if (authUserId) {
-      // Create / update profile (role synced from target_role)
       const { data: profileData, error: profileError } = await adminClient
         .from('profiles')
         .upsert({
@@ -204,20 +227,6 @@ Deno.serve(async (req) => {
         profileId = profileData?.id ?? null
       }
 
-      // Ensure tenant membership (role depends on invite type)
-      const { error: membershipError } = await adminClient
-        .from('tenant_memberships')
-        .upsert({
-          user_id: authUserId,
-          tenant_id,
-          role: membershipRole,
-        }, { onConflict: 'user_id,tenant_id' })
-
-      if (membershipError) {
-        console.error('Membership upsert error:', membershipError)
-      }
-
-      // Link profile to invitation
       if (profileId) {
         await adminClient
           .from('tenant_invitations')

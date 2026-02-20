@@ -21,7 +21,7 @@ export interface Company {
   updated_at: string
 }
 
-export type TenantStatus = 'active' | 'inactive'
+export type TenantStatus = 'active' | 'suspended'
 
 export interface TenantBranding {
   logo_url?: string | null
@@ -37,6 +37,8 @@ export interface Tenant {
   status: TenantStatus
   branding: TenantBranding | null
   primary_domain?: string | null
+  owner_user_id?: string | null
+  created_at?: string
 }
 
 export interface TenantDomain {
@@ -69,6 +71,7 @@ export interface Profile {
   avatar_url?: string | null
   commission_rate?: number | null
   invitation_status?: InvitationStatus
+  is_platform_admin?: boolean
   created_at: string
   updated_at?: string // May not exist in DB
 }

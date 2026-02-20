@@ -573,6 +573,7 @@ export function useAuth() {
   // Computed values
   const isAuthenticated = !!user
   const isAdmin = membership?.role === 'owner' || membership?.role === 'admin'
+  const isPlatformAdmin = profile?.is_platform_admin === true
   const isLoading = useAuthStore((state) => state.isLoading)
   const company = useAuthStore((state) => state.company)
 
@@ -584,6 +585,7 @@ export function useAuth() {
     isLoading,
     isAuthenticated,
     isAdmin,
+    isPlatformAdmin,
     isSigningOut: _isSigningOut,
     // Actions
     signOut,

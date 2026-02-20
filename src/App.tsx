@@ -15,6 +15,7 @@ import { TenantActiveGuard } from '@/components/guards/TenantActiveGuard'
 import { MembershipGuard } from '@/components/guards/MembershipGuard'
 import { SignupGuard } from '@/components/guards/SignupGuard'
 import { SlugOnlyGuard } from '@/components/guards/SlugOnlyGuard'
+import { PlatformAdminGuard } from '@/components/guards/PlatformAdminGuard'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 
 // Auth Pages
@@ -43,6 +44,11 @@ import { UnpaidBalancesPage } from '@/app/dashboard/unpaid-balances'
 import { CategoriesPage } from '@/app/dashboard/categories'
 import { ManageCategoriesPage } from '@/app/dashboard/categories/manage'
 import { ClientsPage } from '@/app/dashboard/clients'
+
+// Platform Console Pages
+const PlatformLayout = lazy(() => import('@/app/platform/layout').then(m => ({ default: m.PlatformLayout })))
+const PlatformTenantsPage = lazy(() => import('@/app/platform/tenants').then(m => ({ default: m.PlatformTenantsPage })))
+const PlatformTenantDetailPage = lazy(() => import('@/app/platform/tenants/[id]').then(m => ({ default: m.PlatformTenantDetailPage })))
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
 import { NotFound } from '@/pages/NotFound'
@@ -149,6 +155,21 @@ function App() {
                   <Route path="/auth/onboarding" element={<OnboardingPage />} />
                   <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
                   <Route path="/auth/client-setup" element={<ClientSetupPage />} />
+
+                  {/* Platform Console Routes - Protected by PlatformAdminGuard */}
+                  <Route
+                    path="/platform"
+                    element={
+                      <PlatformAdminGuard>
+                        <Suspense fallback={<PageLoader />}>
+                          <PlatformLayout />
+                        </Suspense>
+                      </PlatformAdminGuard>
+                    }
+                  >
+                    <Route path="tenants" element={<Suspense fallback={<PageLoader />}><PlatformTenantsPage /></Suspense>} />
+                    <Route path="tenants/:id" element={<Suspense fallback={<PageLoader />}><PlatformTenantDetailPage /></Suspense>} />
+                  </Route>
 
                   {/* Tenant Dashboard Routes - Protected */}
                   <Route

@@ -4,7 +4,7 @@ create table if not exists public.tenants (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
-  status text not null default 'active' check (status in ('active', 'inactive')),
+  status text not null default 'active' check (status in ('active', 'suspended')),
   branding jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
