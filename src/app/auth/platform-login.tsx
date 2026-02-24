@@ -27,9 +27,11 @@ interface DiscoveredTenant {
  *
  * Flow:
  *  1. User enters work email → lookup_tenant_by_email RPC
- *  2. If tenant found → show "Workspace: {name}", enable password
- *  3. User signs in → redirect to /t/:slug/dashboard on this host
- *  4. No tenant → "No workspace found" — password stays disabled
+ *  2. If tenant found → show "Workspace: {name}"
+ *  3. If tenant not found → allow password for potential platform admins
+ *  4. User signs in:
+ *     - tenant user -> /t/:slug/dashboard
+ *     - platform admin without tenant -> /platform/tenants
  *
  * This component is NEVER rendered on tenant custom domains.
  */
@@ -41,6 +43,7 @@ export function PlatformLoginPage() {
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [discoveredTenant, setDiscoveredTenant] = useState<DiscoveredTenant | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
+  const [lookupInfo, setLookupInfo] = useState<string | null>(null)
   const [loginError, setLoginError] = useState<string | null>(null)
   const [accessDeniedMsg, setAccessDeniedMsg] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -85,6 +88,7 @@ export function PlatformLoginPage() {
 
     const email = getValues('email')
     setLookupError(null)
+    setLookupInfo(null)
     setAccessDeniedMsg(null)
     setDiscoveredTenant(null)
     setIsLookingUp(true)
@@ -105,7 +109,9 @@ export function PlatformLoginPage() {
         setStep('password')
         setTimeout(() => passwordRef.current?.focus(), 50)
       } else {
-        setLookupError('No workspace found for this email.')
+        setLookupInfo('No workspace found. Continue only if you are a platform admin.')
+        setStep('password')
+        setTimeout(() => passwordRef.current?.focus(), 50)
       }
     } catch {
       setLookupError('Something went wrong. Please try again.')
@@ -117,8 +123,6 @@ export function PlatformLoginPage() {
   // ── Step 2: Sign in with password, then redirect ──
 
   const onSubmit = async (data: FullFormData) => {
-    if (!discoveredTenant) return
-
     setLoginError(null)
     setIsLoading(true)
 
@@ -150,8 +154,45 @@ export function PlatformLoginPage() {
         description: t('auth.successfullyLoggedIn'),
       })
 
-      // Redirect to the tenant dashboard on this same platform host
-      window.location.href = `${SLUG_PREFIX}/${discoveredTenant.slug}/dashboard`
+      if (discoveredTenant) {
+        // Tenant member flow
+        window.location.href = `${SLUG_PREFIX}/${discoveredTenant.slug}/dashboard`
+        return
+      }
+
+      // No workspace discovered by email lookup: allow platform admins.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session?.user) {
+        setLoginError('Could not verify your account. Please try again.')
+        return
+      }
+
+      const { data: profileRows, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_platform_admin')
+        .eq('id', session.user.id)
+        .limit(1)
+
+      if (profileError) {
+        setLoginError(profileError.message || 'Failed to verify platform admin access.')
+        return
+      }
+
+      const isPlatformAdmin = profileRows?.[0]?.is_platform_admin === true
+      if (isPlatformAdmin) {
+        window.location.href = '/platform/tenants'
+        return
+      }
+
+      await supabase.auth.signOut({ scope: 'local' })
+      setStep('email')
+      setLookupInfo(null)
+      setDiscoveredTenant(null)
+      setLoginError('No workspace found for this account.')
+      return
     } catch (err: unknown) {
       setLoginError(err instanceof Error ? err.message : t('auth.unexpectedError'))
     } finally {
@@ -201,6 +242,7 @@ export function PlatformLoginPage() {
     setDiscoveredTenant(null)
     setLoginError(null)
     setLookupError(null)
+    setLookupInfo(null)
   }
 
   // Wire up the password ref alongside react-hook-form
@@ -265,6 +307,13 @@ export function PlatformLoginPage() {
                   </div>
                 )}
 
+                {lookupInfo && (
+                  <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{lookupInfo}</span>
+                  </div>
+                )}
+
                 <Button
                   type="button"
                   className="w-full"
@@ -278,7 +327,7 @@ export function PlatformLoginPage() {
             )}
 
             {/* ── Step 2: Workspace confirmed + password ── */}
-            {step === 'password' && discoveredTenant && (
+            {step === 'password' && (
               <>
                 {/* Email display with change link */}
                 <div className="flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2">
@@ -293,12 +342,19 @@ export function PlatformLoginPage() {
                 </div>
 
                 {/* Workspace badge */}
-                <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
-                  <Building2 className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm font-medium">
-                    Workspace: {discoveredTenant.name}
-                  </span>
-                </div>
+                {discoveredTenant ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
+                    <Building2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-sm font-medium">
+                      Workspace: {discoveredTenant.name}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>No workspace found for this email. Platform admin accounts can still sign in.</span>
+                  </div>
+                )}
 
                 {/* Password field */}
                 <div className="space-y-2">

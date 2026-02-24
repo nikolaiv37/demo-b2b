@@ -19,7 +19,7 @@ export function useTenantMemberships() {
       const { data, error } = await supabase
         .from('tenant_memberships')
         .select(
-          'id, role, user_id, tenant_id, tenant:tenants(id, name, slug, status, branding, tenant_domains(domain, verified, is_primary))'
+          'id, role, user_id, tenant_id, tenant:tenants(id, name, slug, status, tenant_domains(domain, verified, is_primary))'
         )
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -54,12 +54,13 @@ export function useTenantMemberships() {
             name: row.tenant.name,
             slug: row.tenant.slug,
             status: row.tenant.status,
-            branding: row.tenant.branding,
+            branding: null,
             primary_domain: primaryDomain ?? null,
           },
-        }
+        } as TenantMembershipWithTenant
       }).filter((row): row is TenantMembershipWithTenant => row !== null)
     },
     enabled: !!userId,
+    staleTime: 60_000,
   })
 }

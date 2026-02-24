@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { Building2, LogOut, LayoutDashboard } from 'lucide-react'
+import { Building2, LogOut, LayoutDashboard, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 
 const navItems = [
   { title: 'Tenants', href: '/platform/tenants', icon: Building2 },
@@ -10,10 +11,12 @@ const navItems = [
 
 export function PlatformLayout() {
   const location = useLocation()
+  const { signOut } = useAuth()
+  const [signingOut, setSigningOut] = useState(false)
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut({ scope: 'local' })
-    window.location.replace('/auth/login')
+    setSigningOut(true)
+    await signOut('/auth/login')
   }
 
   return (
@@ -59,8 +62,13 @@ export function PlatformLayout() {
             variant="ghost"
             className="w-full justify-start text-gray-700 dark:text-gray-300"
             onClick={handleSignOut}
+            disabled={signingOut}
           >
-            <LogOut className="w-5 h-5 mr-3" />
+            {signingOut ? (
+              <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+            ) : (
+              <LogOut className="w-5 h-5 mr-3" />
+            )}
             <span className="text-sm">Sign out</span>
           </Button>
         </div>

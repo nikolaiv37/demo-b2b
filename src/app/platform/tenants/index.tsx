@@ -33,7 +33,6 @@ interface TenantRow {
   created_at: string
   admin_count: number
   member_count: number
-  owner_email: string | null
 }
 
 export function PlatformTenantsPage() {
@@ -59,15 +58,6 @@ export function PlatformTenantsPage() {
         .select('tenant_id, role')
         .in('tenant_id', tenantIds)
 
-      const { data: ownerProfiles } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .in('id', tenantRows.map((t) => t.owner_user_id).filter(Boolean) as string[])
-
-      const ownerEmailMap = new Map(
-        (ownerProfiles || []).map((p) => [p.id, p.email])
-      )
-
       const countMap = new Map<string, { admins: number; members: number }>()
       for (const m of memberships || []) {
         const entry = countMap.get(m.tenant_id) || { admins: 0, members: 0 }
@@ -88,7 +78,6 @@ export function PlatformTenantsPage() {
         created_at: t.created_at,
         admin_count: countMap.get(t.id)?.admins || 0,
         member_count: countMap.get(t.id)?.members || 0,
-        owner_email: t.owner_user_id ? ownerEmailMap.get(t.owner_user_id) || null : null,
       }))
     },
   })
@@ -99,7 +88,7 @@ export function PlatformTenantsPage() {
     return (
       t.name.toLowerCase().includes(q) ||
       t.slug.toLowerCase().includes(q) ||
-      (t.owner_email && t.owner_email.toLowerCase().includes(q))
+      (t.owner_user_id && t.owner_user_id.toLowerCase().includes(q))
     )
   })
 
@@ -211,7 +200,9 @@ export function PlatformTenantsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                    {tenant.owner_email || (
+                    {tenant.owner_user_id ? (
+                      <span className="text-gray-400 italic">Owner account</span>
+                    ) : (
                       <span className="text-gray-400 italic">Invite pending</span>
                     )}
                   </TableCell>

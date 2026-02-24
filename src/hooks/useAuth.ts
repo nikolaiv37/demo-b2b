@@ -110,6 +110,15 @@ export function useAuth() {
       setUser(session?.user ?? null)
       
       if (session?.user) {
+        // App host / platform routes have no tenant context, so there is no
+        // tenant-scoped profile to load here. Unblock UI immediately.
+        if (!tenantId) {
+          setProfile(null)
+          setCompany(null)
+          setLoading(false)
+          return
+        }
+
         // Only fetch profile on INITIAL_SESSION (session is fully ready)
         // Skip SIGNED_IN for profile loading - session might not be ready yet
         // This prevents timeouts and duplicate fetches
@@ -561,7 +570,7 @@ export function useAuth() {
           settled = true
           resolve()
         }
-      }, 1000)
+      }, 300)
     })
 
     // Skip React state updates (clear, setLoading, etc.) — the hard

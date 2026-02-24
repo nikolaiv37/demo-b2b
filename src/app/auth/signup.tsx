@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useTenant } from '@/lib/tenant/TenantProvider'
 
 const signupSchema = z.object({
   email: z.string().email('errors.invalidEmail'),
@@ -27,6 +28,7 @@ export function SignupPage() {
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
+  const { domainKind } = useTenant()
   const { toast } = useToast()
 
   const {
@@ -52,10 +54,12 @@ export function SignupPage() {
         description: t('auth.accountCreatedDescription'),
       })
       
-      // The useAuth hook will automatically create the profile with role = 'company'
-      // Wait a moment for the auth state to update, then redirect to onboarding
+      // On app host (no tenant context), onboarding is not available.
+      // Direct users to login where tenant/platform routing happens.
+      const nextPath = domainKind === 'app' ? '/auth/login' : '/auth/onboarding'
+
       setTimeout(() => {
-        navigate('/auth/onboarding')
+        navigate(nextPath)
       }, 500)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : t('auth.signupFailedDescription')

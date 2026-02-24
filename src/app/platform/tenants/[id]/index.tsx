@@ -54,8 +54,6 @@ interface MemberRow {
   id: string
   user_id: string
   role: string
-  email: string | null
-  full_name: string | null
   created_at: string
 }
 
@@ -98,22 +96,10 @@ export function PlatformTenantDetailPage() {
       if (error) throw error
       if (!memberships?.length) return []
 
-      const userIds = memberships.map((m) => m.user_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, email, full_name')
-        .in('id', userIds)
-
-      const profileMap = new Map(
-        (profiles || []).map((p) => [p.id, p])
-      )
-
       return memberships.map((m) => ({
         id: m.id,
         user_id: m.user_id,
         role: m.role,
-        email: profileMap.get(m.user_id)?.email || null,
-        full_name: profileMap.get(m.user_id)?.full_name || null,
         created_at: m.created_at,
       }))
     },
@@ -513,10 +499,7 @@ function MembersTable({
               <TableRow key={m.id}>
                 <TableCell>
                   <div>
-                    <p className="font-medium">{m.full_name || m.email || 'Unknown'}</p>
-                    {m.full_name && m.email && (
-                      <p className="text-xs text-gray-500">{m.email}</p>
-                    )}
+                    <p className="font-medium">{`User ${m.user_id.slice(0, 8)}`}</p>
                   </div>
                 </TableCell>
                 <TableCell>
