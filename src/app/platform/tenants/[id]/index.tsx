@@ -67,6 +67,8 @@ export function PlatformTenantDetailPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
   const [confirmSuspend, setConfirmSuspend] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteConfirmSlug, setDeleteConfirmSlug] = useState('')
 
   // Fetch tenant detail
   const { data: tenant, isLoading: tenantLoading } = useQuery({
@@ -173,6 +175,50 @@ export function PlatformTenantDetailPage() {
       toast({
         title: 'Error',
         description: err instanceof Error ? err.message : 'Failed to remove member',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const deleteTenantMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('delete-tenant', {
+        body: {
+          tenant_id: id,
+          delete_member_accounts: true,
+        },
+      })
+
+      if (error) throw new Error(error.message || 'Failed to delete tenant')
+      if (data?.error) throw new Error(data.error)
+
+      return data as {
+        success: boolean
+        summary?: {
+          deleted_tenant_id: string
+          deleted_member_accounts: number
+          skipped_member_accounts: number
+        }
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['platform', 'tenants'] })
+      queryClient.removeQueries({ queryKey: ['platform', 'tenant', id] })
+      toast({
+        title: 'Tenant deleted',
+        description:
+          data?.summary?.deleted_member_accounts != null
+            ? `${tenant?.name} was deleted. Removed ${data.summary.deleted_member_accounts} linked account(s).`
+            : `${tenant?.name} was deleted.`,
+      })
+      setConfirmDelete(false)
+      setDeleteConfirmSlug('')
+      navigate('/platform/tenants')
+    },
+    onError: (err) => {
+      toast({
+        title: 'Delete failed',
+        description: err instanceof Error ? err.message : 'Failed to delete tenant',
         variant: 'destructive',
       })
     },
@@ -372,6 +418,23 @@ export function PlatformTenantDetailPage() {
                   </Button>
                 </div>
               )}
+
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/40">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">Delete Tenant Permanently</p>
+                  <p className="text-sm text-gray-500">
+                    Deletes the workspace, frees its slug, removes invitations and memberships, and attempts to delete linked tenant member accounts.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={deleteTenantMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Tenant
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -432,6 +495,58 @@ export function PlatformTenantDetailPage() {
             >
               {statusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirm Suspend
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog
+        open={confirmDelete}
+        onOpenChange={(open) => {
+          setConfirmDelete(open)
+          if (!open) setDeleteConfirmSlug('')
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {tenant.name} permanently?</DialogTitle>
+            <DialogDescription>
+              This cannot be undone. The tenant record will be deleted (freeing slug <code>{tenant.slug}</code>), tenant data will be cleaned up, and linked member accounts may also be removed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirm-delete-slug">
+              Type the tenant slug to confirm: <code>{tenant.slug}</code>
+            </Label>
+            <Input
+              id="confirm-delete-slug"
+              value={deleteConfirmSlug}
+              onChange={(e) => setDeleteConfirmSlug(e.target.value)}
+              placeholder={tenant.slug}
+              autoComplete="off"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmDelete(false)
+                setDeleteConfirmSlug('')
+              }}
+              disabled={deleteTenantMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteTenantMutation.mutate()}
+              disabled={deleteTenantMutation.isPending || deleteConfirmSlug.trim() !== tenant.slug}
+            >
+              {deleteTenantMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Permanently Delete
             </Button>
           </DialogFooter>
         </DialogContent>
