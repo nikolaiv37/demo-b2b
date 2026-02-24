@@ -178,7 +178,13 @@ Deno.serve(async (req) => {
     }
 
     // ── Step 2: Invite user via Supabase Auth ──
-    const rawSiteUrl = Deno.env.get('SITE_URL') || req.headers.get('origin') || supabaseUrl
+    // Prefer explicit app URL or current request origin to avoid stale SITE_URL
+    // sending invites to an unrelated tenant/custom domain.
+    const rawSiteUrl =
+      Deno.env.get('APP_SITE_URL') ||
+      req.headers.get('origin') ||
+      Deno.env.get('SITE_URL') ||
+      supabaseUrl
     const siteUrl = rawSiteUrl.replace(/\/+$/, '')
     const redirectUrl = `${siteUrl}/auth/accept-invite?token=${invitation!.token}`
 

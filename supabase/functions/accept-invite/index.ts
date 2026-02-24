@@ -197,6 +197,9 @@ Deno.serve(async (req) => {
       invitation_id: invitation.id,
       tenant_slug: tenantData?.slug,
       tenant_name: tenantData?.name,
+      membership_role: membershipRole,
+      profile_role: profileRole,
+      setup_flow: isOwnerInvite ? 'owner_setup' : 'client_setup',
     })
   } catch (err) {
     console.error('accept-invite error:', err)

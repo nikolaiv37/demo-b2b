@@ -150,7 +150,13 @@ Deno.serve(async (req) => {
     }
 
     // ── Send invite email ──
-    const rawSiteUrl = Deno.env.get('SITE_URL') || req.headers.get('origin') || supabaseUrl
+    // Prefer explicit app URL or current request origin (platform app host in local/prod).
+    // Generic SITE_URL may point to a tenant/custom domain and cause wrong redirects.
+    const rawSiteUrl =
+      Deno.env.get('APP_SITE_URL') ||
+      req.headers.get('origin') ||
+      Deno.env.get('SITE_URL') ||
+      supabaseUrl
     const siteUrl = rawSiteUrl.replace(/\/+$/, '')
     const redirectUrl = `${siteUrl}/auth/accept-invite?token=${invitation.token}`
 

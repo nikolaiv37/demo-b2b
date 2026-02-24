@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HelmetProvider } from 'react-helmet-async'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -25,6 +25,7 @@ import { SignupPage } from '@/app/auth/signup'
 import { OnboardingPage } from '@/app/auth/onboarding'
 import { AcceptInvitePage } from '@/app/auth/accept-invite'
 import { ClientSetupPage } from '@/app/auth/client-setup'
+import { OwnerSetupPage } from '@/app/auth/owner-setup'
 
 // Dashboard Pages
 import { DashboardLayout } from '@/app/dashboard/layout'
@@ -59,6 +60,29 @@ import { PageLoader } from '@/components/PageLoader'
 
 function RootRoute() {
   const { domainKind, tenant } = useTenant()
+
+  // Supabase sometimes lands on "/" with an auth hash when processing invite links
+  // (especially on expired/invalid OTP links, or if the redirect path is stripped).
+  // Forward these to the invite handler page so users see the correct recovery UI
+  // instead of the generic app host state ("No tenant linked").
+  if (domainKind === 'app' && !tenant) {
+    const hash = window.location.hash
+    if (hash) {
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
+      const hashType = hashParams.get('type')
+      const hashErrorCode = hashParams.get('error_code')
+      const isInviteHash = hashType === 'invite' || hashErrorCode === 'otp_expired'
+
+      if (isInviteHash) {
+        return (
+          <Navigate
+            to={`/auth/accept-invite${window.location.search}${window.location.hash}`}
+            replace
+          />
+        )
+      }
+    }
+  }
 
   if (domainKind === 'tenant' && tenant) {
     return <TenantEntry />
@@ -155,6 +179,7 @@ function App() {
                   <Route path="/auth/onboarding" element={<OnboardingPage />} />
                   <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
                   <Route path="/auth/client-setup" element={<ClientSetupPage />} />
+                  <Route path="/auth/owner-setup" element={<OwnerSetupPage />} />
 
                   {/* Platform Console Routes - Protected by PlatformAdminGuard */}
                   <Route
@@ -217,6 +242,7 @@ function App() {
                     <Route path="auth/login" element={<LoginPage />} />
                     <Route path="auth/onboarding" element={<OnboardingPage />} />
                     <Route path="auth/client-setup" element={<ClientSetupPage />} />
+                    <Route path="auth/owner-setup" element={<OwnerSetupPage />} />
                     <Route
                       path="dashboard"
                       element={

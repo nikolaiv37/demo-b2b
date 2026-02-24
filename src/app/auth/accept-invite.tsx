@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useTenantPath } from '@/lib/tenant/TenantProvider'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 
 type AcceptState = 'loading' | 'accepting' | 'success' | 'redirecting_setup' | 'error' | 'login_required' | 'wrong_account'
 
@@ -24,6 +24,7 @@ export function AcceptInvitePage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { withBase } = useTenantPath()
+  const { domainKind } = useTenant()
   const token = searchParams.get('token')
   const [state, setState] = useState<AcceptState>('loading')
   const [message, setMessage] = useState('')
@@ -32,6 +33,18 @@ export function AcceptInvitePage() {
   const [sendingMagicLink, setSendingMagicLink] = useState(false)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const acceptedRef = useRef(false) // prevent double-accept
+
+  const buildTenantAuthPath = (tenantSlug: string | null | undefined, authPath: string) => {
+    if (domainKind === 'tenant') {
+      return withBase(authPath)
+    }
+
+    if (tenantSlug) {
+      return `/t/${tenantSlug}${authPath.startsWith('/') ? authPath : `/${authPath}`}`
+    }
+
+    return withBase(authPath)
+  }
 
   // Core accept logic
   const doAccept = async (inviteToken: string) => {
@@ -79,19 +92,18 @@ export function AcceptInvitePage() {
         return
       }
 
-      // Freshly accepted — redirect to client-setup for password + company confirmation
+      // Freshly accepted — redirect to the correct post-invite setup flow.
       setState('redirecting_setup')
       setTenantSlug(result.tenant_slug || null)
 
       const setupParams = new URLSearchParams()
       if (result.invitation_id) setupParams.set('invite', result.invitation_id)
       if (result.tenant_slug) setupParams.set('tenant', result.tenant_slug)
-
-      // IMPORTANT: Use tenant-aware base paths. On tenant domains we must NOT
-      // navigate to /t/:slug/*, because SlugOnlyGuard will bounce to /dashboard
-      // and trigger the admin onboarding flow. withBase() resolves correctly
-      // for both tenant domains and /t/:slug access.
-      const setupBase = withBase('/auth/client-setup')
+      const setupFlow = result.setup_flow === 'owner_setup' ? 'owner_setup' : 'client_setup'
+      const setupBase =
+        setupFlow === 'owner_setup'
+          ? buildTenantAuthPath(result.tenant_slug, '/auth/owner-setup')
+          : buildTenantAuthPath(result.tenant_slug, '/auth/client-setup')
       const setupUrl = `${setupBase}?${setupParams.toString()}`
 
       // Small delay so the user sees the "accepted" state briefly
