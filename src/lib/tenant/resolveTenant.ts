@@ -78,6 +78,7 @@ function withPrimaryDomain(tenant: Tenant, primaryDomain: string | null): Tenant
 
 export async function resolveTenant(hostInput: string, pathname: string): Promise<TenantResolution> {
   const host = normalizeHost(hostInput)
+  const isVercelPreviewHost = host.endsWith('.vercel.app')
 
   // ── Marketing hosts: never resolve tenants ──
   if (MARKETING_HOSTS.has(host)) {
@@ -85,7 +86,7 @@ export async function resolveTenant(hostInput: string, pathname: string): Promis
   }
 
   // ── App host: tenant via /t/:slug ──
-  if (APP_HOSTS.has(host)) {
+  if (APP_HOSTS.has(host) || isVercelPreviewHost) {
     const slug = extractTenantSlug(pathname)
     if (slug) {
       const tenant = await fetchTenantBySlug(slug)

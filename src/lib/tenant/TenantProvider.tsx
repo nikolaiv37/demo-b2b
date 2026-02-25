@@ -94,13 +94,18 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   // Detect host category synchronously so the first render never shows a
   // spinner on pages that don't need tenant resolution.
+  const normalizedHost = useMemo(() => normalizeHost(window.location.host), [])
   const isMarketingHost = useMemo(
-    () => MARKETING_HOSTS.has(normalizeHost(window.location.host)),
-    []
+    () => MARKETING_HOSTS.has(normalizedHost),
+    [normalizedHost]
+  )
+  const isAppLikeHost = useMemo(
+    () => APP_HOSTS.has(normalizedHost) || normalizedHost.endsWith('.vercel.app'),
+    [normalizedHost]
   )
   const isAppHostNoSlug = useMemo(
-    () => APP_HOSTS.has(normalizeHost(window.location.host)) && !getSlugCandidate(window.location.pathname),
-    []
+    () => isAppLikeHost && !getSlugCandidate(window.location.pathname),
+    [isAppLikeHost]
   )
   // Skip the blocking bootstrap spinner for marketing hosts and for the
   // app host when there is no /t/:slug in the path (e.g. /auth/login, /).

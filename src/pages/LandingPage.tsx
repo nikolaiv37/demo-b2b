@@ -120,11 +120,11 @@ const logos = [
 
 
 const screenshots = {
-  dashboard: "/landing/dashboard.png",
-  orders: "/landing/orders.png",
-  clients: "/landing/clients.png",
-  complaints: "/landing/complaints.png",
-  csv: "/landing/csv-import.png",
+  dashboard: "/landing/dashboard.jpg",
+  orders: "/landing/orders.jpg",
+  clients: "/landing/clients.jpg",
+  complaints: "/landing/complaints.jpg",
+  csv: "/landing/csv-import.jpg",
 };
 
 // Removed callout pills - using floating cards instead
@@ -144,11 +144,13 @@ const ImageWithFallback = ({
   alt,
   className,
   loading = "lazy",
+  fetchPriority = "auto",
 }: {
   src: string;
   alt: string;
   className?: string;
   loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
 }) => {
   const [failed, setFailed] = useState(false);
 
@@ -161,6 +163,8 @@ const ImageWithFallback = ({
       src={src}
       alt={alt}
       loading={loading}
+      fetchPriority={fetchPriority}
+      decoding="async"
       className={className}
       onError={() => setFailed(true)}
     />
@@ -550,6 +554,7 @@ export default function LandingPage() {
                   alt={t("landing.hero.screenshotAlt")}
                   className="h-full w-full object-contain"
                   loading="eager"
+                  fetchPriority="high"
                 />
                 
                 {/* Live data chip - inside screenshot top right */}
@@ -674,6 +679,9 @@ export default function LandingPage() {
                           <img 
                             src={logo.image} 
                             alt={logo.name}
+                            loading="lazy"
+                            decoding="async"
+                            fetchPriority="low"
                             className="h-full w-auto max-w-[100px] md:max-w-[120px] object-contain"
                           />
                         </div>

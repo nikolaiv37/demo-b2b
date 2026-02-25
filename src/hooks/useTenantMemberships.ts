@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthStore } from '@/stores/authStore'
 import type { Tenant, TenantMembership } from '@/types'
 
 export interface TenantMembershipWithTenant extends TenantMembership {
@@ -8,7 +8,7 @@ export interface TenantMembershipWithTenant extends TenantMembership {
 }
 
 export function useTenantMemberships() {
-  const { user } = useAuth()
+  const user = useAuthStore((state) => state.user)
   const userId = user?.id
 
   return useQuery({
