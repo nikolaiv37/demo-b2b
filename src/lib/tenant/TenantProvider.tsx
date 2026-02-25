@@ -103,9 +103,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     () => APP_HOSTS.has(normalizedHost) || normalizedHost.endsWith('.vercel.app'),
     [normalizedHost]
   )
+  const slugCandidate = useMemo(() => getSlugCandidate(location.pathname), [location.pathname])
   const isAppHostNoSlug = useMemo(
-    () => isAppLikeHost && !getSlugCandidate(window.location.pathname),
-    [isAppLikeHost]
+    () => isAppLikeHost && !slugCandidate,
+    [isAppLikeHost, slugCandidate]
   )
   // Skip the blocking bootstrap spinner for marketing hosts and for the
   // app host when there is no /t/:slug in the path (e.g. /auth/login, /).
@@ -122,7 +123,6 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const hasBootstrappedRef = useRef(skipBootstrap)
   const refreshInFlightRef = useRef<Promise<void> | null>(null)
   const prevTenantIdRef = useRef<string | null>(null)
-  const slugCandidate = useMemo(() => getSlugCandidate(location.pathname), [location.pathname])
 
   const tenantBasePath = useMemo(() => {
     if (tenant && source === 'slug') {
