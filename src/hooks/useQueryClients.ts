@@ -18,6 +18,24 @@ export function useQueryClients() {
     queryKey: ['tenant', tenantId, 'clients'],
     queryFn: async () => {
       if (!tenantId) return []
+
+      // Tenant membership is the source of truth for client/admin/owner access.
+      // We still show pending invited client profiles (no membership yet), but
+      // must exclude owner/admin accounts even if a profile role was left as
+      // 'company' by older data or edge-case onboarding flows.
+      const { data: memberships, error: membershipsError } = await supabase
+        .from('tenant_memberships')
+        .select('user_id, role')
+        .eq('tenant_id', tenantId)
+
+      if (membershipsError) throw membershipsError
+
+      const membershipRoleByUserId = new Map<string, string>(
+        (memberships || [])
+          .filter((m) => !!m.user_id)
+          .map((m) => [m.user_id as string, m.role as string])
+      )
+
       // Base: all company-role profiles (B2B clients)
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -28,7 +46,16 @@ export function useQueryClients() {
 
       if (profilesError) throw profilesError
 
-      const baseClients = (profiles || []) as Client[]
+      const baseClients = ((profiles || []) as Client[]).filter((profile) => {
+        const membershipRole = membershipRoleByUserId.get(profile.id)
+
+        if (membershipRole) {
+          return membershipRole === 'member'
+        }
+
+        // Keep pending invited client profiles visible before they accept.
+        return profile.invitation_status === 'invited'
+      })
 
       if (!baseClients.length) {
         return baseClients
