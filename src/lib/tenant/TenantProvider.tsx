@@ -143,6 +143,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     // Marketing hosts: no async work, ever.
     if (isMarketingHost) return
+    // App host without /t/:slug (/, /auth/*, /platform/*): tenant resolution and
+    // membership checks are unnecessary and can hang on getSession() after redirects.
+    // Auth state for these pages is handled by useAuth's Supabase listener.
+    if (isAppHostNoSlug) {
+      setTenant(null)
+      setSource('none')
+      setDomainKind('app')
+      setMembership(null)
+      setMembershipChecked(true)
+      setIsBootstrapping(false)
+      if (!hasBootstrappedRef.current) {
+        hasBootstrappedRef.current = true
+      }
+      return
+    }
 
     if (refreshInFlightRef.current) {
       return refreshInFlightRef.current
@@ -153,16 +168,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     const { pathname, search, hash } = window.location
 
     const shouldBlock = !hasBootstrappedRef.current
+    // The first tenant bootstrap can race Supabase auth initialization after a hard
+    // redirect (login -> /t/:slug/dashboard). If that happens, an 8s timeout creates
+    // a very visible spinner even though a follow-up refresh usually succeeds quickly.
+    // Keep the blocking phase short, then let the next refresh finish in background.
+    const timeoutMs = shouldBlock ? 800 : 8000
     if (shouldBlock) {
       setIsBootstrapping(true)
       setMembershipChecked(false)
     }
 
     try {
-      const [sessionResult, resolution] = await Promise.all([
-        withTimeout(supabase.auth.getSession(), 8000, 'getSession'),
-        withTimeout(resolveTenant(host, pathname), 8000, 'resolveTenant'),
-      ])
+      const sessionPromise = withTimeout(supabase.auth.getSession(), timeoutMs, 'getSession')
+      const resolvePromise = withTimeout(resolveTenant(host, pathname), timeoutMs, 'resolveTenant')
+
+      const [sessionResult, resolution] = await Promise.all([sessionPromise, resolvePromise])
 
       const nextSession = sessionResult.data.session ?? null
       let nextMembership: TenantMembership | null = null
@@ -181,7 +201,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             .eq('tenant_id', resolution.tenant!.id)
             .maybeSingle()
 
-        const { data } = await withTimeout(queryMembership(), 8000, 'membershipCheck')
+        const { data } = await withTimeout(queryMembership(), timeoutMs, 'membershipCheck')
         nextMembership = (data as TenantMembership) || null
 
         // Bootstrap retry: on the very first load after a login redirect the
@@ -192,7 +212,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         // the loading spinner) and only fires when the first check fails.
         if (shouldBlock && !nextMembership) {
           await new Promise((r) => setTimeout(r, 600))
-          const { data: retryData } = await withTimeout(queryMembership(), 8000, 'membershipRetry')
+          const { data: retryData } = await withTimeout(queryMembership(), timeoutMs, 'membershipRetry')
           nextMembership = (retryData as TenantMembership) || null
         }
 
@@ -280,7 +300,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         refreshInFlightRef.current = null
       }
     }
-  }, [clearTenantQueries, isMarketingHost])
+  }, [clearTenantQueries, isMarketingHost, isAppHostNoSlug])
 
   useEffect(() => {
     let active = true

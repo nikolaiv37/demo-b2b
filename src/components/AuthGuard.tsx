@@ -214,15 +214,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     withBase,
   ])
 
-  // Show spinner while loading (but only after we've checked for confirmation hash)
-  if (isLoading && hasCheckedHash) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
   // If we're still checking the hash, show a brief loading state
   if (!hasCheckedHash && stripBase(location.pathname).startsWith('/dashboard')) {
     return (
@@ -238,6 +229,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // User is authenticated, allow access even if profile is still loading
     // This prevents timeout redirects when profile fetch is slow
     return <>{children}</>
+  }
+
+  // Show spinner while loading (but only after we've checked for confirmation hash)
+  // This primarily covers unauthenticated/session-bootstrap states.
+  if (isLoading && hasCheckedHash) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   // If we're checking onboarding, show loading

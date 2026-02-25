@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
@@ -13,6 +13,14 @@ const loggedTenantMismatchPairs = new Set<string>()
 // When true, the onAuthStateChange SIGNED_OUT handler skips React state
 // updates so we don't get a SPA navigation racing the hard redirect.
 let _isSigningOut = false
+
+// Shared across all useAuth() hook instances so multiple mounted guards/pages
+// don't duplicate profile bootstrap work during the same auth event.
+const authBootstrapState = {
+  loadingProfileUserId: null as string | null,
+  currentProfile: null as Profile | null,
+  profileLoadStarted: new Set<string>(),
+}
 
 /**
  * Single source of truth for authentication state
@@ -29,13 +37,9 @@ export function useAuth() {
   const { tenant, membership } = useTenant()
   const tenantId = tenant?.id ?? null
   const { withBase } = useTenantPath()
-  const loadingProfileRef = useRef<string | null>(null)
-  const currentProfileRef = useRef<Profile | null>(null)
-  const profileLoadStartedRef = useRef<Set<string>>(new Set())
-
   // Keep ref in sync with profile
   useEffect(() => {
-    currentProfileRef.current = profile
+    authBootstrapState.currentProfile = profile
   }, [profile])
 
   useEffect(() => {
@@ -43,43 +47,51 @@ export function useAuth() {
 
     // Helper function to load profile for a user
     const handleUserSession = async (sessionUser: User, event?: string) => {
-      if (!mounted) return
-      
-      const userId = sessionUser.id
-      const currentProfile = currentProfileRef.current
-      
-      // If profile already loaded for this user, just ensure loading is false
-      if (currentProfile && currentProfile.id === userId) {
-        setLoading(false)
-        return
-      }
-      
-      // If we're already loading this user's profile, skip
-      if (loadingProfileRef.current === userId || profileLoadStartedRef.current.has(userId)) {
-        return
-      }
-      
-      // If another user's profile is being loaded, wait a bit
-      if (loadingProfileRef.current && loadingProfileRef.current !== userId) {
-        return
-      }
-      
-      // Mark that we're starting to load this profile
-      profileLoadStartedRef.current.add(userId)
-      loadingProfileRef.current = userId
-      
       try {
+        if (!mounted) return
+        
+        const userId = sessionUser.id
+        const currentProfile = authBootstrapState.currentProfile
+        
+        // If profile already loaded for this user, just ensure loading is false
+        if (currentProfile && currentProfile.id === userId) {
+          setLoading(false)
+          return
+        }
+        
+        // If we're already loading this user's profile, skip
+        if (
+          authBootstrapState.loadingProfileUserId === userId ||
+          authBootstrapState.profileLoadStarted.has(userId)
+        ) {
+          return
+        }
+        
+        // If another user's profile is being loaded, wait a bit
+        if (
+          authBootstrapState.loadingProfileUserId &&
+          authBootstrapState.loadingProfileUserId !== userId
+        ) {
+          return
+        }
+        
+        // Mark that we're starting to load this profile
+        authBootstrapState.profileLoadStarted.add(userId)
+        authBootstrapState.loadingProfileUserId = userId
+        
         // Add a small delay for INITIAL_SESSION to ensure session is fully ready
         // INITIAL_SESSION means the session is already initialized, so we just need a brief moment
         if (event === 'INITIAL_SESSION') {
-          await new Promise(resolve => setTimeout(resolve, 100))
+          await new Promise(resolve => setTimeout(resolve, 20))
           if (!mounted) return
         }
         
         await loadOrCreateProfile(sessionUser)
       } finally {
-        loadingProfileRef.current = null
-        profileLoadStartedRef.current.delete(userId)
+        if (sessionUser?.id) {
+          authBootstrapState.loadingProfileUserId = null
+          authBootstrapState.profileLoadStarted.delete(sessionUser.id)
+        }
       }
     }
 
@@ -88,64 +100,69 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
+      try {
+        if (!mounted) return
 
-      // If signOut() initiated this event, skip all React state updates.
-      // signOut() will hard-redirect via window.location.replace, so
-      // updating state here would just trigger AuthGuard's <Navigate>
-      // and cause a visible double-reload.
-      if (event === 'SIGNED_OUT' && _isSigningOut) {
-        return
-      }
-
-      // Reset tracking on auth changes
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        profileLoadStartedRef.current.clear()
-      }
-      if (event === 'SIGNED_OUT') {
-        blockedUserTenantPairs.clear()
-        loggedTenantMismatchPairs.clear()
-      }
-
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        // App host / platform routes have no tenant context, so there is no
-        // tenant-scoped profile to load here. Unblock UI immediately.
-        if (!tenantId) {
-          setProfile(null)
-          setCompany(null)
-          setLoading(false)
+        // If signOut() initiated this event, skip all React state updates.
+        // signOut() will hard-redirect via window.location.replace, so
+        // updating state here would just trigger AuthGuard's <Navigate>
+        // and cause a visible double-reload.
+        if (event === 'SIGNED_OUT' && _isSigningOut) {
           return
         }
 
-        // Only fetch profile on INITIAL_SESSION (session is fully ready)
-        // Skip SIGNED_IN for profile loading - session might not be ready yet
-        // This prevents timeouts and duplicate fetches
-        if (event === 'SIGNED_IN') {
-          // Just set the user, don't fetch profile yet
-          // INITIAL_SESSION will fire next and handle the profile fetch
-          return
+        // Reset tracking on auth changes
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          authBootstrapState.profileLoadStarted.clear()
         }
+        if (event === 'SIGNED_OUT') {
+          blockedUserTenantPairs.clear()
+          loggedTenantMismatchPairs.clear()
+          authBootstrapState.currentProfile = null
+          authBootstrapState.loadingProfileUserId = null
+        }
+
+        setUser(session?.user ?? null)
         
-        // Skip INITIAL_SESSION if we already started loading (prevents duplicate fetches)
-        if (event === 'INITIAL_SESSION' && profileLoadStartedRef.current.has(session.user.id)) {
-          return
-        }
+        if (session?.user) {
+          // App host / platform routes have no tenant context, so there is no
+          // tenant-scoped profile to load here. Unblock UI immediately.
+          if (!tenantId) {
+            setProfile(null)
+            setCompany(null)
+            setLoading(false)
+            return
+          }
 
-        // Token refresh should not re-run profile bootstrap on every refresh cycle.
-        if (event === 'TOKEN_REFRESHED') {
+          // Only fetch profile on INITIAL_SESSION (session is fully ready)
+          // Skip SIGNED_IN for profile loading - session might not be ready yet
+          // This prevents timeouts and duplicate fetches
+          if (event === 'SIGNED_IN') {
+            // Just set the user, don't fetch profile yet
+            // INITIAL_SESSION will fire next and handle the profile fetch
+            return
+          }
+          
+          // Skip INITIAL_SESSION if we already started loading (prevents duplicate fetches)
+          if (event === 'INITIAL_SESSION' && authBootstrapState.profileLoadStarted.has(session.user.id)) {
+            return
+          }
+
+          // Token refresh should not re-run profile bootstrap on every refresh cycle.
+          if (event === 'TOKEN_REFRESHED') {
+            setLoading(false)
+            return
+          }
+          
+          await handleUserSession(session.user, event)
+        } else {
+          clear()
           setLoading(false)
-          return
+          authBootstrapState.loadingProfileUserId = null
+          authBootstrapState.currentProfile = null
+          authBootstrapState.profileLoadStarted.clear()
         }
-        
-        await handleUserSession(session.user, event)
-      } else {
-        clear()
-        setLoading(false)
-        loadingProfileRef.current = null
-        currentProfileRef.current = null
-        profileLoadStartedRef.current.clear()
+      } finally {
       }
     })
 

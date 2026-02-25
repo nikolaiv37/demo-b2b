@@ -108,10 +108,11 @@ export function LoginPage() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const signInResult = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       })
+      const { error } = signInResult
 
       if (error) {
         // Show user-friendly inline error instead of a toast

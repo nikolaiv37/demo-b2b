@@ -94,9 +94,10 @@ export function PlatformLoginPage() {
     setIsLookingUp(true)
 
     try {
-      const { data, error } = await supabase.rpc('lookup_tenant_by_email', {
+      const lookupResult = await supabase.rpc('lookup_tenant_by_email', {
         lookup_email: email,
       })
+      const { data, error } = lookupResult
 
       if (error) {
         console.error('lookup_tenant_by_email error:', error)
@@ -127,10 +128,11 @@ export function PlatformLoginPage() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const signInResult = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       })
+      const { error } = signInResult
 
       if (error) {
         if (

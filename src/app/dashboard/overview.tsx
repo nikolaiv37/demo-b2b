@@ -1,3 +1,4 @@
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -27,21 +28,10 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
-import { useEffect, useMemo } from 'react'
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+
+const OverviewChartsSection = lazy(() =>
+  import('@/app/dashboard/overview-charts').then((m) => ({ default: m.OverviewChartsSection }))
+)
 
 interface DashboardStats {
   totalRevenue: number
@@ -81,6 +71,18 @@ interface DashboardStats {
   }
 }
 
+interface DashboardSummary {
+  totalRevenue: number
+  thisMonthRevenue: number
+  lastMonthRevenue: number
+  totalOrders: number
+  thisMonthOrders: number
+  lastMonthOrders: number
+  activeCustomers: number
+  totalProducts: number
+  lowStockCount: number
+}
+
 interface QuoteRow {
   id?: string | number | null
   order_number?: string | number | null
@@ -115,15 +117,6 @@ interface ProductCategoryRow {
   sku?: string | null
 }
 
-const COLORS = [
-  'hsl(var(--primary))',
-  '#8b5cf6',
-  '#ec4899',
-  '#f59e0b',
-  '#10b981',
-  '#3b82f6',
-]
-
 export function DashboardOverview() {
   const { t } = useTranslation()
   const { user, isAdmin } = useAuth()
@@ -137,10 +130,120 @@ export function DashboardOverview() {
   
   // Fetch company unpaid balances for admin users (top 10)
   const { data: companyUnpaidData, isLoading: companyUnpaidLoading } = useCompanyUnpaidBalances(10)
+  const [detailsEnabled, setDetailsEnabled] = useState(false)
 
   useEffect(() => {
     trackEvent(AnalyticsEvents.DASHBOARD_VIEWED)
   }, [])
+
+  useEffect(() => {
+    setDetailsEnabled(false)
+    if (!tenantId || (!isAdmin && !user?.id)) return
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let idleId: number | null = null
+
+    const enable = () => setDetailsEnabled(true)
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(enable, { timeout: 1200 })
+    } else {
+      timeoutId = setTimeout(enable, 300)
+    }
+
+    return () => {
+      if (idleId !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [tenantId, isAdmin, user?.id])
+
+  const { data: summary, isLoading: isSummaryLoading } = useQuery({
+    queryKey: ['tenant', tenantId, 'dashboard-summary', user?.id, isAdmin],
+    queryFn: async () => {
+      if (!tenantId) return null
+      if (!isAdmin && !user?.id) return null
+
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+
+      const allOrdersPromise = supabase
+        .from('quotes')
+        .select('total, created_at, user_id, email, status')
+        .in('status', ['new', 'pending', 'shipped', 'approved'])
+        .eq('tenant_id', tenantId)
+
+      const lowStockCountQuery = supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .gt('quantity', 0)
+        .lte('quantity', 10)
+
+      const outOfStockCountQuery = supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('quantity', 0)
+
+      const inStockCountQuery = supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .gt('quantity', 10)
+
+      const [allOrdersResult, lowStockResult, outOfStockResult, inStockResult] = await Promise.all([
+        allOrdersPromise,
+        lowStockCountQuery,
+        outOfStockCountQuery,
+        inStockCountQuery,
+      ])
+
+      const allOrders = (allOrdersResult.data as QuoteRow[] | null) ?? []
+
+      const thisMonthOrders = allOrders.filter((o) =>
+        (o.created_at ? new Date(o.created_at) : new Date(0)) >= startOfMonth
+      )
+      const lastMonthOrders = allOrders.filter((o) => {
+        const createdAt = o.created_at ? new Date(o.created_at) : new Date(0)
+        return createdAt >= startOfLastMonth && createdAt <= endOfLastMonth
+      })
+
+      const thisMonthCompleted = thisMonthOrders.filter((o) => o.status === 'approved')
+      const lastMonthCompleted = lastMonthOrders.filter((o) => o.status === 'approved')
+
+      const totalRevenue = allOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const thisMonthRevenue = thisMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const lastMonthRevenue = lastMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
+
+      const uniqueCustomers = new Set(
+        allOrders.map((o) => o.user_id || o.email).filter(Boolean)
+      )
+
+      const lowStockCount = lowStockResult.count ?? 0
+      const outOfStockCount = outOfStockResult.count ?? 0
+      const inStockCount = inStockResult.count ?? 0
+
+      return {
+        totalRevenue,
+        thisMonthRevenue,
+        lastMonthRevenue,
+        totalOrders: allOrders.length,
+        thisMonthOrders: thisMonthOrders.length,
+        lastMonthOrders: lastMonthOrders.length,
+        activeCustomers: uniqueCustomers.size,
+        totalProducts: lowStockCount + outOfStockCount + inStockCount,
+        lowStockCount,
+      } as DashboardSummary
+    },
+    enabled: !!tenantId && (isAdmin || !!user?.id),
+    staleTime: 30_000,
+  })
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['tenant', tenantId, 'dashboard-stats', user?.id, isAdmin],
@@ -566,29 +669,21 @@ export function DashboardOverview() {
         stockStatusCounts,
       } as DashboardStats
     },
-    enabled: !!tenantId && (isAdmin || !!user?.id),
+    enabled: detailsEnabled && !!tenantId && (isAdmin || !!user?.id),
   })
 
+  const topStats = summary ?? stats
+  const isTopLoading = isSummaryLoading && !topStats
+
   const revenueChange = useMemo(() => {
-    if (!stats) return 0
-    return calculatePercentageChange(stats.thisMonthRevenue, stats.lastMonthRevenue)
-  }, [stats])
+    if (!topStats) return 0
+    return calculatePercentageChange(topStats.thisMonthRevenue, topStats.lastMonthRevenue)
+  }, [topStats])
 
   const ordersChange = useMemo(() => {
-    if (!stats) return 0
-    return calculatePercentageChange(stats.thisMonthOrders, stats.lastMonthOrders)
-  }, [stats])
-
-  // Sparkline data for revenue (last 7 days of revenueByDay)
-  const revenueSparkline = useMemo(() => {
-    if (!stats?.revenueByDay || stats.revenueByDay.length === 0) return []
-    const last7Days = stats.revenueByDay.slice(-7)
-    // Ensure we have at least 2 data points for the chart
-    if (last7Days.length < 2) {
-      return [0, ...last7Days.map((d) => d.revenue)]
-    }
-    return last7Days.map((d) => d.revenue)
-  }, [stats])
+    if (!topStats) return 0
+    return calculatePercentageChange(topStats.thisMonthOrders, topStats.lastMonthOrders)
+  }, [topStats])
 
   const StatCard = ({
     title,
@@ -597,7 +692,6 @@ export function DashboardOverview() {
     icon: Icon,
     color,
     change,
-    sparkline,
   }: {
     title: string
     value: string
@@ -605,13 +699,12 @@ export function DashboardOverview() {
     icon: LucideIcon
     color: string
     change?: number
-    sparkline?: number[]
   }) => (
     <GlassCard hover className="relative overflow-hidden">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm text-muted-foreground mb-1">{title}</p>
-          {isLoading ? (
+          {isTopLoading ? (
             <Skeleton className="h-10 w-32 mb-2" />
           ) : (
             <p className="text-3xl font-bold mb-1">{value}</p>
@@ -619,7 +712,7 @@ export function DashboardOverview() {
           {subtitle && (
             <p className="text-sm text-muted-foreground mb-2">{subtitle}</p>
           )}
-          {change !== undefined && !isLoading && (
+          {change !== undefined && !isTopLoading && (
             <div className="flex items-center gap-1 mt-2">
               {change > 0 ? (
                 <TrendingUp className="w-4 h-4 text-green-500" />
@@ -635,27 +728,6 @@ export function DashboardOverview() {
                 {change.toFixed(1)}%
               </span>
               <span className="text-xs text-muted-foreground ml-1">{t('overview.vsLastMonth')}</span>
-            </div>
-          )}
-          {sparkline && sparkline.length > 0 && (
-            <div className="mt-3 h-12 w-full opacity-60">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={sparkline.map((v, i) => ({ value: v, index: i }))}
-                  margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
-                >
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke={color}
-                    fill={color}
-                    fillOpacity={0.3}
-                    strokeWidth={2}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
             </div>
           )}
         </div>
@@ -682,17 +754,16 @@ export function DashboardOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title={t('overview.totalRevenue')}
-          value={stats ? formatCurrency(stats.totalRevenue, 'EUR') : '—'}
-          subtitle={stats ? `€${stats.thisMonthRevenue.toFixed(2)} ${t('overview.thisMonth')}` : undefined}
+          value={topStats ? formatCurrency(topStats.totalRevenue, 'EUR') : '—'}
+          subtitle={topStats ? `€${topStats.thisMonthRevenue.toFixed(2)} ${t('overview.thisMonth')}` : undefined}
           icon={DollarSign}
           color="text-green-500"
           change={revenueChange}
-          sparkline={revenueSparkline}
         />
         <StatCard
           title={t('overview.totalOrders')}
-          value={stats?.totalOrders.toString() || '—'}
-          subtitle={stats ? `${stats.thisMonthOrders} ${t('overview.thisMonth')}` : undefined}
+          value={topStats?.totalOrders.toString() || '—'}
+          subtitle={topStats ? `${topStats.thisMonthOrders} ${t('overview.thisMonth')}` : undefined}
           icon={ShoppingCart}
           color="text-blue-500"
           change={ordersChange}
@@ -702,7 +773,7 @@ export function DashboardOverview() {
         {isAdmin ? (
           <StatCard
             title={t('overview.activeCustomers')}
-            value={stats?.activeCustomers.toString() || '—'}
+            value={topStats?.activeCustomers.toString() || '—'}
             subtitle={t('overview.placedOrders')}
             icon={Users}
             color="text-purple-500"
@@ -712,7 +783,7 @@ export function DashboardOverview() {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground mb-1">{t('overview.unpaidBalance')}</p>
-                {isLoading || unpaidLoading ? (
+                {isTopLoading || unpaidLoading ? (
                   <Skeleton className="h-10 w-32 mb-2" />
                 ) : (
                   <p className="text-3xl font-bold mb-1">
@@ -743,14 +814,14 @@ export function DashboardOverview() {
         
         <StatCard
           title={t('overview.productsInCatalog')}
-          value={stats?.totalProducts.toString() || '—'}
+          value={topStats?.totalProducts.toString() || '—'}
           subtitle={
-            stats && stats.lowStockCount > 0
-              ? `${stats.lowStockCount} ${t('overview.lowStock')}`
+            topStats && topStats.lowStockCount > 0
+              ? `${topStats.lowStockCount} ${t('overview.lowStock')}`
               : t('overview.allStocked')
           }
           icon={Package}
-          color={stats && stats.lowStockCount > 0 ? 'text-red-500' : 'text-amber-500'}
+          color={topStats && topStats.lowStockCount > 0 ? 'text-red-500' : 'text-amber-500'}
         />
       </div>
 
@@ -924,309 +995,19 @@ export function DashboardOverview() {
         </GlassCard>
       )}
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
-        <GlassCard>
-          <h2 className="text-xl font-semibold mb-4">{t('overview.revenueThisMonth')}</h2>
-          {isLoading ? (
-            <Skeleton className="h-64 w-full" />
-          ) : stats?.revenueByDay && stats.revenueByDay.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={stats.revenueByDay}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-muted-foreground"
-                  tickFormatter={(value) => `€${value.toFixed(0)}`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '8px',
-                    backdropFilter: 'blur(10px)',
-                  }}
-                  formatter={(value: number) => formatCurrency(value, 'EUR')}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="hsl(var(--primary))"
-                  fillOpacity={1}
-                  fill="url(#colorRevenue)"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              {t('overview.noRevenueDataThisMonth')}
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <GlassCard><Skeleton className="h-64 w-full" /></GlassCard>
+              <GlassCard><Skeleton className="h-64 w-full" /></GlassCard>
             </div>
-          )}
-        </GlassCard>
-
-        {/* Orders Chart */}
-        <GlassCard>
-          <h2 className="text-xl font-semibold mb-4">{t('overview.ordersLast30Days')}</h2>
-          {isLoading ? (
-            <Skeleton className="h-64 w-full" />
-          ) : stats?.ordersByDay && stats.ordersByDay.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={stats.ordersByDay}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-muted-foreground"
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '8px',
-                    backdropFilter: 'blur(10px)',
-                  }}
-                />
-                <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              {t('overview.noOrdersLast30Days')}
-            </div>
-          )}
-        </GlassCard>
-      </div>
-
-      {/* Categories Revenue Chart - Redesigned with Better Visibility */}
-      {stats?.categoriesByRevenue && stats.categoriesByRevenue.length > 0 && (
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-1">{t('overview.topCategoriesByRevenue')}</h2>
-              <p className="text-sm text-muted-foreground">
-                {t('overview.revenueDistributionDescription')}
-              </p>
-            </div>
-            <div className="hidden md:flex items-center gap-3 px-5 py-3 rounded-xl bg-gradient-to-br from-white/90 via-gray-50/80 to-white/70 dark:from-gray-800/90 dark:via-gray-700/80 dark:to-gray-800/70 border border-gray-200/60 dark:border-gray-600/40 backdrop-blur-md shadow-md hover:shadow-lg hover:border-gray-300/80 dark:hover:border-gray-500/60 transition-all duration-200">
-              <div className="relative">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-600 border border-gray-200/50 dark:border-gray-600/50 shadow-sm">
-                  <TrendingUp className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-gray-400 dark:bg-gray-500 rounded-full border-2 border-white dark:border-gray-800 shadow-sm" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider leading-none mb-0.5">
-                  {t('overview.categoriesCount', { count: stats.categoriesByRevenue.length })}
-                </span>
-                <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(
-                    stats.categoriesByRevenue.reduce((sum, cat) => sum + cat.revenue, 0),
-                    'EUR'
-                  )} {t('overview.totalRevenueLabel')}
-                </span>
-              </div>
-            </div>
+            <GlassCard className="p-6"><Skeleton className="h-96 w-full rounded-lg" /></GlassCard>
           </div>
-          {isLoading ? (
-            <Skeleton className="h-96 w-full rounded-lg" />
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left: Redesigned Donut Chart */}
-              <div className="lg:col-span-2">
-                <div className="relative bg-gradient-to-br from-muted/20 to-muted/5 rounded-2xl p-8 border border-border/40">
-                  <ResponsiveContainer width="100%" height={340}>
-                    <PieChart>
-                      <defs>
-                        {stats.categoriesByRevenue.map((_entry, index) => (
-                          <linearGradient
-                            key={`gradient-${index}`}
-                            id={`gradient-${index}`}
-                            x1="0"
-                            y1="0"
-                            x2="1"
-                            y2="1"
-                          >
-                            <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.95} />
-                            <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.75} />
-                          </linearGradient>
-                        ))}
-                      </defs>
-                      <Pie
-                        data={stats.categoriesByRevenue}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={85}
-                        outerRadius={125}
-                        paddingAngle={3}
-                        dataKey="value"
-                        startAngle={90}
-                        endAngle={-270}
-                        cornerRadius={4}
-                      >
-                        {stats.categoriesByRevenue.map((_entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={`url(#gradient-${index})`}
-                            stroke="hsl(var(--background))"
-                            strokeWidth={3}
-                            style={{ 
-                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                              cursor: 'pointer',
-                            }}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '10px',
-                          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                          padding: '12px',
-                          zIndex: 1000,
-                        }}
-                        cursor={{ fill: 'rgba(0,0,0,0.03)' }}
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload
-                            const total = stats.categoriesByRevenue.reduce((sum, cat) => sum + cat.value, 0)
-                            const percent = ((data.value / total) * 100).toFixed(1)
-                            const colorIndex = stats.categoriesByRevenue.findIndex(c => c.name === data.name)
-                            const color = COLORS[colorIndex % COLORS.length]
-                            
-                            return (
-                              <div className="bg-background border border-border rounded-lg shadow-lg p-3 min-w-[180px] z-50">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div
-                                    className="w-3 h-3 rounded-full flex-shrink-0"
-                                    style={{ backgroundColor: color }}
-                                  />
-                                  <p className="font-semibold text-sm text-foreground truncate">{data.name}</p>
-                                </div>
-                                <div className="space-y-1.5">
-                                  <p className="text-lg font-bold text-primary">
-                                    {formatCurrency(data.revenue, 'EUR')}
-                                  </p>
-                                  <div className="flex items-center gap-2 pt-1.5 border-t border-border/50">
-                                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                      <div
-                                        className="h-full rounded-full transition-all"
-                                        style={{
-                                          width: `${percent}%`,
-                                          backgroundColor: color,
-                                        }}
-                                      />
-                                    </div>
-                                    <span className="text-xs font-semibold text-muted-foreground min-w-[40px] text-right">
-                                      {percent}%
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          }
-                          return null
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  {/* Compact Center Label */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="text-center">
-                      <p className="text-[10px] font-medium text-muted-foreground/60 mb-1.5 uppercase tracking-wider">
-                        {t('overview.totalRevenue')}
-                      </p>
-                      <p className="text-2xl md:text-3xl font-bold text-foreground mb-1 leading-tight">
-                        {formatCurrency(
-                          stats.categoriesByRevenue.reduce((sum, cat) => sum + cat.revenue, 0),
-                          'EUR'
-                        )}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/50">
-                        {t('overview.categoriesCount', { count: stats.categoriesByRevenue.length })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Minimalistic Category Breakdown */}
-              <div className="lg:col-span-1">
-                <div className="sticky top-4">
-                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-5">
-                    {t('overview.categoryBreakdown')}
-                  </h3>
-                  <div className="space-y-3 max-h-[340px] overflow-y-auto custom-scrollbar pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) transparent' }}>
-                    {stats.categoriesByRevenue.map((cat, index) => {
-                      const totalRevenue = stats.categoriesByRevenue.reduce((sum, c) => sum + c.revenue, 0)
-                      const percentage = (cat.revenue / totalRevenue) * 100
-                      const color = COLORS[index % COLORS.length]
-                      
-                      return (
-                        <div
-                          key={cat.name}
-                          className="group relative p-4 rounded-2xl border border-border/30 bg-background/40 hover:bg-background/60 hover:border-border/50 transition-all duration-200"
-                        >
-                          <div className="flex items-start gap-3 mb-3">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5"
-                              style={{ backgroundColor: color }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-foreground leading-snug mb-1.5">
-                                {cat.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground/80">
-                                {percentage.toFixed(1)}% {t('overview.ofTotal')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-baseline justify-between gap-3">
-                            <p className="text-base font-semibold text-foreground">
-                              {formatCurrency(cat.revenue, 'EUR')}
-                            </p>
-                            <span className="text-xs font-medium text-muted-foreground/70">
-                              {percentage.toFixed(1)}%
-                            </span>
-                          </div>
-                          {/* Minimal Progress Bar */}
-                          <div className="mt-3 h-1 bg-muted/50 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500 ease-out"
-                              style={{
-                                width: `${percentage}%`,
-                                backgroundColor: color,
-                                opacity: 0.7,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </GlassCard>
-      )}
+        }
+      >
+        <OverviewChartsSection stats={stats} isLoading={isLoading || !detailsEnabled} />
+      </Suspense>
 
       {/* Recent Orders & Low Stock */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

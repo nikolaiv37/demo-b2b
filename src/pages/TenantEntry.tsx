@@ -13,8 +13,9 @@ export function TenantEntry() {
     return null
   }
 
-  // Show spinner while auth or membership is still loading
-  if (isLoading || !membershipChecked) {
+  // Show spinner while membership is loading, or while auth user is still unknown.
+  // If user is already authenticated, don't block this redirect on profile bootstrap.
+  if ((!isAuthenticated && isLoading) || !membershipChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-6 w-6 border-2 border-[color:var(--ink-12)] border-t-[color:var(--landing-accent)] rounded-full animate-spin" />
