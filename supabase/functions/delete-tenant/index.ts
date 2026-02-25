@@ -163,6 +163,11 @@ Deno.serve(async (req) => {
       'notifications',
       'client_invitations',
       'csv_import_history',
+      // Must come before profiles/companies because tenant_invitations.profile_id
+      // can reference public.profiles without ON DELETE CASCADE.
+      'tenant_invitations',
+      'tenant_memberships',
+      'tenant_domains',
       'wishlist_items',
       'complaints',
       'quotes',
@@ -170,9 +175,6 @@ Deno.serve(async (req) => {
       'categories',
       'companies',
       'profiles',
-      'tenant_invitations',
-      'tenant_memberships',
-      'tenant_domains',
     ]
 
     for (const table of tenantScopedTables) {
