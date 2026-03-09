@@ -1370,6 +1370,94 @@
       "errorUpdateFailed": "Failed to complete setup. Please try again.",
       "errorPasswordUpdate": "Failed to set password. Please try again."
     },
+    "shippingEcont": {
+      "title": "Econt Shipment",
+      "subtitle": "Create a shipment snapshot from this order/quote. Offices sync is skipped for MVP; enter an office code or exact office name manually.",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "integrationDisabledMessage": "Econt is not enabled for this tenant. Ask a tenant admin to configure it in Settings > Integrations.",
+      "form": {
+        "receiverName": "Receiver name",
+        "receiverPhone": "Receiver phone",
+        "receiverEmail": "Receiver email (optional)",
+        "destinationType": "Destination type",
+        "destinationOffice": "Office",
+        "destinationAddress": "Address",
+        "officeCode": "Office (code or exact Econt office name)",
+        "officeCodePlaceholder": "e.g. София Красно село or office code",
+        "city": "City",
+        "postCode": "Post code",
+        "street": "Street",
+        "streetNum": "Street no.",
+        "addressNotes": "Address notes",
+        "weight": "Weight (kg)",
+        "parcels": "Parcels",
+        "payer": "Payer",
+        "payerSender": "Sender",
+        "payerReceiver": "Receiver",
+        "codAmount": "COD amount (BGN)",
+        "declaredValue": "Declared value (BGN)",
+        "description": "Description (optional)"
+      },
+      "officeSuggestions": {
+        "helper": "Econt returned {{count}} allowed offices for this shipment. Pick/paste an exact office name from the suggestions list.",
+        "emptyHint": "No office suggestions yet. If Econt rejects the office, allowed offices will appear here.",
+        "loading": "Loading Econt offices...",
+        "allOfficesLoaded": "Loaded {{count}} Econt offices. Start typing to search and pick one.",
+        "searchPlaceholder": "Search office by name, city, or code",
+        "noResults": "No matching offices found."
+      },
+      "validation": {
+        "cityPostCodeMismatch": "City and postal code do not match.",
+        "invalidCity": "Enter a valid city recognized by Econt.",
+        "invalidOffice": "Select a valid Econt office from the list.",
+        "phoneOrEmailRequired": "Receiver phone or email is required.",
+        "authorizedPersonRequired": "Authorized person/contact is required for company recipients.",
+        "addressInsufficient": "Address information is incomplete. Add a valid street and number, or fill Quarter and Other."
+      },
+      "actions": {
+        "calculate": "Calculate",
+        "createLabel": "Create label",
+        "track": "Track",
+        "cancelLabel": "Cancel label"
+      },
+      "tracking": {
+        "resultTitle": "Tracking result",
+        "tryAgainInMinutes": "Try again in {{minutes}} minute(s).",
+        "nextRefreshAfter": "Next refresh after: {{date}}"
+      },
+      "shipments": {
+        "title": "Shipments for this order",
+        "empty": "No Econt shipments created yet.",
+        "awb": "AWB: {{awb}}",
+        "price": "Price: {{price}} {{currency}}",
+        "service": "Service: {{service}}",
+        "expectedDelivery": "Expected delivery: {{date}}",
+        "createdAt": "Created: {{date}}",
+        "lastSynced": "Last synced: {{date}}",
+        "trackingRefresh": "Tracking refresh: {{date}}",
+        "printLabel": "Print label",
+        "openPdf": "Open PDF"
+      },
+      "toasts": {
+        "calculateSuccessTitle": "Shipping calculated",
+        "calculateSuccessWithPrice": "Estimated price: {{price}} {{currency}}",
+        "calculateSuccessDescription": "Calculation completed.",
+        "calculateErrorTitle": "Calculate failed",
+        "createSuccessTitle": "Econt label created",
+        "createSuccessDescription": "Waybill: {{awb}}",
+        "createErrorTitle": "Create label failed",
+        "trackThrottledTitle": "Tracking throttled",
+        "trackSuccessTitle": "Tracking refreshed",
+        "trackSuccessDescription": "Shipment status updated.",
+        "trackErrorTitle": "Track failed",
+        "cancelSuccessTitle": "Econt label cancelled",
+        "cancelSuccessDescription": "Shipment was marked as cancelled.",
+        "cancelErrorTitle": "Cancel failed"
+      }
+    },
     "notifications": {
       "title": "Notifications",
       "markAllRead": "Mark all read",

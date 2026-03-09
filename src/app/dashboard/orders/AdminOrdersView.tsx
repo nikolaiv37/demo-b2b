@@ -35,6 +35,7 @@ import { SHIPPING_METHOD_CONFIG } from '@/types'
 import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 import { formatPrice, formatDateTime, cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { ShipmentPanel } from '@/components/shipping/ShipmentPanel'
 // Proforma PDFs are generated only from company user accounts (see OrdersPage/OrderDetailsSheet)
 
 interface OrderItem {
@@ -162,6 +163,7 @@ export function AdminOrdersView() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [supportsInternalNotes, setSupportsInternalNotes] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
@@ -193,11 +195,34 @@ export function AdminOrdersView() {
     queryKey: ['tenant', tenantId, 'admin-orders'],
     queryFn: async () => {
       if (!tenantId) return []
-      const { data, error } = await supabase
+      let data: unknown[] | null = null
+      let error: { code?: string; message?: string } | null = null
+
+      // Backward-compatible fallback for tenants that haven't applied the
+      // quotes internal_notes migration yet.
+      const withInternalNotes = await supabase
         .from('quotes')
         .select('id, order_number, user_id, company_name, email, phone, notes, items, total, shipping_method, status, created_at, updated_at, internal_notes')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
+
+      data = withInternalNotes.data as unknown[] | null
+      error = withInternalNotes.error as { code?: string; message?: string } | null
+
+      if (error?.code === '42703' && error.message?.includes('internal_notes')) {
+        setSupportsInternalNotes(false)
+
+        const withoutInternalNotes = await supabase
+          .from('quotes')
+          .select('id, order_number, user_id, company_name, email, phone, notes, items, total, shipping_method, status, created_at, updated_at')
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false })
+
+        data = withoutInternalNotes.data as unknown[] | null
+        error = withoutInternalNotes.error as { code?: string; message?: string } | null
+      } else {
+        setSupportsInternalNotes(true)
+      }
 
       if (error) {
         console.error('Error fetching orders:', error)
@@ -349,6 +374,9 @@ export function AdminOrdersView() {
   // Update internal notes mutation
   const updateInternalNotesMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: number | string; notes: string }) => {
+      if (!supportsInternalNotes) {
+        return
+      }
       const { error } = await supabase
         .from('quotes')
         .update({ internal_notes: notes })
@@ -863,29 +891,45 @@ export function AdminOrdersView() {
                   </div>
                 )}
 
+                <ShipmentPanel
+                  seed={{
+                    quoteId: selectedOrder.id,
+                    orderNumber: selectedOrder.order_number,
+                    receiverName: selectedOrder.company_name,
+                    receiverPhone: selectedOrder.phone,
+                    receiverEmail: selectedOrder.email,
+                  }}
+                />
+
                 {/* Internal Notes (Admin Only) */}
-                <div>
-                  <Label htmlFor="internal-notes">Internal Notes</Label>
-                  <Textarea
-                    id="internal-notes"
-                    value={selectedOrder.internal_notes || ''}
-                    onChange={(e) => {
-                      const updated = { ...selectedOrder, internal_notes: e.target.value }
-                      setSelectedOrder(updated)
-                    }}
-                    onBlur={(e) => {
-                      if (e.target.value !== (selectedOrder.internal_notes || '')) {
-                        handleInternalNotesChange(e.target.value)
-                      }
-                    }}
-                    placeholder="Add internal notes about this order (only visible to admins)..."
-                    rows={4}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    These notes are only visible to admins and will not be shown to the customer.
-                  </p>
-                </div>
+                {supportsInternalNotes ? (
+                  <div>
+                    <Label htmlFor="internal-notes">Internal Notes</Label>
+                    <Textarea
+                      id="internal-notes"
+                      value={selectedOrder.internal_notes || ''}
+                      onChange={(e) => {
+                        const updated = { ...selectedOrder, internal_notes: e.target.value }
+                        setSelectedOrder(updated)
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value !== (selectedOrder.internal_notes || '')) {
+                          handleInternalNotesChange(e.target.value)
+                        }
+                      }}
+                      placeholder="Add internal notes about this order (only visible to admins)..."
+                      rows={4}
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      These notes are only visible to admins and will not be shown to the customer.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Internal notes are not available for this tenant yet (missing `quotes.internal_notes` migration).
+                  </div>
+                )}
 
                 {/* PDF generation buttons removed from admin view.
                     Proforma invoices are generated only from company user accounts. */}

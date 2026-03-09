@@ -31,8 +31,9 @@ import {
   useMutationInviteTeamMember,
   useMutationRevokeTeamInvite,
 } from '@/hooks/useMutationInviteTeamMember'
+import { EcontIntegrationSettings } from '@/components/integrations/EcontIntegrationSettings'
 
-type SettingsSection = 'company' | 'team' | 'profile'
+type SettingsSection = 'company' | 'team' | 'profile' | 'integrations'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -50,6 +51,8 @@ export function SettingsPage() {
   useEffect(() => {
     if (location.hash === '#profile') {
       setActiveSection('profile')
+    } else if (location.hash === '#integrations' && isAdmin) {
+      setActiveSection('integrations')
     } else if (location.hash === '#team' && isAdmin) {
       setActiveSection('team')
     } else {
@@ -226,6 +229,27 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => {
+                  setActiveSection('integrations')
+                  if (location.hash !== '#integrations') {
+                    window.history.replaceState({}, '', `${location.pathname}#integrations`)
+                  }
+                }}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                  activeSection === 'integrations'
+                    ? 'bg-primary/10 text-primary'
+                    : 'hover:bg-muted text-muted-foreground'
+                )}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Integrations</span>
+              </button>
+            )}
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
                   setActiveSection('team')
                   if (location.hash !== '#team') {
                     window.history.replaceState({}, '', `${location.pathname}#team`)
@@ -283,6 +307,10 @@ export function SettingsPage() {
 
           {activeSection === 'team' && isAdmin && (
             <TeamSection />
+          )}
+
+          {activeSection === 'integrations' && isAdmin && (
+            <EcontIntegrationSettings />
           )}
 
           {activeSection === 'profile' && (

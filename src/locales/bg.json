@@ -959,6 +959,94 @@
       "description": "Страницата, която търсите, не съществува или е преместена.",
       "goHome": "Към началото"
     },
+    "shippingEcont": {
+      "title": "Пратка с Еконт",
+      "subtitle": "Създай snapshot на пратка от тази поръчка/оферта. Синхронизацията на офиси е пропусната за MVP; въведи код на офис или точно име на офис ръчно.",
+      "status": {
+        "enabled": "Активно",
+        "disabled": "Изключено"
+      },
+      "integrationDisabledMessage": "Еконт не е активиран за този tenant. Помолете администратор да го настрои от Настройки > Интеграции.",
+      "form": {
+        "receiverName": "Получател",
+        "receiverPhone": "Телефон на получателя",
+        "receiverEmail": "Имейл на получателя (по избор)",
+        "destinationType": "Тип доставка",
+        "destinationOffice": "Офис",
+        "destinationAddress": "Адрес",
+        "officeCode": "Офис (код или точно име на офис на Еконт)",
+        "officeCodePlaceholder": "напр. София Красно село или код на офис",
+        "city": "Град",
+        "postCode": "Пощенски код",
+        "street": "Улица",
+        "streetNum": "№",
+        "addressNotes": "Бележки за адрес",
+        "weight": "Тегло (кг)",
+        "parcels": "Брой колети",
+        "payer": "Платец",
+        "payerSender": "Подател",
+        "payerReceiver": "Получател",
+        "codAmount": "Наложен платеж (BGN)",
+        "declaredValue": "Обявена стойност (BGN)",
+        "description": "Описание (по избор)"
+      },
+      "officeSuggestions": {
+        "helper": "Еконт върна {{count}} допустими офиса за тази пратка. Изберете/поставете точно име на офис от предложенията.",
+        "emptyHint": "Все още няма предложения за офиси. Ако Еконт отхвърли офиса, тук ще се покажат допустимите.",
+        "loading": "Зареждане на офисите на Еконт...",
+        "allOfficesLoaded": "Заредени са {{count}} офиса на Еконт. Започнете да пишете за търсене и избор.",
+        "searchPlaceholder": "Търси офис по име, град или код",
+        "noResults": "Няма намерени офиси по това търсене."
+      },
+      "validation": {
+        "cityPostCodeMismatch": "Населеното място и пощенският код не съвпадат.",
+        "invalidCity": "Въведете валидно населено място, разпознато от Еконт.",
+        "invalidOffice": "Изберете валиден офис на Еконт от списъка.",
+        "phoneOrEmailRequired": "Телефон или имейл на получателя е задължителен.",
+        "authorizedPersonRequired": "За фирмен получател е нужно упълномощено лице/контакт.",
+        "addressInsufficient": "Адресът не е достатъчно пълен. Добавете валидна улица и номер или попълнете Квартал и Друго."
+      },
+      "actions": {
+        "calculate": "Калкулирай",
+        "createLabel": "Създай товарителница",
+        "track": "Проследи",
+        "cancelLabel": "Анулирай товарителница"
+      },
+      "tracking": {
+        "resultTitle": "Резултат от проследяване",
+        "tryAgainInMinutes": "Опитай отново след {{minutes}} мин.",
+        "nextRefreshAfter": "Следващо опресняване след: {{date}}"
+      },
+      "shipments": {
+        "title": "Пратки за тази поръчка",
+        "empty": "Все още няма създадени пратки с Еконт.",
+        "awb": "AWB: {{awb}}",
+        "price": "Цена: {{price}} {{currency}}",
+        "service": "Услуга: {{service}}",
+        "expectedDelivery": "Очаквана доставка: {{date}}",
+        "createdAt": "Създадена: {{date}}",
+        "lastSynced": "Последен sync: {{date}}",
+        "trackingRefresh": "Опресняване на tracking: {{date}}",
+        "printLabel": "Принт товарителница",
+        "openPdf": "Отвори PDF"
+      },
+      "toasts": {
+        "calculateSuccessTitle": "Калкулацията е готова",
+        "calculateSuccessWithPrice": "Ориентировъчна цена: {{price}} {{currency}}",
+        "calculateSuccessDescription": "Калкулацията завърши успешно.",
+        "calculateErrorTitle": "Неуспешна калкулация",
+        "createSuccessTitle": "Товарителницата е създадена",
+        "createSuccessDescription": "AWB: {{awb}}",
+        "createErrorTitle": "Неуспешно създаване на товарителница",
+        "trackThrottledTitle": "Проследяването е ограничено",
+        "trackSuccessTitle": "Проследяването е обновено",
+        "trackSuccessDescription": "Статусът на пратката е обновен.",
+        "trackErrorTitle": "Неуспешно проследяване",
+        "cancelSuccessTitle": "Товарителницата е анулирана",
+        "cancelSuccessDescription": "Пратката беше маркирана като анулирана.",
+        "cancelErrorTitle": "Неуспешно анулиране"
+      }
+    },
     "notifications": {
       "title": "Известия",
       "markAllRead": "Маркирай всички като прочетени",
