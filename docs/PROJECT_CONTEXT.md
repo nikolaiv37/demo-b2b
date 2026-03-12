@@ -1,4 +1,4 @@
-# Project Context
+# Project Context = stable
 
 ## Product one-liner
 FurniTrade is a single-wholesaler B2B catalog + order operations app where company users browse products, place quote/orders, and admins manage catalog, clients, complaints, and workflows.
