@@ -82,10 +82,10 @@ where c.tenant_id is null
   and c.company_id = co.id;
 
 update public.products p
-set tenant_id = tm.tenant_id
-from public.tenant_memberships tm
+set tenant_id = c.tenant_id
+from public.companies c
 where p.tenant_id is null
-  and p.supplier_id = tm.user_id::text;
+  and p.company_id = c.id;
 
 do $$
 begin
@@ -105,10 +105,10 @@ begin
 end $$;
 
 update public.quotes q
-set tenant_id = tm.tenant_id
-from public.tenant_memberships tm
+set tenant_id = c.tenant_id
+from public.companies c
 where q.tenant_id is null
-  and q.user_id::text = tm.user_id::text;
+  and q.company_id = c.id;
 
 update public.complaints c
 set tenant_id = tm.tenant_id
@@ -319,25 +319,23 @@ create policy "tenant_quotes_select"
   on public.quotes for select
   using (
     tenant_id = public.current_tenant_id()
-    and (public.is_tenant_admin() or user_id::text = auth.uid()::text)
   );
 
 create policy "tenant_quotes_insert"
   on public.quotes for insert
   with check (
     tenant_id = public.current_tenant_id()
-    and user_id::text = auth.uid()::text
   );
 
 create policy "tenant_quotes_update"
   on public.quotes for update
   using (
     tenant_id = public.current_tenant_id()
-    and (public.is_tenant_admin() or user_id::text = auth.uid()::text)
+    and public.is_tenant_admin()
   )
   with check (
     tenant_id = public.current_tenant_id()
-    and (public.is_tenant_admin() or user_id::text = auth.uid()::text)
+    and public.is_tenant_admin()
   );
 
 create policy "tenant_quotes_delete_admin"

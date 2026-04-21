@@ -11,10 +11,9 @@ CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);
 -- Index for categories.slug for URL-based lookups
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
 
--- Composite index for products visibility + category_id (common query pattern)
-CREATE INDEX IF NOT EXISTS idx_products_visible_category 
-  ON products(is_visible, category_id) 
-  WHERE is_visible = true;
+-- Composite index for tenant/category filtering in the current schema
+CREATE INDEX IF NOT EXISTS idx_products_tenant_category_id
+  ON products(tenant_id, category_id);
 
 -- Analyze tables to update statistics for the query planner
 ANALYZE products;

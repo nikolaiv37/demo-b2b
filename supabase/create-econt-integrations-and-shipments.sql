@@ -11,6 +11,32 @@ begin
 end;
 $$;
 
+-- Tenant helpers are also defined later in tenant-data-isolation.sql, but this
+-- migration needs them now for RLS policy creation.
+create or replace function public.current_tenant_id()
+returns uuid
+language sql
+stable
+as $$
+  select tenant_id
+  from public.tenant_memberships
+  where user_id = auth.uid()
+  limit 1
+$$;
+
+create or replace function public.is_tenant_admin()
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1
+    from public.tenant_memberships
+    where user_id = auth.uid()
+      and role in ('owner', 'admin')
+  )
+$$;
+
 create table if not exists public.tenant_integrations (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references public.tenants(id) on delete cascade,
@@ -32,7 +58,7 @@ create index if not exists idx_tenant_integrations_tenant_id
 create table if not exists public.shipments (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references public.tenants(id) on delete cascade,
-  quote_id integer references public.quotes(id) on delete set null,
+  quote_id uuid references public.quotes(id) on delete set null,
   carrier text not null,
   receiver jsonb not null default '{}'::jsonb,
   destination jsonb not null default '{}'::jsonb,

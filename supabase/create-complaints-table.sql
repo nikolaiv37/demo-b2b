@@ -39,6 +39,7 @@ CREATE TRIGGER complaints_updated_at_trigger
 ALTER TABLE complaints ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see their own complaints (including dev mode)
+DROP POLICY IF EXISTS "Users can view their own complaints" ON complaints;
 CREATE POLICY "Users can view their own complaints"
     ON complaints FOR SELECT
     USING (
@@ -48,6 +49,7 @@ CREATE POLICY "Users can view their own complaints"
     );
 
 -- Policy: Users can insert their own complaints (including dev mode)
+DROP POLICY IF EXISTS "Users can insert their own complaints" ON complaints;
 CREATE POLICY "Users can insert their own complaints"
     ON complaints FOR INSERT
     WITH CHECK (
@@ -57,6 +59,7 @@ CREATE POLICY "Users can insert their own complaints"
     );
 
 -- Policy: Users can update their own complaints (only if pending, including dev mode)
+DROP POLICY IF EXISTS "Users can update pending complaints" ON complaints;
 CREATE POLICY "Users can update pending complaints"
     ON complaints FOR UPDATE
     USING (
@@ -76,11 +79,14 @@ CREATE POLICY "Users can update pending complaints"
         AND status = 'pending'
     );
 
-Create storage bucket for complaint photos (run this in Supabase dashboard Storage section)
- Or create via SQL:
-INSERT INTO storage.buckets (id, name, public) VALUES ('complaints', 'complaints', true);
+-- Create storage bucket for complaint photos.
+-- This can also be created from the Supabase dashboard Storage section.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('complaints', 'complaints', true)
+ON CONFLICT (id) DO NOTHING;
 
 -- Storage policy: Users can upload their own complaint photos
+DROP POLICY IF EXISTS "Users can upload complaint photos" ON storage.objects;
 CREATE POLICY "Users can upload complaint photos"
     ON storage.objects FOR INSERT
     WITH CHECK (
@@ -89,6 +95,7 @@ CREATE POLICY "Users can upload complaint photos"
    );
 
 -- Storage policy: Users can view their own complaint photos
+DROP POLICY IF EXISTS "Users can view complaint photos" ON storage.objects;
  CREATE POLICY "Users can view complaint photos"
      ON storage.objects FOR SELECT
      USING (
