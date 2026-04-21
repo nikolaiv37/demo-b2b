@@ -16,6 +16,7 @@ import {
   Moon,
   Settings,
   Building2,
+  Phone,
   LogOut,
   ChevronRight,
 } from 'lucide-react'
@@ -52,7 +53,7 @@ export function DashboardLayout() {
   const { t } = useTranslation()
   const [cartOpen, setCartOpen] = useState(false)
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
-  const { user, profile, isAdmin, signOut } = useAuth()
+  const { user, profile, company, isAdmin, signOut } = useAuth()
   const { tenant } = useTenant()
   const { withBase, stripBase } = useTenantPath()
   const tenantId = tenant?.id
@@ -99,6 +100,10 @@ export function DashboardLayout() {
   const pendingOrders = statusData?.pendingOrders || 0
   const lowStockItems = statusData?.lowStockItems || 0
 
+  const accountManagerName = profile?.full_name || null
+  const accountManagerPhone = profile?.phone || company?.phone || null
+  const accountCompanyName = company?.name || profile?.company_name || null
+
   // Get current page title for breadcrumbs
   const getPageTitle = () => {
     const path = stripBase(location.pathname)
@@ -110,14 +115,14 @@ export function DashboardLayout() {
     return t('nav.overview')
   }
 
-  // Get user initials for avatar
+  // Get user initials for avatar (match b2bcenter account manager card)
   const getUserInitials = () => {
-    if (profile?.full_name) {
-      const names = profile.full_name.split(' ')
+    if (accountManagerName) {
+      const names = accountManagerName.split(' ')
       if (names.length >= 2) {
         return `${names[0][0]}${names[1][0]}`.toUpperCase()
       }
-      return profile.full_name.substring(0, 2).toUpperCase()
+      return accountManagerName.substring(0, 2).toUpperCase()
     }
     if (profile?.email) {
       return profile.email.substring(0, 2).toUpperCase()
@@ -126,7 +131,7 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex overflow-x-hidden">
       <SidebarNav />
       <div className="flex-1 flex flex-col lg:ml-64">
         {/* Enhanced Top Header */}
@@ -223,30 +228,69 @@ export function DashboardLayout() {
                 {/* Vertical Divider */}
                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
 
-                {/* User Profile Menu */}
+                {/* User Profile Menu — account manager card (b2bcenter parity) */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-2 gap-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="h-auto rounded-2xl px-2 py-1.5 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 sm:px-2.5"
                     >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-medium">
-                        {getUserInitials()}
-                      </div>
-                      <div className="hidden md:flex flex-col items-start">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {profile?.full_name || 'User'}
-                          </span>
-                          {isAdmin && (
-                            <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                              {t('header.admin')}
-                            </Badge>
+                      <div className="flex items-center gap-2.5 sm:gap-3">
+                        <div className="order-2 min-w-0 flex-1 md:order-none">
+                          <div className="flex items-center justify-start md:hidden">
+                            <div className="min-w-0 text-left">
+                              <div className="truncate text-[13px] font-semibold leading-tight text-slate-900 dark:text-white">
+                                {accountManagerName || 'User'}
+                              </div>
+                              {accountManagerPhone && (
+                                <div className="mt-0.5 inline-flex max-w-full items-center justify-start gap-1 text-[11px] font-medium leading-tight text-slate-500 dark:text-slate-400">
+                                  <Phone className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500" />
+                                  <span className="truncate">{accountManagerPhone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="hidden min-w-0 md:flex items-center justify-end gap-4 lg:gap-5">
+                            <div className="min-w-0 flex flex-col items-end gap-1 text-right">
+                              {accountManagerPhone && (
+                                <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[12px] font-medium leading-none text-slate-600 dark:text-slate-300">
+                                  <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                                  <span className="truncate">{accountManagerPhone}</span>
+                                </span>
+                              )}
+                              {accountCompanyName && (
+                                <span className="inline-flex min-w-0 max-w-[220px] items-center gap-1.5 truncate text-[12px] font-medium leading-none text-slate-600 dark:text-slate-300 xl:max-w-[260px]">
+                                  <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                                  <span className="truncate">{accountCompanyName}</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex flex-col items-end gap-1 text-right">
+                              <span className="max-w-[230px] truncate text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white xl:max-w-[280px]">
+                                {accountManagerName || 'User'}
+                              </span>
+                              {isAdmin && (
+                                <Badge
+                                  variant="secondary"
+                                  className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                >
+                                  {t('header.admin')}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="order-1 md:order-none h-10 w-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-medium shrink-0 ring-2 ring-white shadow-sm dark:ring-slate-900">
+                          {profile?.avatar_url ? (
+                            <img
+                              src={profile.avatar_url}
+                              alt={profile?.full_name || t('settings.avatarAlt')}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            getUserInitials()
                           )}
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {profile?.email || 'user@example.com'}
-                        </span>
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
@@ -254,7 +298,7 @@ export function DashboardLayout() {
                     <DropdownMenuLabel>
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">
-                          {profile?.full_name || 'User'}
+                          {accountManagerName || profile?.full_name || 'User'}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {profile?.email || 'user@example.com'}

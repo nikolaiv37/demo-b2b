@@ -6,6 +6,12 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('logos', 'logos', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Idempotent policy recreation (safe to re-run)
+DROP POLICY IF EXISTS "Users can upload company logos" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can view company logos" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update company logos" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete company logos" ON storage.objects;
+
 -- Storage policy: Authenticated users can upload logos
 -- Users can upload their own company logos
 CREATE POLICY "Users can upload company logos"
