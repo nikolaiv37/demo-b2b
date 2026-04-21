@@ -23,7 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment
+# Environment — do not commit secrets (copy from .env.example)
 .env
+.env.*
+!.env.example
 .env.local
+.env.*.local
 .env.production
+.env.production.local
