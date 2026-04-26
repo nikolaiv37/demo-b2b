@@ -255,6 +255,8 @@ export function ProductsPage() {
     stockFilter,
     1,
     categoriesData,
+    profile?.id,
+    profile?.commission_rate,
   ])
 
   // Fetch total count with same filters (using normalized category_id)

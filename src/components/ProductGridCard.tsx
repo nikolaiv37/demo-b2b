@@ -112,7 +112,7 @@ export function ProductGridCard({
 
   // Check if SKU exists for navigation
   const hasSku = product.sku && product.sku.trim() !== ''
-  const detailUrl = hasSku ? withBase(`/dashboard/products/${product.sku}`) : '#'
+  const detailUrl = hasSku ? withBase(`/dashboard/products/${encodeURIComponent(product.sku)}`) : '#'
 
   // Card links to permanent SKU-based detail page – safe forever even after full CSV re-uploads
   const CardContent = (

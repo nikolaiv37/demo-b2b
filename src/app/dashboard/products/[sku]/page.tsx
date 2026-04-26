@@ -47,6 +47,7 @@ import { HtmlContent } from '@/components/HtmlContent'
 export function ProductDetailPage() {
   const { t } = useTranslation()
   const { sku } = useParams<{ sku: string }>()
+  const decodedSku = sku ? decodeURIComponent(sku) : ''
   const navigate = useNavigate()
   const { withBase } = useTenantPath()
   const { toast } = useToast()
@@ -58,7 +59,7 @@ export function ProductDetailPage() {
   const [isPulsing, setIsPulsing] = useState(false)
 
   // Fetch product by SKU using the new hook that applies commission pricing
-  const { data: product, isLoading, error } = useQueryProductBySku(sku || '')
+  const { data: product, isLoading, error } = useQueryProductBySku(decodedSku)
 
   // Handle 404 - product not found
   if (!isLoading && (!product || error)) {
@@ -72,7 +73,7 @@ export function ProductDetailPage() {
             <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h1 className="text-2xl font-bold mb-2">{t('products.productNotFound')}</h1>
             <p className="text-muted-foreground mb-6">
-              {t('products.productNotFoundDescription', { sku: sku || '' })}
+              {t('products.productNotFoundDescription', { sku: decodedSku })}
             </p>
             <Button onClick={() => navigate(withBase('/dashboard/products'))} className="w-full">
               <ArrowLeft className="w-4 h-4 mr-2" />

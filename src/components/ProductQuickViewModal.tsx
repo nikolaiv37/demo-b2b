@@ -56,7 +56,7 @@ export function ProductQuickViewModal({
   const quantity = product.quantity ?? 0
   const isOutOfStock = quantity === 0
   const hasSku = product.sku && product.sku.trim() !== ''
-  const detailUrl = hasSku ? withBase(`/dashboard/products/${product.sku}`) : '#'
+  const detailUrl = hasSku ? withBase(`/dashboard/products/${encodeURIComponent(product.sku)}`) : '#'
   
   // Use adjusted_price if available, otherwise fall back to weboffer_price
   const displayPrice = product.adjusted_price ?? product.weboffer_price

@@ -330,6 +330,7 @@ export function CSVImportWizard() {
       products = products.map((product) => ({
         ...product,
         tenant_id: tenantId,
+        company_id: company?.id ?? tenantId,
       }))
       
       // Log summary
