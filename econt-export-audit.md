@@ -1851,3 +1851,4 @@ Pieces that should be simplified in a Shopify app:
 - Replace multi-tenant `tenant_id` with `shop_id` or Shopify store identity.
 - Replace `quote_id` with Shopify order ID.
 - Replace Supabase edge functions with your app server routes or server actions.
+

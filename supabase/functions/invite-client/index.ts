@@ -16,6 +16,7 @@
 //   6. Return the invitation record
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { bearerAccessTokenFromHeader } from '../_shared/auth.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
@@ -25,7 +26,8 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    const jwt = bearerAccessTokenFromHeader(authHeader)
+    if (!jwt) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -50,9 +52,9 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
     const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } },
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
     })
-    const { data: { user }, error: userError } = await userClient.auth.getUser()
+    const { data: { user }, error: userError } = await userClient.auth.getUser(jwt)
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,

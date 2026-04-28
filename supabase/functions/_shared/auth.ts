@@ -1,6 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { HttpError } from './http.ts'
 
+/** Substring passed to auth.getUser(jwt). Needed for asymmetric (e.g. ES256) access tokens — getUser() with no arg can error with UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM. */
+export function bearerAccessTokenFromHeader(authHeader: string | null): string | null {
+  if (!authHeader || !/^Bearer\s+/i.test(authHeader)) return null
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim()
+  return token || null
+}
+
 export type TenantRole = 'owner' | 'admin' | 'member'
 
 export interface AuthContext {
@@ -19,7 +26,8 @@ function getEnv(name: string): string {
 
 export async function requireTenantAuth(req: Request, options?: { tenantId?: string | null; requireAdmin?: boolean }) {
   const authHeader = req.headers.get('Authorization')
-  if (!authHeader) {
+  const jwt = bearerAccessTokenFromHeader(authHeader)
+  if (!jwt) {
     throw new HttpError(401, 'Missing Authorization header')
   }
 
@@ -28,14 +36,14 @@ export async function requireTenantAuth(req: Request, options?: { tenantId?: str
   const serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY')
 
   const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
   })
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
   const {
     data: { user },
     error: userError,
-  } = await userClient.auth.getUser()
+  } = await userClient.auth.getUser(jwt)
 
   if (userError || !user) {
     throw new HttpError(401, 'Unauthorized')

@@ -5,6 +5,7 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 ## ✨ Features
 
 ### Core Functionality
+
 - **CSV Bulk Import** - Import thousands of products with validation and progress tracking
 - **Tiered Pricing & MOQ** - Volume-based pricing with minimum order quantities
 - **Quote System** - Request and manage wholesale quotes with email notifications
@@ -13,6 +14,7 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 - **Email Notifications** - Automated emails via Resend API
 
 ### Dashboard Features
+
 - Real-time analytics and stats
 - Product management (CRUD operations)
 - Order tracking and approval workflow
@@ -23,6 +25,7 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 - Dark mode support
 
 ### Design & UX
+
 - **Glassmorphism UI** - Modern design with backdrop-blur effects
 - **Fully Responsive** - Mobile-first design
 - **Loading States** - Skeleton screens and progress indicators
@@ -32,6 +35,7 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 ## 🛠 Tech Stack
 
 ### Frontend
+
 - **React 18** with TypeScript
 - **Vite** - Lightning-fast build tool
 - **TailwindCSS** - Utility-first styling
@@ -42,6 +46,7 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 - **TanStack Query** - Data fetching and caching
 
 ### Backend & Services
+
 - **Supabase** - Backend as a Service
   - PostgreSQL database
   - Authentication
@@ -52,6 +57,7 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 - **PostHog** - Product analytics
 
 ### Data & Utilities
+
 - **PapaParse** - CSV parsing
 - **date-fns** - Date manipulation
 - **React Helmet Async** - SEO management
@@ -61,6 +67,7 @@ A production-ready B2B wholesale platform built with React, TypeScript, Supabase
 ## 📦 Installation
 
 ### Prerequisites
+
 - Node.js 18+ and npm/yarn
 - Supabase account
 - Stripe account (for payments)
@@ -81,20 +88,19 @@ npm install
 
 1. Create a new project at [supabase.com](https://supabase.com)
 2. Go to SQL Editor and run the schema:
-   ```sql
+  ```sql
    -- Copy and paste contents from supabase/schema.sql
-   ```
+  ```
 3. (Optional) Load sample data:
-   ```sql
+  ```sql
    -- Copy and paste contents from supabase/sample-data.sql
-   ```
+  ```
 4. Set up Storage:
-   - Create a bucket named `logos`
-   - Set it to public access
-
+  - Create a bucket named `logos`
+  - Set it to public access
 5. Get your credentials:
-   - Go to Settings → API
-   - Copy the Project URL and anon/public key
+  - Go to Settings → API
+  - Copy the Project URL and anon/public key
 
 ### Step 3: Configure Environment Variables
 
@@ -129,43 +135,38 @@ The app will be available at `http://localhost:5173`
 ### First-Time Setup
 
 1. **Sign Up**
-   - Navigate to `/auth/signup`
-   - Create your account with email and password
-
+  - Navigate to `/auth/signup`
+  - Create your account with email and password
 2. **Complete Onboarding**
-   - Set up your company name and details
-   - Upload a company logo (optional)
-
+  - Set up your company name and details
+  - Upload a company logo (optional)
 3. **Import Products**
-   - Go to Dashboard → CSV Import
-   - Download the template CSV file
-   - Fill in your product data
-   - Upload and import
+  - Go to Dashboard → CSV Import
+  - Download the template CSV file
+  - Fill in your product data
+  - Upload and import
 
 ### Using the Platform
 
 #### For Wholesalers (Admin/Sales)
 
 1. **Manage Products**
-   - View, edit, and delete products
-   - Monitor stock levels
-   - Update pricing
-
+  - View, edit, and delete products
+  - Monitor stock levels
+  - Update pricing
 2. **Handle Quotes**
-   - Review incoming quote requests
-   - Approve or reject quotes
-   - Customers receive email notifications
-
+  - Review incoming quote requests
+  - Approve or reject quotes
+  - Customers receive email notifications
 3. **Process Orders**
-   - Approve pending orders
-   - Update order status
-   - Add tracking numbers
-   - Export orders to CSV
-
+  - Approve pending orders
+  - Update order status
+  - Add tracking numbers
+  - Export orders to CSV
 4. **View Analytics**
-   - Track revenue and orders
-   - Monitor pending quotes
-   - Get low stock alerts
+  - Track revenue and orders
+  - Monitor pending quotes
+  - Get low stock alerts
 
 ## 📁 Project Structure
 
@@ -229,12 +230,14 @@ src/
 ## 🔒 Security Features
 
 ### Row Level Security (RLS)
+
 - All database tables have RLS enabled
 - Company data isolation
 - Role-based access control
 - Users can only access their company's data
 
 ### Authentication
+
 - Supabase Auth with JWT tokens
 - Secure password hashing
 - Protected routes
@@ -243,12 +246,14 @@ src/
 ## 🎨 Glassmorphism Design
 
 The UI uses a modern glassmorphism aesthetic with:
+
 - Backdrop blur effects
 - Semi-transparent backgrounds
 - Subtle borders and shadows
 - Smooth transitions and hover effects
 
 Glassmorphism utility classes are available:
+
 ```css
 .glass              /* Base glassmorphism */
 .glass-card         /* Glass card with padding */
@@ -266,11 +271,13 @@ sku,name,description,category,moq,retail_price,wholesale_price,stock,images
 ```
 
 **Example:**
+
 ```csv
 CHAIR-001,Modern Dining Chair,Comfortable dining chair,Chairs,10,299.99,199.99,50,https://example.com/image.jpg
 ```
 
 **Validation Rules:**
+
 - SKU must be unique per company
 - Prices must be positive numbers
 - Wholesale price ≤ Retail price
@@ -288,6 +295,7 @@ CHAIR-001,Modern Dining Chair,Comfortable dining chair,Chairs,10,299.99,199.99,5
 ## 📱 Mobile Support
 
 The application is fully responsive with:
+
 - Mobile-optimized layouts
 - Touch-friendly interactions
 - Collapsible sidebar on mobile
@@ -303,16 +311,19 @@ The application is fully responsive with:
 ## 🔧 Customization
 
 ### Branding
+
 - Update company logo in Settings
 - Customize company name and slug
 - Logo appears on dashboard and public catalog
 
 ### Styling
+
 - Modify TailwindCSS config for colors
 - Update glassmorphism styles in `index.css`
 - Customize Shadcn theme variables
 
 ### Email Templates
+
 - Edit templates in `src/lib/resendClient.ts`
 - Add custom HTML/CSS
 - Include dynamic variables
@@ -320,6 +331,7 @@ The application is fully responsive with:
 ## 📊 Analytics Events
 
 The platform tracks:
+
 - Page views (dashboard)
 - User actions (login, signup)
 - Product interactions (view, add to cart)
@@ -352,6 +364,7 @@ npm run build
 ## 🤝 Support
 
 For issues or questions:
+
 - Check the code comments
 - Review Supabase and Stripe documentation
 - Ensure all environment variables are set correctly
@@ -363,6 +376,7 @@ This project is provided as-is for use in your B2B furniture wholesale business.
 ## 🎯 Roadmap
 
 Future enhancements could include:
+
 - Multi-currency support
 - Advanced inventory management
 - Product variants and options
@@ -375,4 +389,3 @@ Future enhancements could include:
 ---
 
 **Built with ❤️ for wholesale furniture businesses**
-
