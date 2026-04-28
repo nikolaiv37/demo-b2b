@@ -11,6 +11,7 @@ import { sendNotification } from '@/lib/notifications'
 import { useToast } from '@/components/ui/use-toast'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { prepareProductsWithCategoryId, type CategorySyncResult } from '@/lib/category-sync-from-import'
+import { isLocalDevModeEnabled } from '@/config/features'
 
 // Step Components
 import { UploadStep } from './steps/UploadStep'
@@ -152,7 +153,7 @@ export function CSVImportWizard() {
 
       // Get supplier ID
       const { data: { user } } = await supabase.auth.getUser()
-      const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+      const isDevMode = isLocalDevModeEnabled()
       const devUserId = isDevMode ? 'dev-user-123' : null
       const supplierId = user?.id || devUserId
 

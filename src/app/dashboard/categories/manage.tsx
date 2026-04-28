@@ -32,6 +32,7 @@ import {
   Trash2,
   Merge,
   Image as ImageIcon,
+  Lock,
 } from 'lucide-react'
 
 interface Category {
@@ -50,7 +51,7 @@ type CategoryFilter = 'all' | 'main' | 'sub'
 
 export function ManageCategoriesPage() {
   const { t } = useTranslation()
-  const { company } = useAuth()
+  const { company, isAdmin, isLoading: authLoading } = useAuth()
   const { tenant } = useTenant()
   const tenantId = tenant?.id
   const { toast } = useToast()
@@ -91,7 +92,7 @@ export function ManageCategoriesPage() {
       }
       return (data || []) as Category[]
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && isAdmin,
   })
 
   // Query product counts using category_id (normalized architecture)
@@ -136,7 +137,7 @@ export function ManageCategoriesPage() {
 
       return result
     },
-    enabled: !!tenantId && categories.length > 0,
+    enabled: !!tenantId && isAdmin && categories.length > 0,
   })
 
   const buildTree = (items: Category[]): CategoryWithChildren[] => {
@@ -652,6 +653,24 @@ export function ManageCategoriesPage() {
       return
     }
     setImageFile(file)
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600" />
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
+        <Lock className="w-12 h-12 mb-4 text-amber-500" />
+        <h2 className="text-xl font-semibold mb-2">{t('csvImport.access.adminOnly')}</h2>
+        <p className="text-sm">{t('csvImport.access.adminOnlyDescription')}</p>
+      </div>
+    )
   }
 
   return (

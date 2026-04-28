@@ -30,6 +30,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
+import { demoFeatures, type DemoFeature } from '@/config/features'
 
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
@@ -57,11 +58,13 @@ const mainNavItemsConfig = [
     titleKey: 'nav.complaintsReturns',
     href: '/dashboard/complaints',
     icon: AlertCircle,
+    feature: 'complaintsVisible',
   },
   {
     titleKey: 'nav.analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
+    feature: 'analyticsVisible',
   },
 ]
 
@@ -116,7 +119,12 @@ export function SidebarNav() {
 
   // Translate navigation items
   const mainNavItems = mainNavItemsConfig
-    .filter((item) => !(item as { adminOnly?: boolean }).adminOnly || isAdmin)
+    .filter((item) => {
+      const config = item as { adminOnly?: boolean; feature?: DemoFeature }
+      if (config.adminOnly && !isAdmin) return false
+      if (config.feature && !demoFeatures[config.feature]) return false
+      return true
+    })
     .map((item) => ({
       ...item,
       title: t(item.titleKey),
@@ -419,7 +427,7 @@ export function SidebarNav() {
           </h3>
           <nav className="space-y-1">
             {/* CSV Import Wizard - promoted as top-level item */}
-            {isAdmin && (
+            {isAdmin && demoFeatures.csvImportVisible && (
               <Link
                 to={withBase('/dashboard/csv-import')}
                 className={cn(

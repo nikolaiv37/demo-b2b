@@ -16,7 +16,9 @@ import { MembershipGuard } from '@/components/guards/MembershipGuard'
 import { SignupGuard } from '@/components/guards/SignupGuard'
 import { SlugOnlyGuard } from '@/components/guards/SlugOnlyGuard'
 import { PlatformAdminGuard } from '@/components/guards/PlatformAdminGuard'
-import { useTenant } from '@/lib/tenant/TenantProvider'
+import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
+import { useAuth } from '@/hooks/useAuth'
+import { assertSafeDemoRuntime, demoFeatures, type DemoFeature } from '@/config/features'
 
 // Auth Pages
 const LoginPage = lazy(() => import('@/app/auth/login').then(m => ({ default: m.LoginPage })))
@@ -137,6 +139,34 @@ function LoginRouter() {
   )
 }
 
+function AdminDashboardRoute({ children }: { children: React.ReactNode }) {
+  const { isAdmin, isLoading } = useAuth()
+  const { withBase } = useTenantPath()
+
+  if (isLoading) return <PageLoader />
+  if (!isAdmin) return <Navigate to={withBase('/dashboard')} replace />
+
+  return <>{children}</>
+}
+
+function FeatureDashboardRoute({
+  feature,
+  children,
+  fallback = '/dashboard',
+}: {
+  feature: DemoFeature
+  children: React.ReactNode
+  fallback?: string
+}) {
+  const { withBase } = useTenantPath()
+
+  if (!demoFeatures[feature]) {
+    return <Navigate to={withBase(fallback)} replace />
+  }
+
+  return <>{children}</>
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -147,6 +177,8 @@ const queryClient = new QueryClient({
 })
 
 function App() {
+  assertSafeDemoRuntime()
+
   const handleError = (error: Error, errorInfo: { componentStack?: string | null }) => {
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
@@ -206,11 +238,15 @@ function App() {
                   <Route
                     path="/platform"
                     element={
-                      <PlatformAdminGuard>
-                        <Suspense fallback={<PageLoader />}>
-                          <PlatformLayout />
-                        </Suspense>
-                      </PlatformAdminGuard>
+                      demoFeatures.platformConsoleVisible ? (
+                        <PlatformAdminGuard>
+                          <Suspense fallback={<PageLoader />}>
+                            <PlatformLayout />
+                          </Suspense>
+                        </PlatformAdminGuard>
+                      ) : (
+                        <Navigate to="/" replace />
+                      )
                     }
                   >
                     <Route path="tenants" element={<Suspense fallback={<PageLoader />}><PlatformTenantsPage /></Suspense>} />
@@ -236,17 +272,17 @@ function App() {
                     <Route path="categories" element={<Suspense fallback={<PageLoader />}><CategoriesPage /></Suspense>} />
                     <Route path="categories/:mainCategory" element={<Suspense fallback={<PageLoader />}><CategoriesPage /></Suspense>} />
                     <Route path="categories/:mainCategory/:subCategory" element={<Suspense fallback={<PageLoader />}><CategoriesPage /></Suspense>} />
-                    <Route path="categories/manage" element={<Suspense fallback={<PageLoader />}><ManageCategoriesPage /></Suspense>} />
+                    <Route path="categories/manage" element={<AdminDashboardRoute><Suspense fallback={<PageLoader />}><ManageCategoriesPage /></Suspense></AdminDashboardRoute>} />
                     <Route path="products" element={<Suspense fallback={<PageLoader />}><ProductsPage /></Suspense>} />
                     <Route path="products/:sku" element={<Suspense fallback={<PageLoader />}><ProductDetailPage /></Suspense>} />
                     <Route path="wishlist" element={<Suspense fallback={<PageLoader />}><WishlistPage /></Suspense>} />
                     <Route path="orders" element={<Suspense fallback={<PageLoader />}><OrdersPage /></Suspense>} />
-                    <Route path="complaints" element={<Suspense fallback={<PageLoader />}><ComplaintsPage /></Suspense>} />
-                    <Route path="quotes" element={<Suspense fallback={<PageLoader />}><QuotesPage /></Suspense>} />
-                    <Route path="csv-import" element={<Suspense fallback={<PageLoader />}><CSVImportPage /></Suspense>} />
+                    <Route path="complaints" element={<FeatureDashboardRoute feature="complaintsVisible"><Suspense fallback={<PageLoader />}><ComplaintsPage /></Suspense></FeatureDashboardRoute>} />
+                    <Route path="quotes" element={<FeatureDashboardRoute feature="legacyQuotes" fallback="/dashboard/orders"><Suspense fallback={<PageLoader />}><QuotesPage /></Suspense></FeatureDashboardRoute>} />
+                    <Route path="csv-import" element={<FeatureDashboardRoute feature="csvImportVisible"><Suspense fallback={<PageLoader />}><CSVImportPage /></Suspense></FeatureDashboardRoute>} />
                     <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
-                    <Route path="analytics" element={<Suspense fallback={<PageLoader />}><AnalyticsPage /></Suspense>} />
-                    <Route path="unpaid-balances" element={<Suspense fallback={<PageLoader />}><UnpaidBalancesPage /></Suspense>} />
+                    <Route path="analytics" element={<FeatureDashboardRoute feature="analyticsVisible"><Suspense fallback={<PageLoader />}><AnalyticsPage /></Suspense></FeatureDashboardRoute>} />
+                    <Route path="unpaid-balances" element={<FeatureDashboardRoute feature="unpaidBalances"><Suspense fallback={<PageLoader />}><UnpaidBalancesPage /></Suspense></FeatureDashboardRoute>} />
                     <Route path="clients" element={<Suspense fallback={<PageLoader />}><ClientsPage /></Suspense>} />
                   </Route>
 
@@ -282,17 +318,17 @@ function App() {
                       <Route path="categories" element={<Suspense fallback={<PageLoader />}><CategoriesPage /></Suspense>} />
                       <Route path="categories/:mainCategory" element={<Suspense fallback={<PageLoader />}><CategoriesPage /></Suspense>} />
                       <Route path="categories/:mainCategory/:subCategory" element={<Suspense fallback={<PageLoader />}><CategoriesPage /></Suspense>} />
-                      <Route path="categories/manage" element={<Suspense fallback={<PageLoader />}><ManageCategoriesPage /></Suspense>} />
+                      <Route path="categories/manage" element={<AdminDashboardRoute><Suspense fallback={<PageLoader />}><ManageCategoriesPage /></Suspense></AdminDashboardRoute>} />
                       <Route path="products" element={<Suspense fallback={<PageLoader />}><ProductsPage /></Suspense>} />
                       <Route path="products/:sku" element={<Suspense fallback={<PageLoader />}><ProductDetailPage /></Suspense>} />
                       <Route path="wishlist" element={<Suspense fallback={<PageLoader />}><WishlistPage /></Suspense>} />
                       <Route path="orders" element={<Suspense fallback={<PageLoader />}><OrdersPage /></Suspense>} />
-                      <Route path="complaints" element={<Suspense fallback={<PageLoader />}><ComplaintsPage /></Suspense>} />
-                      <Route path="quotes" element={<Suspense fallback={<PageLoader />}><QuotesPage /></Suspense>} />
-                      <Route path="csv-import" element={<Suspense fallback={<PageLoader />}><CSVImportPage /></Suspense>} />
+                      <Route path="complaints" element={<FeatureDashboardRoute feature="complaintsVisible"><Suspense fallback={<PageLoader />}><ComplaintsPage /></Suspense></FeatureDashboardRoute>} />
+                      <Route path="quotes" element={<FeatureDashboardRoute feature="legacyQuotes" fallback="/dashboard/orders"><Suspense fallback={<PageLoader />}><QuotesPage /></Suspense></FeatureDashboardRoute>} />
+                      <Route path="csv-import" element={<FeatureDashboardRoute feature="csvImportVisible"><Suspense fallback={<PageLoader />}><CSVImportPage /></Suspense></FeatureDashboardRoute>} />
                       <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
-                      <Route path="analytics" element={<Suspense fallback={<PageLoader />}><AnalyticsPage /></Suspense>} />
-                      <Route path="unpaid-balances" element={<Suspense fallback={<PageLoader />}><UnpaidBalancesPage /></Suspense>} />
+                      <Route path="analytics" element={<FeatureDashboardRoute feature="analyticsVisible"><Suspense fallback={<PageLoader />}><AnalyticsPage /></Suspense></FeatureDashboardRoute>} />
+                      <Route path="unpaid-balances" element={<FeatureDashboardRoute feature="unpaidBalances"><Suspense fallback={<PageLoader />}><UnpaidBalancesPage /></Suspense></FeatureDashboardRoute>} />
                       <Route path="clients" element={<Suspense fallback={<PageLoader />}><ClientsPage /></Suspense>} />
                     </Route>
                     <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />

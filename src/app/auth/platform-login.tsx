@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { AlertTriangle, Building2, Loader2, Package } from 'lucide-react'
 import { SLUG_PREFIX } from '@/lib/tenant/constants'
+import { demoFeatures } from '@/config/features'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,10 @@ export function PlatformLoginPage() {
         setStep('password')
         setTimeout(() => passwordRef.current?.focus(), 50)
       } else {
+        if (!demoFeatures.platformConsoleVisible) {
+          setLookupError('No workspace found for this email.')
+          return
+        }
         setLookupInfo('No workspace found. Continue only if you are a platform admin.')
         setStep('password')
         setTimeout(() => passwordRef.current?.focus(), 50)
@@ -162,7 +167,17 @@ export function PlatformLoginPage() {
         return
       }
 
-      // No workspace discovered by email lookup: allow platform admins.
+      // No workspace discovered by email lookup: allow platform admins only when
+      // the internal platform console is visible for this environment.
+      if (!demoFeatures.platformConsoleVisible) {
+        await supabase.auth.signOut({ scope: 'local' })
+        setStep('email')
+        setLookupInfo(null)
+        setDiscoveredTenant(null)
+        setLoginError('No workspace found for this account.')
+        return
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -354,7 +369,7 @@ export function PlatformLoginPage() {
                 ) : (
                   <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-400">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>No workspace found for this email. Platform admin accounts can still sign in.</span>
+                    <span>No workspace found for this email.</span>
                   </div>
                 )}
 

@@ -7,6 +7,7 @@ import { validateTransformedProducts, TransformedProductData } from '@/lib/csv/v
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
 import { useToast } from '@/components/ui/use-toast'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { isLocalDevModeEnabled } from '@/config/features'
 
 export function useCSVImport() {
   const { t } = useTranslation()
@@ -49,7 +50,7 @@ export function useCSVImport() {
 
         // Step 2: Get supplier ID for transformation
         const { data: { user } } = await supabase.auth.getUser()
-        const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+        const isDevMode = isLocalDevModeEnabled()
         const devUserId = isDevMode ? 'dev-user-123' : null
         const supplierId = user?.id || devUserId
 

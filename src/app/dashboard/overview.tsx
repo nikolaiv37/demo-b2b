@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { trackEvent, AnalyticsEvents } from '@/lib/analytics'
+import { demoFeatures } from '@/config/features'
 
 const OverviewChartsSection = lazy(() =>
   import('@/app/dashboard/overview-charts').then((m) => ({ default: m.OverviewChartsSection }))
@@ -770,46 +771,48 @@ export function DashboardOverview() {
         />
         
         {/* Role-based card: Admin sees Active Customers, Company users see Unpaid Balance */}
-        {isAdmin ? (
-          <StatCard
-            title={t('overview.activeCustomers')}
-            value={topStats?.activeCustomers.toString() || '—'}
-            subtitle={t('overview.placedOrders')}
-            icon={Users}
-            color="text-purple-500"
-          />
-        ) : (
-          <GlassCard hover className="relative overflow-hidden">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-1">{t('overview.unpaidBalance')}</p>
-                {isTopLoading || unpaidLoading ? (
-                  <Skeleton className="h-10 w-32 mb-2" />
-                ) : (
-                  <p className="text-3xl font-bold mb-1">
-                    {unpaidData ? formatCurrency(unpaidData.unpaidBalance, 'EUR') : '€0.00'}
+        {(isAdmin || demoFeatures.unpaidBalances) && (
+          isAdmin ? (
+            <StatCard
+              title={t('overview.activeCustomers')}
+              value={topStats?.activeCustomers.toString() || '—'}
+              subtitle={t('overview.placedOrders')}
+              icon={Users}
+              color="text-purple-500"
+            />
+          ) : (
+            <GlassCard hover className="relative overflow-hidden">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground mb-1">{t('overview.unpaidBalance')}</p>
+                  {isTopLoading || unpaidLoading ? (
+                    <Skeleton className="h-10 w-32 mb-2" />
+                  ) : (
+                    <p className="text-3xl font-bold mb-1">
+                      {unpaidData ? formatCurrency(unpaidData.unpaidBalance, 'EUR') : '€0.00'}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {unpaidData?.unpaidOrdersCount === 1
+                      ? `1 ${t('overview.orderAwaitingPayment')}`
+                      : `${unpaidData?.unpaidOrdersCount || 0} ${t('overview.ordersAwaitingPayment')}`}
                   </p>
-                )}
-                <p className="text-sm text-muted-foreground mb-2">
-                  {unpaidData?.unpaidOrdersCount === 1
-                    ? `1 ${t('overview.orderAwaitingPayment')}`
-                    : `${unpaidData?.unpaidOrdersCount || 0} ${t('overview.ordersAwaitingPayment')}`}
-                </p>
-                {unpaidData && unpaidData.unpaidOrdersCount > 0 && (
-                  <button
-                    onClick={() => navigate(`${withBase('/dashboard/orders')}?filter=pending`)}
-                    className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
-                  >
-                    {t('overview.viewPendingOrders')}
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                )}
+                  {unpaidData && unpaidData.unpaidOrdersCount > 0 && (
+                    <button
+                      onClick={() => navigate(`${withBase('/dashboard/orders')}?filter=pending`)}
+                      className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
+                    >
+                      {t('overview.viewPendingOrders')}
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <div className="p-3 rounded-lg bg-white/10 dark:bg-black/10">
+                  <CreditCard className={`w-6 h-6 ${unpaidData && unpaidData.unpaidBalance > 0 ? 'text-amber-500' : 'text-green-500'}`} />
+                </div>
               </div>
-              <div className="p-3 rounded-lg bg-white/10 dark:bg-black/10">
-                <CreditCard className={`w-6 h-6 ${unpaidData && unpaidData.unpaidBalance > 0 ? 'text-amber-500' : 'text-green-500'}`} />
-              </div>
-            </div>
-          </GlassCard>
+            </GlassCard>
+          )
         )}
         
         <StatCard
@@ -826,7 +829,7 @@ export function DashboardOverview() {
       </div>
 
       {/* Admin Only: Unpaid Balances by Company */}
-      {isAdmin && (
+      {demoFeatures.unpaidBalances && isAdmin && (
         <GlassCard className="border border-white/10 dark:border-white/5">
           <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/10 dark:border-white/5">
             <div className="flex items-center gap-3">

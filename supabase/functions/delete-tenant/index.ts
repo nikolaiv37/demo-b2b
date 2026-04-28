@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       let page = 1
       const perPage = 1000
 
-      while (true) {
+      for (;;) {
         const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage })
         if (error) {
           console.warn('listUsers failed while collecting invitees:', error.message)

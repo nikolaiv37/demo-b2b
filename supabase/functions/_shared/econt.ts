@@ -678,6 +678,7 @@ export function buildEcontLabelPayload(input: ShipmentSnapshotInput, defaults: E
   return { label }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getTenantEcontIntegration(adminClient: any, tenantId: string, options?: { requireEnabled?: boolean }) {
   const { data, error } = await adminClient
     .from('tenant_integrations')
@@ -946,6 +947,7 @@ export function getTrackingThrottleMinutes(defaults: EcontIntegrationDefaults): 
   return clampTrackingThrottleMinutes(defaults.tracking_throttle_minutes)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function upsertShipmentDraft(adminClient: any, args: {
   tenantId: string
   shipmentId?: string | null
@@ -1008,6 +1010,7 @@ export async function upsertShipmentDraft(adminClient: any, args: {
   return data as ShipmentRow
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getTenantShipment(adminClient: any, tenantId: string, shipmentId: string) {
   const { data, error } = await adminClient
     .from('shipments')

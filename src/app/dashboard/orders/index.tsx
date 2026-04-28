@@ -47,6 +47,7 @@ import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 import type { ProformaInvoicePDFProps } from '@/components/ProformaInvoicePDF'
 import { Company } from '@/types'
 import { useToast } from '@/components/ui/use-toast'
+import { isLocalDevModeEnabled } from '@/config/features'
 
 // Order status types - new simplified workflow
 type OrderStatus =
@@ -348,7 +349,7 @@ function CompanyOrdersView() {
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
   const [isGeneratingBulkPdfs, setIsGeneratingBulkPdfs] = useState(false)
 
-  const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+  const isDevMode = isLocalDevModeEnabled()
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isDemoMode = supabaseUrl.includes('placeholder')
   // Use the same dev user ID as in useAuth hook

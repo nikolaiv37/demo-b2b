@@ -267,11 +267,6 @@ export function ClientsPage() {
       setIsInviteModalOpen(false)
       setInviteForm({ email: '', company_name: '', commission_rate: 0 })
 
-      // Log token for dev convenience
-      if (result?.invitation?.token) {
-        console.info('[Dev] Invite token:', result.invitation.token)
-        console.info('[Dev] Invite link:', `${window.location.origin}/auth/accept-invite?token=${result.invitation.token}`)
-      }
     } catch (err) {
       toast({
         title: t('distributors.error'),

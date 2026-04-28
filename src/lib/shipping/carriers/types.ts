@@ -40,7 +40,7 @@ export interface CalculateInput {
 }
 
 export interface CalculateResult {
-  shipment: any
+  shipment: unknown
   result: {
     carrier: CarrierCode
     total_price: number | null
@@ -55,7 +55,7 @@ export interface CreateLabelInput {
 }
 
 export interface CreateLabelResult {
-  shipment: any
+  shipment: unknown
   result: {
     carrier: CarrierCode
     waybill_number: string
@@ -77,7 +77,7 @@ export interface TrackResult {
   retry_after_minutes?: number
   next_allowed_at?: string
   throttle_minutes?: number
-  shipment?: any
+  shipment?: unknown
   result?: {
     carrier: CarrierCode
     status: string

@@ -23,6 +23,7 @@ import { ShippingMethod, SHIPPING_METHOD_CONFIG } from '@/types'
 import { cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import { sendNotification } from '@/lib/notifications'
+import { isLocalDevModeEnabled } from '@/config/features'
 
 interface OrderRequestModalProps {
   open: boolean
@@ -50,7 +51,7 @@ export function OrderRequestModal({
       if (!tenantId) {
         throw new Error('Missing tenant context')
       }
-      const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+      const isDevMode = isLocalDevModeEnabled()
       const devUserId = isDevMode ? 'dev-user-123' : null
       
       // In dev mode, allow quote creation without auth
@@ -103,7 +104,7 @@ export function OrderRequestModal({
     },
     onSuccess: (data) => {
       // Invalidate orders query to refresh the orders list
-      const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+      const isDevMode = isLocalDevModeEnabled()
       const devUserId = isDevMode ? 'dev-user-123' : null
       const userId = user?.id || devUserId
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'orders', userId] })

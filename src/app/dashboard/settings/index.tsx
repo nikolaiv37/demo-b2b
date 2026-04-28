@@ -32,6 +32,7 @@ import {
   useMutationRevokeTeamInvite,
 } from '@/hooks/useMutationInviteTeamMember'
 import { EcontIntegrationSettings } from '@/components/integrations/EcontIntegrationSettings'
+import { demoFeatures } from '@/config/features'
 
 type SettingsSection = 'company' | 'team' | 'profile' | 'integrations'
 
@@ -54,7 +55,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (location.hash === '#profile') {
       setActiveSection('profile')
-    } else if (location.hash === '#integrations' && isAdmin) {
+    } else if (location.hash === '#integrations' && isAdmin && demoFeatures.econt) {
       setActiveSection('integrations')
     } else if (location.hash === '#team' && isAdmin) {
       setActiveSection('team')
@@ -380,7 +381,7 @@ export function SettingsPage() {
               <span>{t('nav.company')}</span>
             </button>
 
-            {isAdmin && (
+            {isAdmin && demoFeatures.econt && (
               <button
                 type="button"
                 onClick={() => {
@@ -464,7 +465,7 @@ export function SettingsPage() {
             <TeamSection />
           )}
 
-          {activeSection === 'integrations' && isAdmin && (
+          {activeSection === 'integrations' && isAdmin && demoFeatures.econt && (
             <EcontIntegrationSettings />
           )}
 

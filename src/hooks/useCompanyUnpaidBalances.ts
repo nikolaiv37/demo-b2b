@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { demoFeatures } from '@/config/features'
 
 export interface CompanyUnpaidBalance {
   /** Company name or identifier */
@@ -122,7 +123,7 @@ export function useCompanyUnpaidBalances(limit: number = 10) {
       }
     },
     // Only fetch for admin users
-    enabled: isAdmin && !!user?.id && !!tenantId,
+    enabled: demoFeatures.unpaidBalances && isAdmin && !!user?.id && !!tenantId,
     // Refetch every 30 seconds to stay in sync
     refetchInterval: 30000,
     staleTime: 10000,
@@ -212,7 +213,7 @@ export function useAllCompanyUnpaidBalances() {
         totalOrdersCount,
       }
     },
-    enabled: isAdmin && !!user?.id && !!tenantId,
+    enabled: demoFeatures.unpaidBalances && isAdmin && !!user?.id && !!tenantId,
     refetchInterval: 30000,
     staleTime: 10000,
   })

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { useTenant } from '@/lib/tenant/TenantProvider'
+import { demoFeatures } from '@/config/features'
 
 export interface UnpaidBalanceData {
   /** Sum of all unpaid order totals */
@@ -68,7 +69,7 @@ export function useUnpaidBalance() {
       }
     },
     // Only fetch for non-admin users with valid user ID
-    enabled: !isAdmin && !!user?.id && !!tenantId,
+    enabled: demoFeatures.unpaidBalances && !isAdmin && !!user?.id && !!tenantId,
     // Refetch every 30 seconds to stay in sync with layout topbar
     refetchInterval: 30000,
     staleTime: 10000, // Consider data stale after 10 seconds

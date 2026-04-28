@@ -36,6 +36,7 @@ import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 import { formatPrice, formatDateTime, cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import { ShipmentPanel } from '@/components/shipping/ShipmentPanel'
+import { demoFeatures } from '@/config/features'
 // Proforma PDFs are generated only from company user accounts (see OrdersPage/OrderDetailsSheet)
 
 interface OrderItem {
@@ -891,15 +892,17 @@ export function AdminOrdersView() {
                   </div>
                 )}
 
-                <ShipmentPanel
-                  seed={{
-                    quoteId: selectedOrder.id,
-                    orderNumber: selectedOrder.order_number,
-                    receiverName: selectedOrder.company_name,
-                    receiverPhone: selectedOrder.phone,
-                    receiverEmail: selectedOrder.email,
-                  }}
-                />
+                {demoFeatures.econt && (
+                  <ShipmentPanel
+                    seed={{
+                      quoteId: selectedOrder.id,
+                      orderNumber: selectedOrder.order_number,
+                      receiverName: selectedOrder.company_name,
+                      receiverPhone: selectedOrder.phone,
+                      receiverEmail: selectedOrder.email,
+                    }}
+                  />
+                )}
 
                 {/* Internal Notes (Admin Only) */}
                 {supportsInternalNotes ? (

@@ -43,6 +43,7 @@ export function ProductQuickViewModal({
   const { toast } = useToast()
   const { hasDiscount, commissionRate } = useCommissionRate()
   const { withBase } = useTenantPath()
+  const { t } = useTranslation()
 
   if (!product) return null
 
@@ -52,7 +53,6 @@ export function ProductQuickViewModal({
     ? [product.main_image]
     : []
 
-  const { t } = useTranslation()
   const quantity = product.quantity ?? 0
   const isOutOfStock = quantity === 0
   const hasSku = product.sku && product.sku.trim() !== ''

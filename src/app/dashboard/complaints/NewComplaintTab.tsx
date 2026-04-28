@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import { sendNotification } from '@/lib/notifications'
+import { isLocalDevModeEnabled } from '@/config/features'
 
 interface OrderItem {
   product_id?: string
@@ -76,7 +77,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
 
   // Fetch user's orders (from quotes table - this is the orders table in this system)
-  const isDevMode = import.meta.env.VITE_DEV_MODE === 'true'
+  const isDevMode = isLocalDevModeEnabled()
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isDemoMode = supabaseUrl.includes('placeholder')
   const devUserId = (isDevMode || isDemoMode) ? '00000000-0000-0000-0000-000000000123' : null

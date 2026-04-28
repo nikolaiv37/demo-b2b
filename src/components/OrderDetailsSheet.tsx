@@ -40,6 +40,7 @@ import type { ProformaInvoicePDFProps } from './ProformaInvoicePDF'
 import { supabase } from '@/lib/supabase/client'
 import { Company } from '@/types'
 import { ShipmentPanel } from '@/components/shipping/ShipmentPanel'
+import { demoFeatures } from '@/config/features'
 
 // Order status types - new simplified workflow
 type OrderStatus =
@@ -361,15 +362,17 @@ export function OrderDetailsSheet({
             </div>
           </div>
 
-          <ShipmentPanel
-            seed={{
-              quoteId: order.id,
-              orderNumber: order.order_number,
-              receiverName: order.company_name,
-              receiverPhone: order.phone,
-              receiverEmail: order.email,
-            }}
-          />
+          {demoFeatures.econt && (
+            <ShipmentPanel
+              seed={{
+                quoteId: order.id,
+                orderNumber: order.order_number,
+                receiverName: order.company_name,
+                receiverPhone: order.phone,
+                receiverEmail: order.email,
+              }}
+            />
+          )}
 
           {/* Shipping Method */}
           <div className="bg-card border rounded-lg p-6">

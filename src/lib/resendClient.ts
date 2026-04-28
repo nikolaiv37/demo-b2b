@@ -1,7 +1,6 @@
-// Resend client for sending emails
-// In production, this would be called from a Supabase Edge Function
-
-const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY
+// Email client placeholder.
+// TODO: Route email sending through a Supabase Edge Function; never call Resend
+// directly from browser code or expose a Resend API key through VITE_* env vars.
 
 export interface EmailTemplate {
   to: string
@@ -11,33 +10,11 @@ export interface EmailTemplate {
 }
 
 export async function sendEmail(template: EmailTemplate) {
-  // In a real app, this would call a Supabase Edge Function
-  // that securely uses the Resend API on the server side
-  
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: template.from || 'noreply@furnitrade.com',
-        to: template.to,
-        subject: template.subject,
-        html: template.html,
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to send email')
-    }
-
-    return await response.json()
-  } catch (error) {
-    console.error('Email send error:', error)
-    throw error
+  void template
+  if (import.meta.env.DEV) {
+    console.warn('Email sending is disabled in the browser. Route via Supabase Edge Function before enabling.')
   }
+  return { disabled: true }
 }
 
 // Email templates
@@ -100,4 +77,3 @@ export const EmailTemplates = {
     </div>
   `,
 }
-
