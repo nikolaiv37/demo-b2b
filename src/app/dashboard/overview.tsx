@@ -173,11 +173,14 @@ export function DashboardOverview() {
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
 
-      const allOrdersPromise = supabase
+      let allOrdersPromise = supabase
         .from('quotes')
         .select('total, created_at, user_id, email, status')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
         .eq('tenant_id', tenantId)
+      if (!isAdmin && user?.id) {
+        allOrdersPromise = allOrdersPromise.eq('user_id', user.id)
+      }
 
       const lowStockCountQuery = supabase
         .from('products')
@@ -263,40 +266,47 @@ export function DashboardOverview() {
 
       // Fetch all quotes (treating them as orders since orders table doesn't exist)
       // Status workflow: 'new' (Processing), 'pending' (Awaiting Payment), 'shipped', 'approved' (Completed & Sent)
-      const { data: allOrdersRaw } = await supabase
+      let allOrdersQuery = supabase
         .from('quotes')
         .select('total, created_at, user_id, items, status, id, order_number, company_name, email')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
         .eq('tenant_id', tenantId)
+      if (!isAdmin && user?.id) { allOrdersQuery = allOrdersQuery.eq('user_id', user.id) }
+      const { data: allOrdersRaw } = await allOrdersQuery
       const allOrders = (allOrdersRaw as QuoteRow[] | null) ?? []
 
       // Fetch this month's quotes
-      const { data: thisMonthOrdersRaw } = await supabase
+      let thisMonthQuery = supabase
         .from('quotes')
         .select('total, created_at, items, status')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
         .gte('created_at', startOfMonth.toISOString())
         .eq('tenant_id', tenantId)
+      if (!isAdmin && user?.id) { thisMonthQuery = thisMonthQuery.eq('user_id', user.id) }
+      const { data: thisMonthOrdersRaw } = await thisMonthQuery
       const thisMonthOrders = (thisMonthOrdersRaw as QuoteRow[] | null) ?? []
 
       // Fetch last month's quotes
-      const { data: lastMonthOrdersRaw } = await supabase
+      let lastMonthQuery = supabase
         .from('quotes')
         .select('total, created_at, status')
         .in('status', ['new', 'pending', 'shipped', 'approved'])
         .gte('created_at', startOfLastMonth.toISOString())
         .lte('created_at', endOfLastMonth.toISOString())
         .eq('tenant_id', tenantId)
+      if (!isAdmin && user?.id) { lastMonthQuery = lastMonthQuery.eq('user_id', user.id) }
+      const { data: lastMonthOrdersRaw } = await lastMonthQuery
       const lastMonthOrders = (lastMonthOrdersRaw as QuoteRow[] | null) ?? []
 
       // Fetch recent orders from quotes table (last 5, newest first)
-      // Admin sees all orders, company users see only their own (RLS handles this)
-      const { data: recentOrdersDataRaw, error: recentOrdersError } = await supabase
+      let recentOrdersQuery = supabase
         .from('quotes')
         .select('id, user_id, company_name, email, total, status, created_at, order_number')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(5)
+      if (!isAdmin && user?.id) { recentOrdersQuery = recentOrdersQuery.eq('user_id', user.id) }
+      const { data: recentOrdersDataRaw, error: recentOrdersError } = await recentOrdersQuery
       const recentOrdersData = (recentOrdersDataRaw as QuoteRow[] | null) ?? []
       
       if (recentOrdersError) {
