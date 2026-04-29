@@ -145,7 +145,7 @@ export function CreateTenantModal({ open, onOpenChange, onSuccess }: CreateTenan
             <Input
               id="owner-email"
               type="email"
-              placeholder="owner@example.com"
+              placeholder="owner@company.com"
               value={ownerEmail}
               onChange={(e) => setOwnerEmail(e.target.value)}
               required

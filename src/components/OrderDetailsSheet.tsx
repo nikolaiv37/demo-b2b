@@ -61,7 +61,7 @@ interface OrderItem {
 }
 
 interface Order {
-  id: number
+  id: string
   order_number: number
   user_id: string
   company_name: string
@@ -85,12 +85,13 @@ interface OrderDetailsSheetProps {
 
 function formatOrderDate(dateString: string): string {
   const date = new Date(dateString)
-  const day = date.getDate()
-  const month = date.toLocaleDateString('en-US', { month: 'short' })
-  const year = date.getFullYear()
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  return `${day} ${month} ${year}, ${hours}:${minutes}`
+  return date.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function getStatusBadge(status: OrderStatus | string, t: (key: string) => string) {
@@ -386,12 +387,6 @@ export function OrderDetailsSheet({
                 dropshipping: t('shipping.dropshipping'),
                 shop_delivery: t('shipping.shopDelivery'),
               }
-              const translatedShortLabelMap = {
-                warehouse_pickup: t('shipping.warehousePickupShort'),
-                transport_company: t('shipping.transportCompanyShort'),
-                dropshipping: t('shipping.dropshippingShort'),
-                shop_delivery: t('shipping.shopDeliveryShort'),
-              }
               const IconComponent = method === 'warehouse_pickup' ? Warehouse 
                 : method === 'transport_company' ? Truck 
                 : method === 'dropshipping' ? Package 
@@ -410,7 +405,6 @@ export function OrderDetailsSheet({
                     <IconComponent className={`h-8 w-8 ${colorClass.split(' ').slice(2).join(' ')}`} />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">{translatedShortLabelMap[method]}</p>
                     <p className={`text-lg font-bold ${colorClass.split(' ').slice(2).join(' ')}`}>
                       {translatedLabelMap[method]}
                     </p>

@@ -415,50 +415,46 @@ export function ClientsPage() {
         </div>
         <Button
           onClick={() => setIsInviteModalOpen(true)}
-          className="gap-2 rounded-full px-5 bg-sky-600 hover:bg-sky-700 text-white shadow-md"
+          className="gap-2 px-5 shadow-sm"
         >
           <UserPlus className="w-4 h-4" />
           {t('distributors.inviteClient')}
         </Button>
       </div>
 
-      {/* Info Banner */}
-      <GlassCard className="border border-sky-500/15 bg-gradient-to-br from-sky-50/80 via-white/80 to-emerald-50/80 dark:from-sky-900/30 dark:via-slate-900/80 dark:to-emerald-900/20 backdrop-blur-md shadow-sm">
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          {/* Left: Signup info */}
-          <div className="flex items-start gap-3 flex-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 border border-sky-500/20 shrink-0">
-              <Users className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <GlassCard className="border border-border/60 bg-background/80 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 shrink-0">
+              <Users className="h-4 w-4" />
             </div>
             <div className="space-y-1">
-              <div className="text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
-                {t('nav.distributors')}
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t('distributors.clientsOverviewTitle')}
               </div>
-              <p className="text-sm text-sky-900/80 dark:text-sky-50/90 leading-relaxed">
+              <p className="text-sm text-foreground/90 leading-relaxed">
                 {t('distributors.infoBanner')}
               </p>
             </div>
           </div>
+        </GlassCard>
 
-          {/* Divider on large screens */}
-          <div className="hidden lg:block w-px bg-gradient-to-b from-sky-500/20 via-slate-300/40 to-emerald-500/20" />
-
-          {/* Right: Commission info */}
-          <div className="flex items-start gap-3 flex-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/25 shrink-0">
-              <Percent className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+        <GlassCard className="border border-border/60 bg-background/80 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 shrink-0">
+              <Percent className="h-4 w-4" />
             </div>
             <div className="space-y-1">
-              <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('distributors.commissionInfoTitle')}
               </div>
-              <p className="text-[13px] md:text-sm text-emerald-900/90 dark:text-emerald-50/90 leading-relaxed">
+              <p className="text-sm text-foreground/90 leading-relaxed">
                 {t('distributors.commissionInfoBody')}
               </p>
             </div>
           </div>
-        </div>
-      </GlassCard>
+        </GlassCard>
+      </div>
 
       {/* Search & Filter Bar */}
       <GlassCard>

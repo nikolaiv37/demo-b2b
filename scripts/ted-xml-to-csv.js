@@ -1,6 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 
+// Internal onboarding/import sample only.
+// This TED conversion script is intentionally kept out of the product UI and
+// should not be treated as generic customer-facing import functionality.
 const SCRIPT_DIR = path.dirname(decodeURIComponent(new URL(import.meta.url).pathname))
 const ROOT_DIR = path.resolve(SCRIPT_DIR, '..')
 const INPUT_FILE = path.join(ROOT_DIR, 'ted_bg.xml')

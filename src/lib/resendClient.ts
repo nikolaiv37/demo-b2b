@@ -28,7 +28,7 @@ export const EmailTemplates = {
       <p>Our team will review your request and get back to you within 24 hours.</p>
       <p>Thank you for your business!</p>
       <hr />
-      <p style="color: #666; font-size: 12px;">FurniTrade - B2B Furniture Wholesale</p>
+      <p style="color: #666; font-size: 12px;">Centivon | Demo B2B Portal</p>
     </div>
   `,
 
@@ -47,7 +47,7 @@ export const EmailTemplates = {
       </p>
       <p>Thank you for your business!</p>
       <hr />
-      <p style="color: #666; font-size: 12px;">FurniTrade - B2B Furniture Wholesale</p>
+      <p style="color: #666; font-size: 12px;">Centivon | Demo B2B Portal</p>
     </div>
   `,
 
@@ -60,7 +60,7 @@ export const EmailTemplates = {
       <p>You can track your shipment using the tracking number above.</p>
       <p>Thank you for your business!</p>
       <hr />
-      <p style="color: #666; font-size: 12px;">FurniTrade - B2B Furniture Wholesale</p>
+      <p style="color: #666; font-size: 12px;">Centivon | Demo B2B Portal</p>
     </div>
   `,
 
@@ -73,7 +73,7 @@ export const EmailTemplates = {
       <p>Please feel free to contact us if you have any questions or would like to discuss alternative options.</p>
       <p>Thank you for your understanding.</p>
       <hr />
-      <p style="color: #666; font-size: 12px;">FurniTrade - B2B Furniture Wholesale</p>
+      <p style="color: #666; font-size: 12px;">Centivon | Demo B2B Portal</p>
     </div>
   `,
 }

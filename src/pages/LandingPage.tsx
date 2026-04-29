@@ -110,12 +110,12 @@ const theme = {
 };
 
 const logos = [
-  { name: "Mebelcenter", image: "/mebelcenter..svg" },
-  { name: "All Power", image: "/allpower.avif" },
-  { name: "Domex", image: "/domex.png" },
-  { name: "HobbyFarms", image: "/hobbyfarms.png" },
-  { name: "Transcargo", image: "/transcargo.png" },
-  { name: "AiByLekov", image: "/aibylekov.png" },
+  { name: "Northcrest Supply" },
+  { name: "BlueHarbor Trade" },
+  { name: "Axis Commercial" },
+  { name: "Summit Retail Group" },
+  { name: "PrimeLine Distribution" },
+  { name: "Oakridge Partners" },
 ];
 
 
@@ -307,7 +307,7 @@ export default function LandingPage() {
               <span className="rounded-xl bg-[color:var(--landing-accent)] flex h-9 w-9 items-center justify-center shadow-[0_2px_8px_-2px_rgba(68,64,84,0.3)] transition-all duration-300 group-hover:shadow-[0_4px_12px_-2px_rgba(68,64,84,0.4)] group-hover:-translate-y-0.5">
                 <Sparkles className="h-4 w-4 text-white" />
               </span>
-              <span className="text-[15px] font-semibold text-[color:var(--ink)]">FurniTrade</span>
+              <span className="text-[15px] font-semibold text-[color:var(--ink)]">Centivon</span>
             </Link>
 
             {/* Desktop nav */}
@@ -675,15 +675,8 @@ export default function LandingPage() {
                         key={`set${setIndex}-${logo.name}`}
                         className="flex-shrink-0 group px-2"
                       >
-                        <div className="h-10 md:h-12 flex items-center justify-center opacity-75 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 ease-out">
-                          <img 
-                            src={logo.image} 
-                            alt={logo.name}
-                            loading="lazy"
-                            decoding="async"
-                            fetchPriority="low"
-                            className="h-full w-auto max-w-[100px] md:max-w-[120px] object-contain"
-                          />
+                        <div className="flex h-10 items-center justify-center rounded-full border border-[color:var(--ink-12)] bg-white px-4 text-[12px] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-70)] opacity-80 shadow-[0_6px_20px_-18px_rgba(47,36,58,0.45)] transition-all duration-300 ease-out group-hover:scale-110 group-hover:opacity-100 md:h-12 md:px-5 md:text-[13px]">
+                          {logo.name}
                         </div>
                       </div>
                     ))
@@ -1310,7 +1303,7 @@ export default function LandingPage() {
               >
                 <Sparkles className="h-5 w-5" />
               </span>
-              <span className={theme.text.label}>FurniTrade</span>
+              <span className={theme.text.label}>Centivon</span>
             </div>
             <p className={`${theme.text.bodySm} ${theme.colors.inkMuted}`}>
               {t("landing.footer.tagline")}

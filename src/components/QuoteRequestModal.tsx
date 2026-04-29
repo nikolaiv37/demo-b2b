@@ -80,7 +80,7 @@ export function OrderRequestModal({
           tenant_id: tenantId,
           user_id: userId,
           company_name: company?.name || profile?.full_name || 'Unknown Company',
-          email: user?.email || profile?.email || 'dev@example.com',
+          email: user?.email || profile?.email || 'support@centivon.com',
           phone: null, // Can be added later
           notes: notes.trim() || null,
           items: orderItems,

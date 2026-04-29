@@ -455,7 +455,7 @@ export function PlatformTenantDetailPage() {
               <Input
                 id="admin-email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder="admin@company.com"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 required

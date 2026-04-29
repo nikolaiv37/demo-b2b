@@ -120,12 +120,21 @@ export function CategoriesPage() {
   const subcategories = useMemo(() => {
     if (!selectedMainCategoryData) return []
     return Array.from(selectedMainCategoryData.subcategories.entries()).map(([name, data]) => ({
+      id: data.id,
       name,
       fullCategory: data.fullCategory,
+      slug: data.slug,
       imageUrl: data.imageUrl,
       productCount: data.productCount,
     }))
   }, [selectedMainCategoryData])
+
+  const directProductsOnlySubcategory = useMemo(() => {
+    if (subcategories.length !== 1) return null
+    const [onlySubcategory] = subcategories
+    if (!onlySubcategory || onlySubcategory.slug !== 'all') return null
+    return onlySubcategory
+  }, [subcategories])
 
   // Get selected subcategory data (using normalized slug matching)
   const selectedSubcategoryData = useMemo(() => {
@@ -152,17 +161,22 @@ export function CategoriesPage() {
 
   // Determine the current view level
   const viewLevel = useMemo(() => {
+    if (decodedMainCategory && selectedMainCategoryData && directProductsOnlySubcategory) {
+      return 'products'
+    }
     if (decodedSubCategory && selectedSubcategoryData) return 'products'
     if (decodedMainCategory && selectedMainCategoryData) return 'subcategories'
     return 'main'
-  }, [decodedMainCategory, decodedSubCategory, selectedMainCategoryData, selectedSubcategoryData])
+  }, [decodedMainCategory, decodedSubCategory, selectedMainCategoryData, selectedSubcategoryData, directProductsOnlySubcategory])
+
+  const effectiveSubcategoryData = selectedSubcategoryData || (viewLevel === 'products' ? directProductsOnlySubcategory : null)
 
   // Build category ID filter for product query (normalized architecture)
   // For subcategory view: filter by that specific category_id
   // For main category view: filter by main category ID + all subcategory IDs
   const categoryIds = useMemo((): string[] => {
-    if (viewLevel === 'products' && selectedSubcategoryData) {
-      return [selectedSubcategoryData.id]
+    if (viewLevel === 'products' && effectiveSubcategoryData) {
+      return [effectiveSubcategoryData.id]
     }
     if (viewLevel === 'subcategories' && selectedMainCategoryData) {
       // Include main category ID and all subcategory IDs
@@ -173,7 +187,7 @@ export function CategoriesPage() {
       return ids
     }
     return []
-  }, [viewLevel, selectedMainCategoryData, selectedSubcategoryData])
+  }, [viewLevel, selectedMainCategoryData, effectiveSubcategoryData])
 
   // Fetch products when viewing product level (using normalized category_id)
   const { data: productsData, isLoading: productsLoading } = useQuery({
@@ -309,19 +323,19 @@ export function CategoriesPage() {
     if (selectedMainCategoryData) {
       const mainSlug = selectedMainCategoryData.slug || encodeURIComponent(selectedMainCategoryData.name)
       
-      if (selectedSubcategoryData) {
+      if (effectiveSubcategoryData && effectiveSubcategoryData.slug !== 'all') {
         items.push({
           label: selectedMainCategoryData.name,
           href: withBase(`/dashboard/categories/${mainSlug}`),
         })
-        items.push({ label: selectedSubcategoryData.name })
+        items.push({ label: effectiveSubcategoryData.name })
       } else {
         items.push({ label: selectedMainCategoryData.name })
       }
     }
     
     return items
-  }, [selectedMainCategoryData, selectedSubcategoryData, withBase])
+  }, [selectedMainCategoryData, effectiveSubcategoryData, withBase])
 
   // Render main categories view
   if (viewLevel === 'main') {
@@ -390,7 +404,7 @@ export function CategoriesPage() {
   }
 
   // Render products view (subcategory selected)
-  if (viewLevel === 'products' && selectedSubcategoryData) {
+  if (viewLevel === 'products' && effectiveSubcategoryData) {
     return (
       <div className="space-y-6 pb-24 md:pb-8">
         {/* Breadcrumbs */}
@@ -398,7 +412,11 @@ export function CategoriesPage() {
 
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold mb-2">{selectedSubcategoryData.name}</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {effectiveSubcategoryData.slug === 'all' && selectedMainCategoryData
+              ? selectedMainCategoryData.name
+              : effectiveSubcategoryData.name}
+          </h1>
           <p className="text-muted-foreground">
             {t('categories.products', { count: totalCount })}
           </p>

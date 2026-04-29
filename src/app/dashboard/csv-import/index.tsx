@@ -68,5 +68,13 @@ export function CSVImportPage() {
   }
 
   // Admin users see the full wizard
-  return <CSVImportWizard />
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold mb-2">{t('csvImport.pageTitle')}</h1>
+        <p className="text-muted-foreground">{t('csvImport.pageSubtitle')}</p>
+      </div>
+      <CSVImportWizard />
+    </div>
+  )
 }

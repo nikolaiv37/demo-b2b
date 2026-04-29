@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { AlertTriangle, Loader2, Package } from 'lucide-react'
 import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { demoFeatures } from '@/config/features'
 
 export function LoginPage() {
   const { t } = useTranslation()
@@ -22,7 +24,7 @@ export function LoginPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { tenant, source, domainKind } = useTenant()
+  const { tenant } = useTenant()
   const { withBase } = useTenantPath()
 
   const loginSchema = z.object({
@@ -49,8 +51,6 @@ export function LoginPage() {
       : tenant
         ? withBase('/')
         : '/'
-
-  const canReturnToWorkspaceSelector = domainKind === 'app' && source === 'slug' && !!tenant
 
   // Pick up ?reason=no-membership from auto-signout redirect, then clean the URL
   useEffect(() => {
@@ -144,6 +144,7 @@ export function LoginPage() {
   }
 
   const handleForgotPassword = async () => {
+    if (!demoFeatures.forgotPasswordVisible) return
     const email = getValues('email')
     if (!email) {
       toast({
@@ -181,6 +182,9 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
         <GlassCard>
           <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
@@ -218,14 +222,16 @@ export function LoginPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">{t('auth.password')}</Label>
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                disabled={isResettingPassword}
-                className="text-sm text-primary hover:underline disabled:opacity-50"
-              >
-                {isResettingPassword ? t('auth.sending') : t('auth.forgotPassword')}
-              </button>
+              {demoFeatures.forgotPasswordVisible ? (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={isResettingPassword}
+                  className="text-sm text-primary hover:underline disabled:opacity-50"
+                >
+                  {isResettingPassword ? t('auth.sending') : t('auth.forgotPassword')}
+                </button>
+              ) : null}
             </div>
             <Input
               id="password"
@@ -252,14 +258,6 @@ export function LoginPage() {
             {t('auth.signIn')}
           </Button>
         </form>
-
-        {canReturnToWorkspaceSelector && (
-          <div className="mt-4 text-center">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              Back to all workspaces
-            </Link>
-          </div>
-        )}
 
         {!tenant && (
           <div className="mt-6 text-center text-sm">

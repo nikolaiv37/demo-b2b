@@ -31,7 +31,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Eye, Search, Building2, X } from 'lucide-react'
-import { SHIPPING_METHOD_CONFIG } from '@/types'
 import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
 import { formatPrice, formatDateTime, cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
@@ -50,7 +49,7 @@ interface OrderItem {
 }
 
 interface Order {
-  id: number | string
+  id: string
   order_number: number
   user_id: string
   company_name: string
@@ -165,6 +164,8 @@ export function AdminOrdersView() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [supportsInternalNotes, setSupportsInternalNotes] = useState(true)
+  const [notesDraft, setNotesDraft] = useState('')
+  const [notesDirty, setNotesDirty] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
@@ -264,16 +265,15 @@ export function AdminOrdersView() {
           (quote.user_id ? companyNameByUserId.get(quote.user_id) : undefined) || 'Unknown Company'
         const companyName = quote.company_name || fallbackCompanyName
 
-          const parsedId =
-            typeof quote.id === 'number' ? quote.id : parseInt(String(quote.id ?? ''), 10) || 0
-          const orderNumberRaw = quote.order_number ?? parsedId
+          const orderId = String(quote.id ?? '')
+          const orderNumberRaw = quote.order_number
           const parsedOrderNumber =
             typeof orderNumberRaw === 'number'
               ? orderNumberRaw
-              : parseInt(String(orderNumberRaw ?? ''), 10) || parsedId
+              : parseInt(String(orderNumberRaw ?? ''), 10) || 0
 
           return {
-            id: parsedId,
+            id: orderId,
             order_number: parsedOrderNumber,
             user_id: quote.user_id,
             company_name: companyName,
@@ -388,15 +388,19 @@ export function AdminOrdersView() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
+      setSelectedOrder((prev) =>
+        prev ? { ...prev, internal_notes: notesDraft } : prev
+      )
+      setNotesDirty(false)
       toast({
-        title: 'Notes updated',
-        description: 'Internal notes have been saved.',
+        title: t('orders.notesSaved'),
+        description: t('orders.notesSaved'),
       })
     },
     onError: (error: Error) => {
       toast({
-        title: 'Error updating notes',
-        description: error.message || 'Failed to update internal notes.',
+        title: t('general.error'),
+        description: error.message || t('orders.notesSaveFailed'),
         variant: 'destructive',
       })
     },
@@ -473,10 +477,12 @@ export function AdminOrdersView() {
 
   const handleViewDetails = (order: Order) => {
     setSelectedOrder(order)
+    setNotesDraft(order.internal_notes || '')
+    setNotesDirty(false)
     setDetailsOpen(true)
   }
 
-  const handleStatusChange = (orderId: number | string, newStatus: Order['status']) => {
+  const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
     const order = orders?.find((o) => o.id === orderId)
     updateStatusMutation.mutate({
       id: orderId,
@@ -487,9 +493,24 @@ export function AdminOrdersView() {
     })
   }
 
-  const handleInternalNotesChange = (notes: string) => {
+  const handleInternalNotesSave = () => {
     if (!selectedOrder) return
-    updateInternalNotesMutation.mutate({ id: selectedOrder.id, notes })
+    updateInternalNotesMutation.mutate({ id: selectedOrder.id, notes: notesDraft })
+  }
+
+  const handleDetailsOpenChange = (open: boolean) => {
+    if (!open && notesDirty) {
+      toast({
+        title: t('orders.unsavedNotesTitle'),
+        description: t('orders.unsavedNotesDescription'),
+        variant: 'destructive',
+      })
+      return
+    }
+    if (!open) {
+      setNotesDirty(false)
+    }
+    setDetailsOpen(open)
   }
 
   return (
@@ -761,7 +782,7 @@ export function AdminOrdersView() {
                         onClick={() => handleViewDetails(order)}
                       >
                         <Eye className="w-4 h-4 mr-2" />
-                        View Details
+                        {t('orders.viewDetails')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -773,7 +794,7 @@ export function AdminOrdersView() {
       </div>
 
       {/* Order Details Modal */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      <Dialog open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedOrder && (
             <>
@@ -830,9 +851,6 @@ export function AdminOrdersView() {
                   <p className="text-sm text-muted-foreground mb-2">{t('orders.shipping')}</p>
                   <div className="flex items-center gap-3">
                     <ShippingMethodBadge method={selectedOrder.shipping_method} size="md" />
-                    <span className="text-sm text-muted-foreground">
-                      {SHIPPING_METHOD_CONFIG[selectedOrder.shipping_method || 'shop_delivery']?.label}
-                    </span>
                   </div>
                 </div>
 
@@ -887,7 +905,7 @@ export function AdminOrdersView() {
                 {/* Customer Notes */}
                 {selectedOrder.notes && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Customer Notes</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('orders.customerNotes')}</p>
                     <p className="text-sm whitespace-pre-wrap">{selectedOrder.notes}</p>
                   </div>
                 )}
@@ -907,32 +925,33 @@ export function AdminOrdersView() {
                 {/* Internal Notes (Admin Only) */}
                 {supportsInternalNotes ? (
                   <div>
-                    <Label htmlFor="internal-notes">Internal Notes</Label>
+                    <Label htmlFor="internal-notes">{t('orders.internalNotes')}</Label>
                     <Textarea
                       id="internal-notes"
-                      value={selectedOrder.internal_notes || ''}
+                      value={notesDraft}
                       onChange={(e) => {
-                        const updated = { ...selectedOrder, internal_notes: e.target.value }
-                        setSelectedOrder(updated)
+                        setNotesDraft(e.target.value)
+                        setNotesDirty(e.target.value !== (selectedOrder.internal_notes || ''))
                       }}
-                      onBlur={(e) => {
-                        if (e.target.value !== (selectedOrder.internal_notes || '')) {
-                          handleInternalNotesChange(e.target.value)
-                        }
-                      }}
-                      placeholder="Add internal notes about this order (only visible to admins)..."
+                      placeholder={t('orders.internalNotesPlaceholder')}
                       rows={4}
                       className="mt-2"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      These notes are only visible to admins and will not be shown to the customer.
+                      {t('orders.internalNotesDescription')}
                     </p>
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleInternalNotesSave}
+                        disabled={!notesDirty || updateInternalNotesMutation.isPending}
+                      >
+                        {updateInternalNotesMutation.isPending ? t('complaints.saving') : t('orders.saveNotes')}
+                      </Button>
+                    </div>
                   </div>
-                ) : (
-                  <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    Internal notes are not available for this tenant yet (missing `quotes.internal_notes` migration).
-                  </div>
-                )}
+                ) : null}
 
                 {/* PDF generation buttons removed from admin view.
                     Proforma invoices are generated only from company user accounts. */}

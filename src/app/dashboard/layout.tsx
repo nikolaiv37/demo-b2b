@@ -14,7 +14,6 @@ import {
   ShoppingCart,
   Sun,
   Moon,
-  Settings,
   Building2,
   Phone,
   LogOut,
@@ -29,9 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useDarkMode } from '@/hooks/useDarkMode'
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase/client'
-import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
+import { useTenantPath } from '@/lib/tenant/TenantProvider'
 
 // Buyers section removed — this is a single-wholesaler platform. Stores place orders directly to us.
 
@@ -53,42 +50,8 @@ export function DashboardLayout() {
   const { t } = useTranslation()
   const [cartOpen, setCartOpen] = useState(false)
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
-  const { user, profile, company, isAdmin, signOut } = useAuth()
-  const { tenant } = useTenant()
+  const { profile, company, isAdmin, signOut } = useAuth()
   const { withBase, stripBase } = useTenantPath()
-  const tenantId = tenant?.id
-  
-  // Fetch real status data for badges
-  const { data: statusData } = useQuery({
-    queryKey: ['tenant', tenantId, 'status-badges', user?.id, isAdmin],
-    queryFn: async () => {
-      if (!tenantId) return null
-      if (!isAdmin && !user?.id) return null
-
-      // Fetch pending orders: Processing ('new') + Awaiting Payment ('pending')
-      // These are orders that need attention
-      const { count: pendingCount } = await supabase
-        .from('quotes')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['new', 'pending'])
-        .eq('tenant_id', tenantId)
-
-      // Fetch low stock products (quantity 1-10)
-      const { count: lowStockCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .gt('quantity', 0)
-        .lte('quantity', 10)
-        .eq('tenant_id', tenantId)
-
-      return {
-        pendingOrders: pendingCount || 0,
-        lowStockItems: lowStockCount || 0,
-      }
-    },
-    enabled: !!tenantId && (isAdmin || !!user?.id),
-    refetchInterval: 30000, // Refetch every 30 seconds
-  })
 
   const { getItemCount } = useCartStore()
   const navigate = useNavigate()
@@ -96,9 +59,6 @@ export function DashboardLayout() {
   const { isDark, toggle: toggleTheme } = useDarkMode()
 
   const cartItemCount = getItemCount()
-
-  const pendingOrders = statusData?.pendingOrders || 0
-  const lowStockItems = statusData?.lowStockItems || 0
 
   const accountManagerName = profile?.full_name || null
   const accountManagerPhone = profile?.phone || company?.phone || null
@@ -177,29 +137,6 @@ export function DashboardLayout() {
 
                 {/* Vertical Divider */}
                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
-
-                {/* Status Indicators */}
-                {(pendingOrders > 0 || lowStockItems > 0) && (
-                  <div className="hidden lg:flex items-center gap-2">
-                    {pendingOrders > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full text-xs font-medium">
-                        <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                        <span>{pendingOrders} {t('header.pending')}</span>
-                      </div>
-                    )}
-                    {lowStockItems > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full text-xs font-medium">
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        <span>{lowStockItems} {t('header.lowStock')}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Vertical Divider (only if status indicators are shown) */}
-                {(pendingOrders > 0 || lowStockItems > 0) && (
-                  <div className="hidden lg:block h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
-                )}
 
                 {/* Notification Bell */}
                 <NotificationBell />
@@ -301,25 +238,14 @@ export function DashboardLayout() {
                           {accountManagerName || profile?.full_name || 'User'}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
-                          {profile?.email || 'user@example.com'}
+                          {profile?.email || 'Email unavailable'}
                         </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => {
-                        console.log('Account Settings clicked')
-                        navigate(withBase('/dashboard/settings'))
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <Settings className="mr-2 h-4 w-4" />
-                      {t('header.accountSettings')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        console.log('Company Info clicked')
-                        navigate(withBase('/dashboard/settings'))
+                        navigate(`${withBase('/dashboard/settings')}#company`)
                       }}
                       className="cursor-pointer"
                     >

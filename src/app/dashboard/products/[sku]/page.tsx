@@ -66,7 +66,7 @@ export function ProductDetailPage() {
     return (
       <>
         <Helmet>
-          <title>{t('products.productNotFound')} | Dev Company Wholesale</title>
+          <title>{t('products.productNotFound')} | Demo B2B Portal</title>
         </Helmet>
         <div className="min-h-[60vh] flex items-center justify-center">
           <GlassCard className="max-w-md w-full p-8 text-center">
@@ -90,7 +90,7 @@ export function ProductDetailPage() {
     return (
       <>
         <Helmet>
-          <title>Loading... | Dev Company Wholesale</title>
+          <title>Loading... | Demo B2B Portal</title>
         </Helmet>
         <div className="space-y-6">
           {/* Breadcrumbs skeleton */}
@@ -143,13 +143,13 @@ export function ProductDetailPage() {
     const result = addItem(product, 1, 'buyer')
     if (result.success) {
       toast({
-        title: 'Added to cart',
-        description: `1 × ${product.name} added to cart`,
+        title: t('products.addedToCart'),
+        description: t('products.addedToCartDescription', { name: product.name }),
       })
     } else {
       toast({
-        title: 'Cannot add to cart',
-        description: result.message || 'Unable to add product to cart',
+        title: t('products.cannotAddToCart'),
+        description: result.message || t('products.unableToAddToCart'),
         variant: 'destructive',
       })
     }
@@ -164,13 +164,13 @@ export function ProductDetailPage() {
         setIsPulsing(true)
         setTimeout(() => setIsPulsing(false), 600)
         toast({
-          title: 'Added to wishlist',
-          description: `${product.name} has been added to your wishlist`,
+          title: t('products.addedToWishlist'),
+          description: t('products.addedToWishlistDescription', { name: product.name }),
         })
       } else {
         toast({
-          title: 'Removed from wishlist',
-          description: `${product.name} has been removed from your wishlist`,
+          title: t('products.removedFromWishlist'),
+          description: t('products.removedFromWishlistDescription', { name: product.name }),
         })
       }
     }
@@ -181,7 +181,7 @@ export function ProductDetailPage() {
   return (
     <>
       <Helmet>
-        <title>{product.name} - {product.sku} | Dev Company Wholesale</title>
+        <title>{product.name} - {product.sku} | Demo B2B Portal</title>
         <meta name="description" content={(product.description || `${product.name} - ${product.sku}`).replace(/<[^>]*>/g, '').slice(0, 160)} />
       </Helmet>
 
@@ -190,11 +190,11 @@ export function ProductDetailPage() {
         <nav className="flex items-center gap-2 text-sm text-muted-foreground">
           <Link to={withBase('/dashboard')} className="hover:text-foreground transition-colors flex items-center gap-1">
             <Home className="w-4 h-4" />
-            Dashboard
+            {t('nav.overview')}
           </Link>
           <ChevronRightIcon className="w-4 h-4" />
           <Link to={withBase('/dashboard/products')} className="hover:text-foreground transition-colors">
-            Products
+            {t('products.title')}
           </Link>
           <ChevronRightIcon className="w-4 h-4" />
           <span className="text-foreground font-medium line-clamp-1">{product.name}</span>
@@ -238,7 +238,7 @@ export function ProductDetailPage() {
                           prev === 0 ? images.length - 1 : prev - 1
                         )}
                         className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-3 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
-                        aria-label="Previous image"
+                        aria-label={t('products.previousImage')}
                       >
                         <ChevronLeft className="w-6 h-6" />
                       </button>
@@ -247,7 +247,7 @@ export function ProductDetailPage() {
                           prev === images.length - 1 ? 0 : prev + 1
                         )}
                         className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-3 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
-                        aria-label="Next image"
+                        aria-label={t('products.nextImage')}
                       >
                         <ChevronRight className="w-6 h-6" />
                       </button>
@@ -300,7 +300,7 @@ export function ProductDetailPage() {
                 <h1 className="text-4xl font-bold flex-1">{product.name}</h1>
                 {product.sku && (
                   <TooltipProvider>
-                    <Tooltip content={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+                      <Tooltip content={inWishlist ? t('products.removeFromWishlist') : t('products.addToWishlist')}>
                       <button
                         onClick={handleWishlistToggle}
                         className={cn(
@@ -311,7 +311,7 @@ export function ProductDetailPage() {
                             : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
                           isPulsing && 'animate-pulse'
                         )}
-                        aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                        aria-label={inWishlist ? t('products.removeFromWishlist') : t('products.addToWishlist')}
                       >
                         <Heart
                           className={cn(
@@ -339,7 +339,7 @@ export function ProductDetailPage() {
                     className="gap-1 px-2.5 py-1 text-sm font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
                   >
                     <Percent className="w-4 h-4" />
-                    {Math.round(commissionRate * 100)}% OFF
+                    {t('products.discountBadge', { percent: Math.round(commissionRate * 100) })}
                   </Badge>
                 )}
               </div>
@@ -479,11 +479,43 @@ export function ProductDetailPage() {
           )}
         </div>
 
-        {/* Related Products Placeholder */}
-        <GlassCard>
-          <h2 className="text-2xl font-bold mb-4">{t('products.relatedProducts')}</h2>
-          <p className="text-muted-foreground">{t('products.relatedProductsComingSoon')}</p>
-        </GlassCard>
+        <div className="grid lg:grid-cols-2 gap-8">
+          <GlassCard>
+            <h2 className="text-2xl font-bold mb-4">{t('products.catalogDetails')}</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-border/50 gap-4">
+                <span className="text-muted-foreground">{t('products.sku')}</span>
+                <span className="font-medium text-right break-all">{product.sku}</span>
+              </div>
+              {product.category && (
+                <div className="flex justify-between py-2 border-b border-border/50 gap-4">
+                  <span className="text-muted-foreground">{t('products.category')}</span>
+                  <span className="font-medium text-right">{product.category}</span>
+                </div>
+              )}
+              {product.manufacturer && (
+                <div className="flex justify-between py-2 border-b border-border/50 gap-4">
+                  <span className="text-muted-foreground">{t('products.manufacturer')}</span>
+                  <span className="font-medium text-right">{product.manufacturer}</span>
+                </div>
+              )}
+              <div className="flex justify-between py-2 gap-4">
+                <span className="text-muted-foreground">{t('products.availabilityLabel')}</span>
+                <span className="font-medium text-right">
+                  {product.availability || (isOutOfStock ? t('products.outOfStock') : t('products.inStock'))}
+                </span>
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <h2 className="text-2xl font-bold mb-4">{t('products.orderingInformation')}</h2>
+            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+              <p>{t('products.orderingInformationDescription')}</p>
+              <p>{t('products.orderingInformationNote')}</p>
+            </div>
+          </GlassCard>
+        </div>
       </div>
 
       {/* Add to Order Modal */}

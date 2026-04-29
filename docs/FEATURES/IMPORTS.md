@@ -4,6 +4,7 @@
 - Current production path is admin import at `/dashboard/csv-import` rendering `UniversalImportWizard`.
 - CSV is implemented end-to-end.
 - XML has implemented parser/mapping/validation pipeline, but persistence + operational hardening are partial.
+- The TED XML converter assets in `scripts/ted-xml-to-csv.js` and `ted_bg.xml` are internal onboarding/import samples, not product UI.
 
 ## Current CSV import
 

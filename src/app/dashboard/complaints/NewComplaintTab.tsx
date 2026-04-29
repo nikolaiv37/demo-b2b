@@ -643,7 +643,7 @@ export function NewComplaintTab({ onSubmitted }: { onSubmitted: () => void }) {
           <p className="text-sm text-muted-foreground">
             {t('general.help')}?{' '}
             <a
-              href="mailto:support@furnitrade.com"
+              href="mailto:support@centivon.com"
               className="text-primary hover:underline"
             >
               {t('general.contactSupport')}

@@ -8,7 +8,7 @@ export function PortalNotFound() {
         <AlertCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
         <h1 className="text-2xl font-bold mb-2">Portal not found</h1>
         <p className="text-muted-foreground">
-          This domain is not linked to a Centivon tenant. If you expected access, contact your administrator.
+          This domain is not linked to an active Centivon workspace. If you expected access, contact your administrator.
         </p>
       </GlassCard>
     </div>

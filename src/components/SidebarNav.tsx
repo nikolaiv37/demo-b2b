@@ -8,8 +8,6 @@ import {
   FileText,
   Settings,
   LogOut,
-  Building2,
-  User,
   ChevronDown,
   Heart,
   BarChart3,
@@ -79,6 +77,7 @@ const catalogSubmenuItemsConfig = [
     href: '/dashboard/categories/manage',
     icon: FolderKanban,
     adminOnly: true,
+    feature: 'manageCategoriesSidebarVisible',
   },
   {
     titleKey: 'nav.allProducts',
@@ -92,19 +91,6 @@ const catalogSubmenuItemsConfig = [
   },
 ]
 
-const settingsSubmenuItemsConfig = [
-      {
-        titleKey: 'nav.company',
-        href: '/dashboard/settings#company',
-        icon: Building2,
-      },
-  {
-    titleKey: 'nav.profile',
-    href: '/dashboard/settings#profile',
-    icon: User,
-  },
-]
-
 export function SidebarNav() {
   const { t } = useTranslation()
   const location = useLocation()
@@ -114,7 +100,6 @@ export function SidebarNav() {
   const { count: wishlistCount } = useWishlist()
   const logicalPath = stripBase(location.pathname)
   // Default to open on page load
-  const [settingsOpen, setSettingsOpen] = useState<string>('settings')
   const [catalogOpen, setCatalogOpen] = useState<string>('catalog')
 
   // Translate navigation items
@@ -134,11 +119,6 @@ export function SidebarNav() {
       ...item,
       title: t(item.titleKey),
     }))
-  const settingsSubmenuItems = settingsSubmenuItemsConfig.map(item => ({
-    ...item,
-    title: t(item.titleKey),
-  }))
-
   // Check if item is active
   const isItemActive = (href: string) => {
     if (href === '/dashboard') {
@@ -167,14 +147,6 @@ export function SidebarNav() {
     )
   }
 
-  // Check if Settings or any submenu is active
-  const isSettingsActive = () => {
-    return (
-      logicalPath === '/dashboard/settings' ||
-      settingsSubmenuItems.some((item) => isSubmenuItemActive(item.href))
-    )
-  }
-
   // Auto-open Catalog submenu if on catalog page or any submenu, or use saved state
   useEffect(() => {
     const active = isCatalogActive()
@@ -196,37 +168,10 @@ export function SidebarNav() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, logicalPath])
 
-  // Auto-open Settings submenu if on settings page or any submenu, or use saved state
-  useEffect(() => {
-    const active = isSettingsActive()
-    if (active) {
-      setSettingsOpen('settings')
-      return
-    }
-    // Check localStorage, default to open if not set
-    const savedState = localStorage.getItem('sidebar-settings-open')
-    if (savedState === null) {
-      // First time - default to open
-      setSettingsOpen('settings')
-      localStorage.setItem('sidebar-settings-open', 'true')
-    } else if (savedState === 'true') {
-      setSettingsOpen('settings')
-    } else {
-      setSettingsOpen('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, logicalPath])
-
   // Save catalog submenu state to localStorage
   const handleCatalogToggle = (value: string) => {
     setCatalogOpen(value)
     localStorage.setItem('sidebar-catalog-open', value === 'catalog' ? 'true' : 'false')
-  }
-
-  // Save settings submenu state to localStorage
-  const handleSettingsToggle = (value: string) => {
-    setSettingsOpen(value)
-    localStorage.setItem('sidebar-settings-open', value === 'settings' ? 'true' : 'false')
   }
 
   return (
@@ -253,7 +198,7 @@ export function SidebarNav() {
           </div>
           <div className="flex flex-col min-w-0">
             <h2 className="font-bold text-base text-gray-900 dark:text-white truncate">
-              {company?.name || 'FurniTrade'}
+              {company?.name || 'Demo B2B Portal'}
             </h2>
           </div>
         </Link>
@@ -374,7 +319,11 @@ export function SidebarNav() {
                 <AccordionContent className="pt-1">
                   <div className="space-y-1 pl-6">
                     {catalogSubmenuItems.map((subItem) => {
-                      if ((subItem as { adminOnly?: boolean }).adminOnly && !isAdmin) {
+                      const config = subItem as { adminOnly?: boolean; feature?: DemoFeature }
+                      if (config.adminOnly && !isAdmin) {
+                        return null
+                      }
+                      if (config.feature && !demoFeatures[config.feature]) {
                         return null
                       }
                       const isSubActive = isSubmenuItemActive(subItem.href)
@@ -426,8 +375,8 @@ export function SidebarNav() {
             {t('nav.toolsAndAccount')}
           </h3>
           <nav className="space-y-1">
-            {/* CSV Import Wizard - promoted as top-level item */}
-            {isAdmin && demoFeatures.csvImportVisible && (
+            {/* CSV Import Wizard - kept available by route, hidden from demo nav by default */}
+            {isAdmin && demoFeatures.csvImportVisible && demoFeatures.csvImportSidebarVisible && (
               <Link
                 to={withBase('/dashboard/csv-import')}
                 className={cn(
@@ -442,124 +391,18 @@ export function SidebarNav() {
               </Link>
             )}
 
-            {/* Settings with Submenu */}
-            <Accordion
-              type="single"
-              collapsible
-              value={settingsOpen}
-              onValueChange={handleSettingsToggle}
-              className="w-full"
+            <Link
+              to={withBase('/dashboard/settings')}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
+                logicalPath === '/dashboard/settings'
+                  ? 'bg-[#0f172a] dark:bg-[#0f172a] text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+              )}
             >
-              <AccordionItem value="settings" className="border-0">
-                {/* Hidden AccordionTrigger for Radix to work properly */}
-                <AccordionTrigger className="hidden" />
-                <div 
-                  className={cn(
-                    'flex items-center rounded-lg transition-all duration-150',
-                    isSettingsActive()
-                      ? 'bg-[#0f172a] dark:bg-[#0f172a]'
-                      : ''
-                  )}
-                >
-                  {/* Settings Icon and Text - Clickable */}
-                  <div
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 transition-all duration-150 flex-1 cursor-pointer rounded-l-lg',
-                      isSettingsActive()
-                        ? 'text-white font-semibold hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
-                    )}
-                    onClick={() => {
-                      // Navigate to settings if not already there
-                      if (logicalPath !== '/dashboard/settings') {
-                        navigate(withBase('/dashboard/settings'))
-                      }
-                      // Toggle accordion
-                      handleSettingsToggle(settingsOpen === 'settings' ? '' : 'settings')
-                    }}
-                  >
-                    <Settings className={cn(
-                      'w-5 h-5 flex-shrink-0',
-                      isSettingsActive() ? 'text-white' : 'text-gray-700 dark:text-gray-300'
-                    )} />
-                    <span className="font-medium flex-1 text-xs uppercase tracking-wide">{t('nav.settings')}</span>
-                  </div>
-                  {/* Custom chevron button - always visible, good looking, and rotates */}
-                  <button
-                    type="button"
-                    className={cn(
-                      'p-2 rounded-r-lg transition-all duration-150 flex items-center justify-center relative z-10',
-                      isSettingsActive()
-                        ? 'hover:bg-[#1e293b] dark:hover:bg-[#1e293b]'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                    )}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleSettingsToggle(settingsOpen === 'settings' ? '' : 'settings')
-                    }}
-                    aria-label={t('nav.toggleSettingsMenu')}
-                    style={{
-                      minWidth: '32px',
-                      minHeight: '32px'
-                    }}
-                  >
-                    <ChevronDown 
-                      className={cn(
-                        'h-4 w-4 shrink-0 transition-transform duration-200',
-                        settingsOpen === 'settings' && 'rotate-180',
-                        // Force color classes
-                        isSettingsActive() ? 'text-white' : 'text-gray-800 dark:text-gray-300'
-                      )}
-                      style={{
-                        opacity: 1,
-                        visibility: 'visible',
-                        display: 'block',
-                        pointerEvents: 'none',
-                        stroke: isSettingsActive() ? '#ffffff' : '#1f2937',
-                        strokeWidth: isSettingsActive() ? 3.5 : 2.5,
-                        fill: 'none',
-                        filter: isSettingsActive() ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none'
-                      }}
-                    />
-                  </button>
-                </div>
-                <AccordionContent className="pt-1">
-                  <div className="space-y-1 pl-6">
-                    {settingsSubmenuItems
-                      .filter((subItem) => {
-                        // Hide CSV Import unless user is admin
-                        if (subItem.href === '/dashboard/csv-import' && !isAdmin) {
-                          return false
-                        }
-                        return true
-                      })
-                      .map((subItem) => {
-                        const isSubActive = isSubmenuItemActive(subItem.href)
-                        return (
-                          <Link
-                            key={subItem.href}
-                            to={
-                              subItem.href.includes('#')
-                                ? `${withBase(subItem.href.split('#')[0])}#${subItem.href.split('#')[1]}`
-                                : withBase(subItem.href)
-                            }
-                            className={cn(
-                              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
-                              isSubActive
-                                ? 'bg-[#0f172a]/10 dark:bg-[#0f172a]/20 text-[#0f172a] dark:text-white font-semibold'
-                                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                            )}
-                          >
-                            <subItem.icon className="w-4 h-4" />
-                            <span className="text-xs uppercase tracking-wide">{subItem.title}</span>
-                          </Link>
-                        )
-                      })}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium flex-1 text-xs uppercase tracking-wide">{t('nav.settings')}</span>
+            </Link>
 
             {/* Logout */}
             <Button

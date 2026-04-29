@@ -118,6 +118,8 @@ export function AdminComplaintsView() {
   const { t } = useTranslation()
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [notesDraft, setNotesDraft] = useState('')
+  const [notesDirty, setNotesDirty] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
@@ -328,15 +330,22 @@ export function AdminComplaintsView() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-complaints'] })
+      if (selectedComplaint) {
+        setSelectedComplaint({
+          ...selectedComplaint,
+          internal_notes: notesDraft,
+        })
+      }
+      setNotesDirty(false)
       toast({
-        title: t('complaints.noteAdded'),
-        description: t('complaints.noteAdded'),
+        title: t('complaints.notesSaved'),
+        description: t('complaints.notesSaved'),
       })
     },
     onError: (error: Error) => {
       toast({
         title: t('complaints.error'),
-        description: error.message || t('complaints.failedToSubmit'),
+        description: error.message || t('complaints.notesSaveFailed'),
         variant: 'destructive',
       })
     },
@@ -397,6 +406,8 @@ export function AdminComplaintsView() {
 
   const handleViewDetails = (complaint: Complaint) => {
     setSelectedComplaint(complaint)
+    setNotesDraft(complaint.internal_notes || '')
+    setNotesDirty(false)
     setDetailsOpen(true)
   }
 
@@ -410,9 +421,27 @@ export function AdminComplaintsView() {
     })
   }
 
-  const handleInternalNotesChange = (notes: string) => {
+  const handleInternalNotesSave = () => {
     if (!selectedComplaint) return
-    updateInternalNotesMutation.mutate({ id: selectedComplaint.id, notes })
+    updateInternalNotesMutation.mutate({ id: selectedComplaint.id, notes: notesDraft })
+  }
+
+  const handleDetailsOpenChange = (open: boolean) => {
+    if (!open && notesDirty) {
+      toast({
+        title: t('complaints.unsavedNotesTitle'),
+        description: t('complaints.unsavedNotesDescription'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setDetailsOpen(open)
+    if (!open) {
+      setSelectedComplaint(null)
+      setNotesDraft('')
+      setNotesDirty(false)
+    }
   }
 
   return (
@@ -614,7 +643,7 @@ export function AdminComplaintsView() {
       </div>
 
       {/* Complaint Details Modal */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      <Dialog open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedComplaint && (
             <>
@@ -737,23 +766,27 @@ export function AdminComplaintsView() {
                   <Label htmlFor="internal-notes">{t('complaints.internalNotes')}</Label>
                   <Textarea
                     id="internal-notes"
-                    value={selectedComplaint.internal_notes || ''}
+                    value={notesDraft}
                     onChange={(e) => {
-                      const updated = { ...selectedComplaint, internal_notes: e.target.value }
-                      setSelectedComplaint(updated)
-                    }}
-                    onBlur={(e) => {
-                      if (e.target.value !== (selectedComplaint.internal_notes || '')) {
-                        handleInternalNotesChange(e.target.value)
-                      }
+                      setNotesDraft(e.target.value)
+                      setNotesDirty(e.target.value !== (selectedComplaint.internal_notes || ''))
                     }}
                     placeholder={t('complaints.addNote')}
                     rows={4}
                     className="mt-2"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t('complaints.internalNotesDescription')}
-                  </p>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      {t('complaints.internalNotesDescription')}
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={handleInternalNotesSave}
+                      disabled={!notesDirty || updateInternalNotesMutation.isPending}
+                    >
+                      {t('complaints.saveNotes')}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>

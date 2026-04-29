@@ -427,7 +427,7 @@ export function AcceptInvitePage() {
                     <Input
                       id="magic-email"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="name@company.com"
                       value={magicLinkEmail}
                       onChange={(e) => setMagicLinkEmail(e.target.value)}
                       disabled={sendingMagicLink}

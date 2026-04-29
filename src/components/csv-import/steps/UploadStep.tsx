@@ -5,16 +5,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
-import { 
-  Upload, 
-  FileSpreadsheet, 
-  CheckCircle2, 
+import {
+  Upload,
+  FileSpreadsheet,
+  CheckCircle2,
   AlertCircle,
   Download,
-  Building2,
   Columns,
   Package,
   Zap,
+  Building2,
 } from 'lucide-react'
 import type { DistributorPreset } from '@/lib/csv/distributors'
 
@@ -284,41 +284,33 @@ TABLE-001;Coffee Table;Solid wood coffee table;Tables;WoodWorks;499.99;349.99;30
         </GlassCard>
       )}
 
-      {/* Supported Distributors Info */}
+      {/* Import flow summary */}
       {!detectedDistributor && (
         <GlassCard>
           <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
-            {t('csvImport.upload.supportedDistributors')}
+            <Upload className="w-5 h-5" />
+            {t('csvImport.upload.importFlowTitle')}
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {[
-              { name: 'Megapap', status: '100%', color: 'green' },
-              { name: 'B2BMarkt', status: '95%', color: 'green' },
-              { name: 'IKEA', status: '88%', color: 'amber' },
-              { name: 'Generic', status: 'Auto', color: 'blue' },
-            ].map((dist) => (
-              <div 
-                key={dist.name}
-                className="rounded-lg border p-3 flex items-center justify-between"
+              t('csvImport.upload.flowUpload'),
+              t('csvImport.upload.flowMapColumns'),
+              t('csvImport.upload.flowPreview'),
+              t('csvImport.upload.flowImport'),
+            ].map((step, index) => (
+              <div
+                key={step}
+                className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3"
               >
-                <span className="font-medium">{dist.name}</span>
-                <Badge 
-                  variant="outline" 
-                  className={cn(
-                    'text-xs',
-                    dist.color === 'green' && 'border-green-500 text-green-600',
-                    dist.color === 'amber' && 'border-amber-500 text-amber-600',
-                    dist.color === 'blue' && 'border-blue-500 text-blue-600',
-                  )}
-                >
-                  {dist.status}
-                </Badge>
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                  {t('csvImport.upload.stepLabel', { step: index + 1 })}
+                </div>
+                <p className="text-sm font-medium leading-relaxed">{step}</p>
               </div>
             ))}
           </div>
           <p className="text-sm text-muted-foreground mt-4">
-            {t('csvImport.upload.dontSeeDistributor')}
+            {t('csvImport.upload.importFlowDescription')}
           </p>
         </GlassCard>
       )}

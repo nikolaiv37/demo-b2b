@@ -118,6 +118,8 @@ interface ProductCategoryRow {
   sku?: string | null
 }
 
+const DEMO_REVENUE_STATUSES = ['new', 'pending', 'shipped', 'approved'] as const
+
 export function DashboardOverview() {
   const { t } = useTranslation()
   const { user, isAdmin } = useAuth()
@@ -176,7 +178,7 @@ export function DashboardOverview() {
       let allOrdersPromise = supabase
         .from('quotes')
         .select('total, created_at, user_id, email, status')
-        .in('status', ['new', 'pending', 'shipped', 'approved'])
+        .in('status', [...DEMO_REVENUE_STATUSES])
         .eq('tenant_id', tenantId)
       if (!isAdmin && user?.id) {
         allOrdersPromise = allOrdersPromise.eq('user_id', user.id)
@@ -218,12 +220,9 @@ export function DashboardOverview() {
         return createdAt >= startOfLastMonth && createdAt <= endOfLastMonth
       })
 
-      const thisMonthCompleted = thisMonthOrders.filter((o) => o.status === 'approved')
-      const lastMonthCompleted = lastMonthOrders.filter((o) => o.status === 'approved')
-
       const totalRevenue = allOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
-      const thisMonthRevenue = thisMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
-      const lastMonthRevenue = lastMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
 
       const uniqueCustomers = new Set(
         allOrders.map((o) => o.user_id || o.email).filter(Boolean)
@@ -269,7 +268,7 @@ export function DashboardOverview() {
       let allOrdersQuery = supabase
         .from('quotes')
         .select('total, created_at, user_id, items, status, id, order_number, company_name, email')
-        .in('status', ['new', 'pending', 'shipped', 'approved'])
+        .in('status', [...DEMO_REVENUE_STATUSES])
         .eq('tenant_id', tenantId)
       if (!isAdmin && user?.id) { allOrdersQuery = allOrdersQuery.eq('user_id', user.id) }
       const { data: allOrdersRaw } = await allOrdersQuery
@@ -279,7 +278,7 @@ export function DashboardOverview() {
       let thisMonthQuery = supabase
         .from('quotes')
         .select('total, created_at, items, status')
-        .in('status', ['new', 'pending', 'shipped', 'approved'])
+        .in('status', [...DEMO_REVENUE_STATUSES])
         .gte('created_at', startOfMonth.toISOString())
         .eq('tenant_id', tenantId)
       if (!isAdmin && user?.id) { thisMonthQuery = thisMonthQuery.eq('user_id', user.id) }
@@ -290,7 +289,7 @@ export function DashboardOverview() {
       let lastMonthQuery = supabase
         .from('quotes')
         .select('total, created_at, status')
-        .in('status', ['new', 'pending', 'shipped', 'approved'])
+        .in('status', [...DEMO_REVENUE_STATUSES])
         .gte('created_at', startOfLastMonth.toISOString())
         .lte('created_at', endOfLastMonth.toISOString())
         .eq('tenant_id', tenantId)
@@ -374,17 +373,9 @@ export function DashboardOverview() {
       // Calculate stats
       // Revenue includes all orders (Processing, Awaiting Payment, Shipped, Completed)
       // 'approved' = Completed & Sent (paid), others are in progress
-      const approvedOrders = allOrders.filter((o) => 
-        o.status === 'approved' || o.status === 'shipped' || o.status === 'new' || o.status === 'pending'
-      )
-      const totalRevenue = approvedOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
-      
-      // For revenue trend, count completed orders ('approved' = Completed & Sent)
-      const thisMonthCompleted = thisMonthOrders.filter((o) => o.status === 'approved')
-      const thisMonthRevenue = thisMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
-      
-      const lastMonthCompleted = lastMonthOrders.filter((o) => o.status === 'approved')
-      const lastMonthRevenue = lastMonthCompleted.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const totalRevenue = allOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
+      const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
       
       // For order counts, show all orders
       const totalOrders = allOrders.length
@@ -411,9 +402,9 @@ export function DashboardOverview() {
       }
       
 
-      // Revenue by day (this month) - only count completed orders
+      // Revenue by day (this month) - use the same demo revenue status scope as Orders
       const revenueByDayMap = new Map<string, number>()
-      thisMonthCompleted.forEach((order) => {
+      thisMonthOrders.forEach((order) => {
         const date = new Date(order.created_at ?? 0).toISOString().split('T')[0]
         revenueByDayMap.set(date, (revenueByDayMap.get(date) || 0) + Number(order.total || 0))
       })

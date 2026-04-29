@@ -5,8 +5,11 @@ export const demoFeatures = {
   legacyQuotes: false,
   platformConsoleVisible: false,
   csvImportVisible: true,
+  csvImportSidebarVisible: true,
   complaintsVisible: true,
-  analyticsVisible: true,
+  analyticsVisible: false,
+  manageCategoriesSidebarVisible: false,
+  forgotPasswordVisible: false,
 } as const
 
 export type DemoFeature = keyof typeof demoFeatures

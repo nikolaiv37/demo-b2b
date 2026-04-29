@@ -68,7 +68,7 @@ interface OrderItem {
 }
 
 interface Order {
-  id: number
+  id: string
   order_number: number
   user_id: string
   company_name: string
@@ -346,7 +346,7 @@ function CompanyOrdersView() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [shippingFilter, setShippingFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<string>('all')
-  const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set())
   const [isGeneratingBulkPdfs, setIsGeneratingBulkPdfs] = useState(false)
 
   const isDevMode = isLocalDevModeEnabled()
@@ -405,13 +405,12 @@ function CompanyOrdersView() {
         // Default status if not in map
         const mappedStatus = statusMap[rawStatus] || 'processing'
 
-        const parsedId =
-          typeof quote.id === 'number' ? quote.id : parseInt(String(quote.id ?? ''), 10) || 0
+        const parsedId = String(quote.id ?? '')
         const orderNumberRaw = quote.order_number ?? parsedId
         const parsedOrderNumber =
           typeof orderNumberRaw === 'number'
             ? orderNumberRaw
-            : parseInt(String(orderNumberRaw ?? ''), 10) || parsedId
+            : parseInt(String(orderNumberRaw ?? ''), 10) || 0
 
         const shippingMethod =
           quote.shipping_method === 'warehouse_pickup' ||
@@ -523,7 +522,7 @@ function CompanyOrdersView() {
     }
   }
 
-  const handleSelectOrder = (orderId: number, checked: boolean) => {
+  const handleSelectOrder = (orderId: string, checked: boolean) => {
     const newSelected = new Set(selectedOrders)
     if (checked) {
       newSelected.add(orderId)
