@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { initAnalytics } from './lib/analytics'
+import { initSentry } from './lib/sentry'
 import './lib/i18n' // Initialize i18n
+
+initSentry()
 
 // Defer analytics initialization until after first paint
 if (typeof requestIdleCallback !== 'undefined') {
@@ -17,4 +20,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )
-

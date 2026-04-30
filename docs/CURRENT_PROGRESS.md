@@ -56,6 +56,24 @@ Verified:
 - Admin receives/handles orders.
 - Dashboard analytics are correctly scoped.
 
+### ✅ Етап 3 — Clean Demo Branding
+Completed.
+
+### ✅ Етап 4 — Demo UX / Operations Stabilization
+Core completed.
+
+### ✅ Етап 5 — Observability + Minimal Smoke Tests
+Completed.
+
+Implemented:
+- frontend Sentry bootstrap for React/Vite behind `VITE_SENTRY_DSN`
+- safe Sentry context sync for user id, tenant id/slug, and role only
+- privacy guardrails to avoid breadcrumbs, request bodies, cookies, headers, replay, and sensitive URL token leakage
+- lightweight static smoke checks via `npm run smoke`
+- `npm run verify` wrapper for build + smoke
+- observability/runbook doc:
+  - `docs/OBSERVABILITY_AND_SMOKE_TESTS.md`
+
 ## Important created/updated files
 
 Audit/context:
@@ -115,44 +133,12 @@ Remaining risks:
 
 ## Next roadmap step
 
-### ⏭️ Етап 3 — Clean Demo Branding
-
-Goal:
-Make demo-b2b look like a clean professional B2B portal demo, not a copied mixed project.
-
-Run next prompt:
-
-Prepare demo-b2b visual and branding cleanup.
-
-Goal:
-Make the app look like a clean professional B2B portal demo, not a copied mixed project.
-
-Tasks:
-1. Find visible references to:
-   - FurniTrade
-   - B2Bcenter
-   - Lina Trade
-   - TED
-   - Mebelcenter
-   - All Power
-   - old placeholder emails/domains
-2. Create a report first:
-   BRANDING_CLEANUP_REPORT.md
-3. Then replace visible generic product branding with:
-   - Product/company brand: Centivon
-   - Generic demo tenant wording: Demo B2B Portal
-   - Support email placeholder: support@centivon.com, only if needed
-4. Do not remove TED import scripts yet; mark them internal-only if referenced.
-5. Ensure login, dashboard shell, landing, sidebar, emails/templates, page titles, favicon/title are consistent.
-6. Run npm run build.
-7. Return changed files and any remaining branding references.
+Next sequence:
+1. manual final demo QA
+2. Bulgarian offer concepts / pricing packages
+3. pricing/package PDF or DOCX
+4. then P1 production hardening
 
 ## Important rule for next session
 
-Do not start pricing PDF/offers before Етап 3 is finished.
-
-After Етап 3:
-1. prepare demo walkthrough script
-2. prepare Bulgarian offer concepts
-3. create pricing/package PDF or DOCX
-4. then plan P1 production hardening
+Do not start P1 production hardening before the manual final demo QA and offer/package materials are prepared.

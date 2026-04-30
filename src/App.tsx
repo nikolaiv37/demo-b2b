@@ -19,6 +19,8 @@ import { PlatformAdminGuard } from '@/components/guards/PlatformAdminGuard'
 import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { useAuth } from '@/hooks/useAuth'
 import { assertSafeDemoRuntime, demoFeatures, type DemoFeature } from '@/config/features'
+import { captureAppError, setSentryUserContext } from '@/lib/sentry'
+import { useEffect } from 'react'
 
 // Auth Pages
 const LoginPage = lazy(() => import('@/app/auth/login').then(m => ({ default: m.LoginPage })))
@@ -176,10 +178,32 @@ const queryClient = new QueryClient({
   },
 })
 
+function SentryContextBridge() {
+  const { tenant, membership } = useTenant()
+  const { user, profile } = useAuth()
+
+  useEffect(() => {
+    setSentryUserContext({
+      userId: user?.id ?? null,
+      tenantId: tenant?.id ?? null,
+      tenantSlug: tenant?.slug ?? null,
+      role: membership?.role ?? profile?.role ?? null,
+    })
+  }, [membership?.role, profile?.role, tenant?.id, tenant?.slug, user?.id])
+
+  return null
+}
+
 function App() {
   assertSafeDemoRuntime()
 
   const handleError = (error: Error, errorInfo: { componentStack?: string | null }) => {
+    captureAppError(error, {
+      componentStack: errorInfo.componentStack || undefined,
+      handled: true,
+      source: 'react-error-boundary',
+    })
+
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
       console.error('Error caught by boundary:', error)
@@ -200,6 +224,7 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <TenantProvider>
+              <SentryContextBridge />
               <TenantBootstrapGate>
                 <Routes>
                   {/* Root Route - domain aware */}
