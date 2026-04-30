@@ -678,10 +678,10 @@ export function CSVImportWizard() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center shadow-lg">
               <Upload className="w-5 h-5 text-white" />
             </div>
-            CSV Import Wizard
+            {t('csvImport.pageTitle')}
           </h1>
           <p className="text-muted-foreground">
-            Import products from any distributor with intelligent auto-detection
+            {t('csvImport.pageSubtitle')}
           </p>
         </div>
         
@@ -693,7 +693,7 @@ export function CSVImportWizard() {
           className="bg-red-600 hover:bg-red-700 text-white"
         >
           <Trash2 className="w-4 h-4 mr-2" />
-          Delete All Products
+          {t('csvImport.deleteAllProducts')}
         </Button>
       </div>
 
@@ -913,7 +913,7 @@ export function CSVImportWizard() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <AlertTriangle className="w-5 h-5" />
-              Delete All Products
+              {t('csvImport.deleteAllProducts')}
             </DialogTitle>
             <DialogDescription className="pt-2">
               This action will permanently delete <strong>ALL products</strong> from the database.
@@ -965,7 +965,7 @@ export function CSVImportWizard() {
               ) : (
                 <>
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Delete All Products
+                  {t('csvImport.deleteAllProducts')}
                 </>
               )}
             </Button>

@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Sun,
   Moon,
+  Settings,
   Building2,
   Phone,
   LogOut,
@@ -243,6 +244,15 @@ export function DashboardLayout() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        navigate(`${withBase('/dashboard/settings')}#profile`)
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      {t('settings.profileSettings')}
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
                         navigate(`${withBase('/dashboard/settings')}#company`)

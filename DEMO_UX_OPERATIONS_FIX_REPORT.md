@@ -161,3 +161,40 @@ Date: 2026-04-29
 - Remaining build warnings are unchanged and non-blocking:
   - `PortalNotFound.tsx` is both dynamically and statically imported
   - large vendor chunks remain in the production bundle
+
+## Small rollback/polish — profile settings and CSV wording
+
+- What was restored:
+  - restored the `Profile Settings` item in the topbar dropdown and routed it to the `#profile` section in Settings
+  - restored a profile/account section in `Settings` with avatar, full name, phone, company, login email, and role/account-manager style presentation
+  - kept `Company Information` routing to the `#company` section
+  - renamed visible CSV import navigation and page wording to `CSV Product Import` / `Импорт на продукти от CSV`
+  - fixed the missing `csvImport.upload.importFlowTitle` translation and translated the visible `Delete all products` action
+- What remains hidden:
+  - the broken change-password UI remains removed and is not shown in Settings or the topbar flow
+- Files changed:
+  - `src/app/dashboard/layout.tsx`
+  - `src/app/dashboard/settings/index.tsx`
+  - `src/components/csv-import/CSVImportWizard.tsx`
+  - `src/locales/en.json`
+  - `src/locales/bg.json`
+  - `DEMO_UX_OPERATIONS_FIX_REPORT.md`
+- Build result:
+  - `npm run build` passed
+
+## Profile edit polish
+
+- What is editable:
+  - full name and phone in the `Profile Settings` section
+  - company name from the same profile form when the current workspace already has a writable `companies` record behind the existing settings flow
+- What remains read-only:
+  - login email stays visible but read-only
+- Password change:
+  - password change remains intentionally hidden in the demo copy and no password UI was restored
+- Files changed:
+  - `src/app/dashboard/settings/index.tsx`
+  - `src/locales/en.json`
+  - `src/locales/bg.json`
+  - `DEMO_UX_OPERATIONS_FIX_REPORT.md`
+- Build result:
+  - `npm run build` passed
