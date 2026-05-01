@@ -198,3 +198,28 @@ Date: 2026-04-29
   - `DEMO_UX_OPERATIONS_FIX_REPORT.md`
 - Build result:
   - `npm run build` passed
+
+## Role-based catalog/product UX cleanup
+
+- Admin buyer controls hidden:
+  - hid quantity selectors, add-to-cart actions, quick-add ordering actions, wishlist bulk order CTA, and the topbar cart/order drawer entry points for admin/owner users
+- Company buyer controls preserved:
+  - kept product card ordering, quick view ordering, product detail ordering, and cart/order flow for company/member users
+- Product detail availability cleanup:
+  - removed the duplicate raw supplier availability pill, kept one clean translated availability state, and added normalized stock quantity display where numeric stock exists
+- Description duplication cleanup:
+  - removed the repeated long description from the hero/details area and kept the full description in the lower `Description` card
+- Files changed:
+  - `src/app/dashboard/layout.tsx`
+  - `src/app/dashboard/products/index.tsx`
+  - `src/app/dashboard/categories/index.tsx`
+  - `src/app/dashboard/wishlist/index.tsx`
+  - `src/app/dashboard/products/[sku]/page.tsx`
+  - `src/components/ProductGridCard.tsx`
+  - `src/components/ProductQuickViewModal.tsx`
+  - `src/lib/productAvailability.ts`
+  - `src/locales/en.json`
+  - `src/locales/bg.json`
+  - `DEMO_UX_OPERATIONS_FIX_REPORT.md`
+- Build/smoke result:
+  - `npm run verify` passed

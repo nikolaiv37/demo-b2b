@@ -14,6 +14,7 @@ import { Eye, Package, ShoppingCart, Plus, Minus, Heart, Percent } from 'lucide-
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
+import { getAvailabilityState, hasNumericStock } from '@/lib/productAvailability'
 
 interface ProductGridCardProps {
   product: Product
@@ -46,6 +47,7 @@ function getStockVariant(quantity: number | undefined): 'default' | 'secondary' 
 export function ProductGridCard({
   product,
   onQuickView,
+  isAdmin = false,
 }: ProductGridCardProps) {
   const { t } = useTranslation()
   const [localQuantity, setLocalQuantity] = useState(1)
@@ -62,6 +64,12 @@ export function ProductGridCard({
   const isOutOfStock = quantity === 0
   const maxQuantity = quantity
   const inWishlist = product.sku ? isInWishlist(product.sku) : false
+  const availabilityState = getAvailabilityState(product.quantity)
+  const stockLabel = hasNumericStock(product.quantity)
+    ? t('products.stockCount', { count: product.quantity })
+    : availabilityState === 'out-of-stock'
+      ? t('products.outOfStock')
+      : t('products.inStock')
   
   // Use adjusted_price if available, otherwise fall back to weboffer_price
   const displayPrice = product.adjusted_price ?? product.weboffer_price
@@ -202,7 +210,7 @@ export function ProductGridCard({
               quantity > 10 && 'bg-green-500/80 text-white'
             )}
           >
-            {quantity === 0 ? t('products.outOfStock') : t('products.inStockCount', { count: quantity })}
+            {stockLabel}
           </Badge>
         </div>
 
@@ -277,15 +285,8 @@ export function ProductGridCard({
           )}
         </div>
 
-        {/* Availability */}
-        {product.availability && (
-          <p className="text-xs text-muted-foreground mb-3">
-            {product.availability}
-          </p>
-        )}
-
         {/* Quantity Input & Add to Cart */}
-        {!isOutOfStock && (
+        {!isAdmin && !isOutOfStock && (
           <div 
             className="mt-auto pt-3 border-t border-border/50 space-y-2"
             onClick={handleStopPropagation}

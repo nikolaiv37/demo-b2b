@@ -49,10 +49,9 @@ export function CategoriesPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
 
-  const { profile } = useAuth()
+  const { isAdmin } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const isAdmin = profile?.role === 'admin'
 
   // Fetch category hierarchy
   const { data: categoryHierarchy, isLoading: categoriesLoading } = useCategoryHierarchy()
@@ -582,6 +581,7 @@ export function CategoriesPage() {
         <ProductQuickViewModal
           product={selectedProduct}
           open={isQuickViewOpen}
+          isAdmin={isAdmin}
           onClose={() => {
             setIsQuickViewOpen(false)
             setSelectedProduct(null)

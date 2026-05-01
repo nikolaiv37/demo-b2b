@@ -18,11 +18,13 @@ import { useToast } from '@/components/ui/use-toast'
 import { useCommissionRate } from '@/hooks/useCommissionRate'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
 import { HtmlContent } from '@/components/HtmlContent'
+import { hasNumericStock } from '@/lib/productAvailability'
 
 interface ProductQuickViewModalProps {
   product: Product | null
   open: boolean
   onClose: () => void
+  isAdmin?: boolean
 }
 
 /**
@@ -37,6 +39,7 @@ export function ProductQuickViewModal({
   product,
   open,
   onClose,
+  isAdmin = false,
 }: ProductQuickViewModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const { addItem } = useCartStore()
@@ -58,6 +61,12 @@ export function ProductQuickViewModal({
   const hasSku = product.sku && product.sku.trim() !== ''
   const detailUrl = hasSku ? withBase(`/dashboard/products/${encodeURIComponent(product.sku)}`) : '#'
   
+  const stockLabel = hasNumericStock(product.quantity)
+    ? t('products.stockCount', { count: product.quantity })
+    : isOutOfStock
+      ? t('products.outOfStock')
+      : t('products.inStock')
+
   // Use adjusted_price if available, otherwise fall back to weboffer_price
   const displayPrice = product.adjusted_price ?? product.weboffer_price
   const hasCommissionDiscount = hasDiscount && product.adjusted_price !== undefined && product.adjusted_price < product.weboffer_price
@@ -218,11 +227,8 @@ export function ProductQuickViewModal({
                   ${quantity > 10 && 'bg-green-500'}
                 `}
               >
-                {quantity === 0 ? t('products.outOfStock') : t('products.inStockCount', { count: quantity })}
+                {stockLabel}
               </Badge>
-              {product.availability && (
-                <Badge variant="outline">{product.availability}</Badge>
-              )}
               {product.category && (
                 <Badge variant="outline">{product.category}</Badge>
               )}
@@ -271,14 +277,16 @@ export function ProductQuickViewModal({
 
             {/* Actions */}
             <div className="flex gap-2 pt-4 border-t">
-              <Button 
-                className="flex-1" 
-                disabled={isOutOfStock}
-                onClick={handleAddToCart}
-              >
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                {t('cart.addToCart')}
-              </Button>
+              {!isAdmin && (
+                <Button 
+                  className="flex-1" 
+                  disabled={isOutOfStock}
+                  onClick={handleAddToCart}
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  {t('cart.addToCart')}
+                </Button>
+              )}
               {hasSku && (
                 <Link to={detailUrl} onClick={onClose}>
                   <Button variant="outline">

@@ -28,6 +28,8 @@ import { AddToOrderModal } from './AddToOrderModal'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
 import { HtmlContent } from '@/components/HtmlContent'
+import { useAuth } from '@/hooks/useAuth'
+import { hasNumericStock } from '@/lib/productAvailability'
 
 /**
  * Product Detail Page
@@ -50,6 +52,7 @@ export function ProductDetailPage() {
   const decodedSku = sku ? decodeURIComponent(sku) : ''
   const navigate = useNavigate()
   const { withBase } = useTenantPath()
+  const { isAdmin } = useAuth()
   const { toast } = useToast()
   const { addItem } = useCartStore()
   const { isInWishlist, toggleWishlist } = useWishlist()
@@ -127,6 +130,11 @@ export function ProductDetailPage() {
   const quantity = product.quantity ?? 0
   const isOutOfStock = quantity === 0
   const isLowStock = quantity > 0 && quantity < 20
+  const stockLabel = hasNumericStock(product.quantity)
+    ? t('products.stockCount', { count: product.quantity })
+    : isOutOfStock
+      ? t('products.outOfStock')
+      : t('products.inStock')
 
   // Use adjusted_price if available, otherwise fall back to weboffer_price
   const displayPrice = product.adjusted_price ?? product.weboffer_price
@@ -372,14 +380,10 @@ export function ProductDetailPage() {
                   {t('products.inStock')}
                 </Badge>
               )}
+              {hasNumericStock(product.quantity) && (
+                <p className="mt-2 text-sm text-muted-foreground">{stockLabel}</p>
+              )}
             </div>
-
-            {/* Short Description */}
-            {product.description && (
-              <div className="line-clamp-[8] overflow-hidden">
-                <HtmlContent html={product.description} className="leading-relaxed" />
-              </div>
-            )}
 
             {/* Category & Manufacturer Chips */}
             <div className="flex flex-wrap gap-2">
@@ -393,35 +397,32 @@ export function ProductDetailPage() {
                   {product.manufacturer}
                 </Badge>
               )}
-              {product.availability && (
-                <Badge variant="outline" className="text-sm px-3 py-1.5">
-                  {product.availability}
-                </Badge>
-              )}
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-3 pt-4 border-t">
-              <Button
-                size="lg"
-                className="w-full text-lg py-6"
-                onClick={() => setAddToOrderOpen(true)}
-                disabled={isOutOfStock}
-              >
-                <ShoppingCart className="w-5 h-5 mr-2" />
-                {t('products.addToOrder')}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full"
-                onClick={handleQuickAdd}
-                disabled={isOutOfStock}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {t('products.quickAdd1Pc')}
-              </Button>
-            </div>
+            {!isAdmin && (
+              <div className="space-y-3 pt-4 border-t">
+                <Button
+                  size="lg"
+                  className="w-full text-lg py-6"
+                  onClick={() => setAddToOrderOpen(true)}
+                  disabled={isOutOfStock}
+                >
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                  {t('products.addToOrder')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleQuickAdd}
+                  disabled={isOutOfStock}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('products.quickAdd1Pc')}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -501,10 +502,14 @@ export function ProductDetailPage() {
               )}
               <div className="flex justify-between py-2 gap-4">
                 <span className="text-muted-foreground">{t('products.availabilityLabel')}</span>
-                <span className="font-medium text-right">
-                  {product.availability || (isOutOfStock ? t('products.outOfStock') : t('products.inStock'))}
-                </span>
+                <span className="font-medium text-right">{isOutOfStock ? t('products.outOfStock') : t('products.inStock')}</span>
               </div>
+              {hasNumericStock(product.quantity) && (
+                <div className="flex justify-between py-2 gap-4">
+                  <span className="text-muted-foreground">{t('products.stock')}</span>
+                  <span className="font-medium text-right">{stockLabel}</span>
+                </div>
+              )}
             </div>
           </GlassCard>
 
@@ -519,11 +524,13 @@ export function ProductDetailPage() {
       </div>
 
       {/* Add to Order Modal */}
-      <AddToOrderModal
-        product={product}
-        open={addToOrderOpen}
-        onClose={() => setAddToOrderOpen(false)}
-      />
+      {!isAdmin && (
+        <AddToOrderModal
+          product={product}
+          open={addToOrderOpen}
+          onClose={() => setAddToOrderOpen(false)}
+        />
+      )}
     </>
   )
 }

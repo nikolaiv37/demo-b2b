@@ -15,6 +15,7 @@ import { Product } from '@/types'
 import { Heart, ShoppingCart, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
+import { useAuth } from '@/hooks/useAuth'
 
 export function WishlistPage() {
   const { t } = useTranslation()
@@ -22,6 +23,7 @@ export function WishlistPage() {
   const { tenant } = useTenant()
   const tenantId = tenant?.id
   const { withBase } = useTenantPath()
+  const { isAdmin } = useAuth()
   const { toast } = useToast()
   const { wishlistItems, removeFromWishlist, count: wishlistCount } = useWishlist()
   const { addItem } = useCartStore()
@@ -143,7 +145,7 @@ export function WishlistPage() {
             </Badge>
           )}
         </div>
-        {products.length > 0 && (
+        {!isAdmin && products.length > 0 && (
           <Button size="lg" onClick={handleAddAllToOrder} className="bg-blue-600 hover:bg-blue-700">
             <ShoppingCart className="w-5 h-5 mr-2" />
             {t('wishlist.addAllToOrder')}
@@ -173,6 +175,7 @@ export function WishlistPage() {
               <ProductGridCard
                 product={product}
                 onQuickView={handleQuickView}
+                isAdmin={isAdmin}
               />
               {/* Remove button overlay */}
               <div className="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -211,6 +214,7 @@ export function WishlistPage() {
       <ProductQuickViewModal
         product={selectedProduct}
         open={isQuickViewOpen}
+        isAdmin={isAdmin}
         onClose={() => {
           setIsQuickViewOpen(false)
           setSelectedProduct(null)

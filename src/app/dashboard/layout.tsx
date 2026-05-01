@@ -142,29 +142,33 @@ export function DashboardLayout() {
                 {/* Notification Bell */}
                 <NotificationBell />
 
-                {/* Vertical Divider */}
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
+                {!isAdmin && (
+                  <>
+                    {/* Vertical Divider */}
+                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
 
-                {/* Cart Icon */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative h-9 w-9 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={() => setCartOpen(true)}
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  {cartItemCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    {/* Cart Icon */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative h-9 w-9 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      onClick={() => setCartOpen(true)}
                     >
-                      {cartItemCount > 99 ? '99+' : cartItemCount}
-                    </Badge>
-                  )}
-                </Button>
+                      <ShoppingCart className="h-5 w-5" />
+                      {cartItemCount > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                        >
+                          {cartItemCount > 99 ? '99+' : cartItemCount}
+                        </Badge>
+                      )}
+                    </Button>
 
-                {/* Vertical Divider */}
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
+                    {/* Vertical Divider */}
+                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
+                  </>
+                )}
 
                 {/* User Profile Menu — account manager card (b2bcenter parity) */}
                 <DropdownMenu>
@@ -286,30 +290,34 @@ export function DashboardLayout() {
       </div>
 
       {/* Cart Drawer */}
-      <CartDrawer
-        open={cartOpen}
-        onOpenChange={setCartOpen}
-        onRequestQuote={() => {
-          setCartOpen(false)
-          setQuoteModalOpen(true)
-        }}
-      />
+      {!isAdmin && (
+        <>
+          <CartDrawer
+            open={cartOpen}
+            onOpenChange={setCartOpen}
+            onRequestQuote={() => {
+              setCartOpen(false)
+              setQuoteModalOpen(true)
+            }}
+          />
 
-      {/* Order Request Modal */}
-      <OrderRequestModal
-        open={quoteModalOpen}
-        onClose={() => setQuoteModalOpen(false)}
-        onSuccess={(orderId) => {
-          setQuoteModalOpen(false)
-          setCartOpen(false)
-          // Redirect to orders page with new order highlight
-          if (orderId) {
-            navigate(`${withBase('/dashboard/orders')}?newOrder=${orderId}`)
-          } else {
-            navigate(withBase('/dashboard/orders'))
-          }
-        }}
-      />
+          {/* Order Request Modal */}
+          <OrderRequestModal
+            open={quoteModalOpen}
+            onClose={() => setQuoteModalOpen(false)}
+            onSuccess={(orderId) => {
+              setQuoteModalOpen(false)
+              setCartOpen(false)
+              // Redirect to orders page with new order highlight
+              if (orderId) {
+                navigate(`${withBase('/dashboard/orders')}?newOrder=${orderId}`)
+              } else {
+                navigate(withBase('/dashboard/orders'))
+              }
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }

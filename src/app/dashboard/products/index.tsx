@@ -99,13 +99,11 @@ export function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
 
-  const { profile } = useAuth()
+  const { profile, isAdmin } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { tenant } = useTenant()
   const tenantId = tenant?.id
-  const isAdmin = profile?.role === 'admin'
-
   // Fetch categories from normalized categories table FIRST
   // (needed for category filtering in other queries)
   const { data: categoriesData = [] } = useQuery({
@@ -739,6 +737,7 @@ export function ProductsPage() {
       <ProductQuickViewModal
         product={selectedProduct}
         open={isQuickViewOpen}
+        isAdmin={isAdmin}
         onClose={() => {
           setIsQuickViewOpen(false)
           setSelectedProduct(null)
