@@ -119,6 +119,12 @@ interface ProductCategoryRow {
 }
 
 const DEMO_REVENUE_STATUSES = ['new', 'pending', 'shipped', 'approved'] as const
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function isUuidLike(value: string): boolean {
+  return UUID_PATTERN.test(value)
+}
 
 export function DashboardOverview() {
   const { t } = useTranslation()
@@ -502,90 +508,66 @@ export function DashboardOverview() {
       })
 
 
-      // Fetch all products that appear in approved quotes to get their categories
-      // Product IDs in quotes are stored as strings, but products table uses SERIAL (integer) IDs
+      // Fetch all products that appear in approved quotes to get their categories.
+      // Legacy order items may contain numeric product IDs, while the live products table uses UUIDs.
+      // Only query by ID when the identifier is UUID-shaped; otherwise rely on SKU lookup.
       const productsMap = new Map<string, string>() // product_id -> category
       if (productIds.size > 0) {
         const productIdsArray = Array.from(productIds)
-        
-        // Convert string IDs to integers for the query (products table uses SERIAL/integer IDs)
-        const productIdsInt = productIdsArray
-          .map(id => {
-            const parsed = parseInt(id, 10)
-            return isNaN(parsed) ? null : parsed
-          })
-          .filter((id): id is number => id !== null)
-        
-        
-        if (productIdsInt.length > 0) {
-          // Try multiple query strategies to find products
-          // Strategy 1: Query by integer IDs
+        const validUuidProductIds = productIdsArray.filter(isUuidLike)
+
+        if (validUuidProductIds.length > 0) {
           let productsForCategories: ProductCategoryRow[] = []
-          
+
           const { data, error } = await supabase
             .from('products')
             .select('id, category')
-            .in('id', productIdsInt)
+            .in('id', validUuidProductIds)
             .eq('tenant_id', tenantId)
-          
+
           productsForCategories = (data as ProductCategoryRow[] | null) ?? []
-          
+
           if (error) {
             console.error('Error fetching products for categories (by ID):', error)
           }
-          
-          // Strategy 2: If no products found, try querying as strings (in case Supabase auto-converts)
-          if ((!productsForCategories || productsForCategories.length === 0) && productIdsInt.length > 0) {
-            const { data: dataStr, error: errorStr } = await supabase
-              .from('products')
-              .select('id, category')
-              .in('id', productIdsArray) // Try with original string array
-              .eq('tenant_id', tenantId)
-            
-            if (!errorStr && dataStr && dataStr.length > 0) {
-              productsForCategories = dataStr as ProductCategoryRow[]
-            }
-          }
-          
-          // Strategy 3: If no products found by ID, try by SKU (SKUs are permanent, IDs may change)
-          if ((!productsForCategories || productsForCategories.length === 0) && productSkus.size > 0) {
-            const skusArray = Array.from(productSkus)
-            const { data: productsBySku, error: errorBySku } = await supabase
-              .from('products')
-              .select('id, category, sku')
-              .in('sku', skusArray)
-              .eq('tenant_id', tenantId)
-            
-            if (!errorBySku && productsBySku && productsBySku.length > 0) {
-              productsForCategories = productsBySku as ProductCategoryRow[]
-              
-              // Create a map of SKU -> category for lookup
-              const skuToCategoryMap = new Map<string, string>()
-              productsBySku.forEach((p) => {
-                skuToCategoryMap.set(p.sku, p.category || 'Uncategorized')
-              })
-              
-              // Update allItems with categories from SKU lookup
-              allItems.forEach((item) => {
-                if (item.sku && skuToCategoryMap.has(item.sku)) {
-                  const category = skuToCategoryMap.get(item.sku)!
-                  // Store category by both product_id (for original lookup) and SKU
-                  productsMap.set(item.product_id, category)
-                  productsMap.set(item.sku, category)
-                }
-              })
-            }
-          }
-          
+
           if (productsForCategories && productsForCategories.length > 0) {
             productsForCategories.forEach((p) => {
-              // Store both string and integer versions for lookup
               const productIdStr = String(p.id)
               const category = p.category || 'Uncategorized'
               productsMap.set(productIdStr, category)
-              // Also store the integer version as string
-              if (typeof p.id === 'number') {
-                productsMap.set(String(p.id), category)
+            })
+          }
+        }
+
+        if (productSkus.size > 0) {
+          const skusArray = Array.from(productSkus)
+          const { data: productsBySku, error: errorBySku } = await supabase
+            .from('products')
+            .select('id, category, sku')
+            .in('sku', skusArray)
+            .eq('tenant_id', tenantId)
+
+          if (errorBySku) {
+            console.error('Error fetching products for categories (by SKU):', errorBySku)
+          }
+
+          if (productsBySku && productsBySku.length > 0) {
+            const skuToCategoryMap = new Map<string, string>()
+            productsBySku.forEach((p) => {
+              if (p.sku) {
+                skuToCategoryMap.set(p.sku, p.category || 'Uncategorized')
+              }
+              if (p.id != null) {
+                productsMap.set(String(p.id), p.category || 'Uncategorized')
+              }
+            })
+
+            allItems.forEach((item) => {
+              if (item.sku && skuToCategoryMap.has(item.sku)) {
+                const category = skuToCategoryMap.get(item.sku)!
+                productsMap.set(item.product_id, category)
+                productsMap.set(item.sku, category)
               }
             })
           }

@@ -20,9 +20,6 @@ import {
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import {
-  Mail,
-  Copy,
-  Printer,
   Building2,
   Phone,
   MapPin,
@@ -32,6 +29,7 @@ import {
   Store,
   Loader2,
   Download,
+  Box,
 } from 'lucide-react'
 import { SHIPPING_METHOD_CONFIG } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
@@ -106,7 +104,7 @@ function getStatusBadge(status: OrderStatus | string, t: (key: string) => string
     },
     shipped: {
       label: t('orderStatus.shipped'),
-      className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      className: 'bg-slate-100 text-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
     },
     completed: {
       label: t('orderStatus.completedSent'),
@@ -155,7 +153,7 @@ export function OrderDetailsSheet({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
   // Check if current user is a company user (not admin)
-  const isCompanyUser = profile?.role === 'company'
+  const isCompanyUser = profile?.role === 'company' || profile?.role === 'buyer'
 
   // Generate and download proforma invoice PDF
   // Only available for company users - PDF shows:
@@ -298,25 +296,10 @@ export function OrderDetailsSheet({
     }
   }
 
-  const handleAction = (action: string) => {
-    switch (action) {
-      case 'duplicate':
-        // TODO: Duplicate order
-        break
-      case 'send_email':
-        // TODO: Send email
-        break
-      case 'print_packing':
-        // TODO: Print packing list
-        window.print()
-        break
-    }
-  }
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
-        <SheetHeader className="pb-6 border-b">
+        <SheetHeader className="pb-5 border-b border-border/70">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-2xl font-bold">
               {t('orders.orderNumber')} {order.order_number}
@@ -330,7 +313,7 @@ export function OrderDetailsSheet({
 
         <div className="space-y-6 mt-6">
           {/* Buyer Card */}
-          <div className="bg-card border rounded-lg p-6">
+          <div className="rounded-xl border border-border/70 bg-card/95 p-5">
             <div className="flex items-start gap-3 mb-4">
               <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
               <h3 className="text-lg font-semibold">{t('orders.details.buyerInformation')}</h3>
@@ -376,7 +359,7 @@ export function OrderDetailsSheet({
           )}
 
           {/* Shipping Method */}
-          <div className="bg-card border rounded-lg p-6">
+          <div className="rounded-xl border border-border/70 bg-card/95 p-5">
             <h3 className="text-lg font-semibold mb-4">{t('orders.shippingMethod')}</h3>
             {(() => {
               const method = order.shipping_method || 'shop_delivery'
@@ -392,20 +375,23 @@ export function OrderDetailsSheet({
                 : method === 'dropshipping' ? Package 
                 : Store
               const colorClasses = {
-                blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-                amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
-                purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
-                green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+                blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+                purple: 'bg-slate-100 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300',
+                green: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
               }
               const colorClass = colorClasses[config.color as keyof typeof colorClasses] || colorClasses.green
               
               return (
-                <div className="flex items-center gap-4">
-                  <div className={`flex items-center justify-center w-16 h-16 rounded-full ${colorClass.split(' ').slice(0, 2).join(' ')}`}>
+                <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-muted/30 px-4 py-4">
+                  <div className={`flex items-center justify-center h-12 w-12 rounded-xl ${colorClass.split(' ').slice(0, 2).join(' ')}`}>
                     <IconComponent className={`h-8 w-8 ${colorClass.split(' ').slice(2).join(' ')}`} />
                   </div>
                   <div>
-                    <p className={`text-lg font-bold ${colorClass.split(' ').slice(2).join(' ')}`}>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t('orders.shippingMethod')}
+                    </p>
+                    <p className={`text-base font-semibold ${colorClass.split(' ').slice(2).join(' ')}`}>
                       {translatedLabelMap[method]}
                     </p>
                   </div>
@@ -415,8 +401,8 @@ export function OrderDetailsSheet({
           </div>
 
           {/* Order Items Table */}
-          <div className="bg-card border rounded-lg overflow-hidden">
-            <div className="p-6 border-b">
+          <div className="overflow-hidden rounded-xl border border-border/70 bg-card/95">
+            <div className="border-b border-border/70 px-5 py-4">
               <h3 className="text-lg font-semibold">{t('orders.details.orderItems')}</h3>
             </div>
             <Table>
@@ -434,7 +420,7 @@ export function OrderDetailsSheet({
                 {order.items.map((item, index) => (
                   <TableRow key={index}>
                     <TableCell>
-                      <div className="w-16 h-16 rounded border bg-muted flex items-center justify-center overflow-hidden">
+                      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border border-border/60 bg-muted">
                         {item.image_url ? (
                           <img
                             src={item.image_url}
@@ -442,7 +428,7 @@ export function OrderDetailsSheet({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <span className="text-2xl">📦</span>
+                          <Box className="h-5 w-5 text-muted-foreground" />
                         )}
                       </div>
                     </TableCell>
@@ -470,10 +456,10 @@ export function OrderDetailsSheet({
           </div>
 
           {/* Totals Section */}
-          <div className="bg-card border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">{t('orders.details.orderTotal')}</h3>
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-bold">{t('orders.details.totalAmount')}</span>
+          <div className="rounded-xl border border-border/70 bg-card/95 p-5">
+            <h3 className="mb-4 text-lg font-semibold">{t('orders.details.orderTotal')}</h3>
+            <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
+              <span className="text-base font-semibold">{t('orders.details.totalAmount')}</span>
               <span className="text-2xl font-bold text-primary">
                 {formatPrice(order.total)}
               </span>
@@ -482,7 +468,7 @@ export function OrderDetailsSheet({
 
           {/* Notes */}
           {order.notes && (
-            <div className="bg-card border rounded-lg p-6">
+            <div className="rounded-xl border border-border/70 bg-card/95 p-5">
               <h3 className="text-lg font-semibold mb-2">{t('general.notes')}</h3>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                 {order.notes}
@@ -491,12 +477,11 @@ export function OrderDetailsSheet({
           )}
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t">
-            {/* Proforma Invoice - Only visible for company users */}
-            {isCompanyUser && (
+          {isCompanyUser && (
+            <div className="pt-4 border-t border-border/70">
               <Button
                 variant="default"
-                className="w-full sm:col-span-2"
+                className="w-full"
                 onClick={handleGenerateProforma}
                 disabled={isGeneratingPdf || !company}
               >
@@ -512,33 +497,8 @@ export function OrderDetailsSheet({
                   </>
                 )}
               </Button>
-            )}
-            {/* Other actions - visible for all users */}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => handleAction('duplicate')}
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              {t('orders.duplicateAsNewOrder')}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => handleAction('send_email')}
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              {t('orders.sendByEmail')}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full sm:col-span-2"
-              onClick={() => handleAction('print_packing')}
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              {t('orders.printPackingList')}
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

@@ -9,6 +9,15 @@ interface UpdateClientData {
   commission_rate?: number
 }
 
+interface UpdateClientDiscountResult {
+  success: boolean
+  client: {
+    id: string
+    email: string
+    commission_rate: number
+  }
+}
+
 export function useMutationUpdateClient() {
   const queryClient = useQueryClient()
   const { tenant } = useTenant()
@@ -16,21 +25,31 @@ export function useMutationUpdateClient() {
 
   return useMutation({
     mutationFn: async (data: UpdateClientData) => {
-      const { id, ...updates } = data
       if (!tenantId) {
         throw new Error('Missing tenant context')
       }
 
-      const { data: client, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', id)
-        .eq('role', 'company')
-        .eq('tenant_id', tenantId)
-        .select()
-        .single()
+      const { data: result, error } = await supabase.functions.invoke('update-client-discount', {
+        body: {
+          tenant_id: tenantId,
+          client_user_id: data.id,
+          trade_discount: (data.commission_rate ?? 0) * 100,
+        },
+      })
 
-      if (error) throw error
+      if (error) {
+        throw new Error(error.message || 'Failed to update client trade discount')
+      }
+
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      const client = (result as UpdateClientDiscountResult | null)?.client
+      if (!client) {
+        throw new Error('Client profile not found in the current workspace')
+      }
+
       return client as Client
     },
     onSuccess: (data, variables) => {
@@ -72,19 +91,26 @@ export function useMutationDeleteClient() {
       if (!tenantId) {
         throw new Error('Missing tenant context')
       }
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', clientId)
-        .eq('role', 'company')
-        .eq('tenant_id', tenantId)
+      const { data: result, error } = await supabase.functions.invoke('revoke-client-access', {
+        body: {
+          tenant_id: tenantId,
+          client_user_id: clientId,
+        },
+      })
 
-      if (error) throw error
+      if (error) {
+        throw new Error(error.message || 'Failed to revoke client access')
+      }
+      if (result?.error) {
+        throw new Error(result.error)
+      }
       return clientId
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'clients'] })
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'invitations'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'tenant-memberships'] })
     },
   })
 }

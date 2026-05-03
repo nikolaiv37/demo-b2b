@@ -71,6 +71,19 @@ export function useQueryClients() {
         )
       )
 
+      const legacyTenantProfilesResult = await supabase
+        .from('profiles')
+        .select(
+          'id, role, email, full_name, phone, company_id, commission_rate, invitation_status, created_at, updated_at, tenant_id',
+        )
+        .eq('tenant_id', tenantId)
+        .in('role', ['buyer', 'company'])
+        .order('created_at', { ascending: false })
+
+      if (legacyTenantProfilesResult.error) throw legacyTenantProfilesResult.error
+
+      const legacyTenantProfiles = (legacyTenantProfilesResult.data || []) as ClientProfileRow[]
+
       const { data: quoteCompanies, error: quotesError } = await supabase
         .from('quotes')
         .select('user_id, company_name, email, created_at, status, total')
@@ -117,18 +130,51 @@ export function useQueryClients() {
         }
       })
 
-      const clientProfilesResult = await supabase
-        .from('profiles')
-        .select(
-          'id, role, email, full_name, phone, company_id, commission_rate, invitation_status, created_at, updated_at, tenant_id',
-        )
+      const clientInvitationsResult = await supabase
+        .from('tenant_invitations')
+        .select('profile_id, email, company_name, created_at')
         .eq('tenant_id', tenantId)
-        .in('role', ['buyer', 'company'])
-        .order('created_at', { ascending: false })
+        .eq('target_role', 'company')
+        .eq('status', 'pending')
+
+      if (clientInvitationsResult.error) throw clientInvitationsResult.error
+
+      const invitedProfileIds = Array.from(
+        new Set(
+          ((clientInvitationsResult.data || []) as InvitationRow[])
+            .map((invitation) => invitation.profile_id)
+            .filter((profileId): profileId is string => !!profileId)
+        )
+      )
+
+      const candidateProfileIds = Array.from(
+        new Set([
+          ...memberUserIds,
+          ...invitedProfileIds,
+          ...legacyTenantProfiles.map((profile) => profile.id),
+        ])
+      )
+
+      const clientProfilesResult = candidateProfileIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select(
+              'id, role, email, full_name, phone, company_id, commission_rate, invitation_status, created_at, updated_at, tenant_id',
+            )
+            .in('id', candidateProfileIds)
+            .in('role', ['buyer', 'company'])
+            .order('created_at', { ascending: false })
+        : { data: [], error: null }
 
       if (clientProfilesResult.error) throw clientProfilesResult.error
 
-      const clientProfiles = (clientProfilesResult.data || []) as ClientProfileRow[]
+      const clientProfiles = Array.from(
+        new Map(
+          [...legacyTenantProfiles, ...((clientProfilesResult.data || []) as ClientProfileRow[])].map(
+            (profile) => [profile.id, profile],
+          ),
+        ).values(),
+      )
       const profileById = new Map(clientProfiles.map((profile) => [profile.id, profile]))
 
       const companyIds = Array.from(
@@ -152,30 +198,29 @@ export function useQueryClients() {
         ((companiesResult.data || []) as CompanyRow[]).map((company) => [company.id, company])
       )
 
-      const clientInvitationsResult = await supabase
-        .from('tenant_invitations')
-        .select('profile_id, email, company_name, created_at')
-        .eq('tenant_id', tenantId)
-        .eq('target_role', 'company')
-        .eq('status', 'pending')
-
-      if (clientInvitationsResult.error) throw clientInvitationsResult.error
-
       const invitationByProfileId = new Map(
         ((clientInvitationsResult.data || []) as InvitationRow[])
           .filter((invitation) => !!invitation.profile_id)
           .map((invitation) => [invitation.profile_id as string, invitation])
       )
 
-      const candidateUserIds = Array.from(
-        new Set([
-          ...memberUserIds,
-          ...clientProfiles
-            .filter((profile) => profile.invitation_status !== 'invited')
-            .map((profile) => profile.id),
-          ...companyByUserId.keys(),
-        ])
-      )
+      const fallbackActiveProfileIds = clientProfiles
+        .filter((profile) => {
+          const membershipRole = membershipRoleByUserId.get(profile.id)
+
+          if (membershipRole && membershipRole !== 'member') {
+            return false
+          }
+
+          if (profile.invitation_status === 'invited') {
+            return false
+          }
+
+          return Boolean(profile.email || profile.company_id || companyByUserId.has(profile.id))
+        })
+        .map((profile) => profile.id)
+
+      const candidateUserIds = Array.from(new Set([...memberUserIds, ...fallbackActiveProfileIds]))
 
       const activeClients = candidateUserIds
         .filter((userId) => {
@@ -189,7 +234,12 @@ export function useQueryClients() {
           }
 
           const profile = profileById.get(userId)
-          return !!profile || companyByUserId.has(userId)
+          return Boolean(
+            profile &&
+              profile.tenant_id === tenantId &&
+              profile.invitation_status !== 'invited' &&
+              (profile.email || profile.company_id || companyByUserId.has(userId)),
+          )
         })
         .map((userId) => {
           const profile = profileById.get(userId)
@@ -226,14 +276,14 @@ export function useQueryClients() {
 
       const pendingInvitedClients = clientProfiles
         .filter((profile) => {
-        const membershipRole = membershipRoleByUserId.get(profile.id)
+          const membershipRole = membershipRoleByUserId.get(profile.id)
 
-        if (membershipRole) {
-          return false
-        }
+          if (membershipRole) {
+            return false
+          }
 
-        return profile.invitation_status === 'invited'
-      })
+          return profile.invitation_status === 'invited'
+        })
         .map((profile) => {
           const company = profile.company_id ? companyById.get(profile.company_id) : null
           const inviteHint = invitationByProfileId.get(profile.id)
@@ -282,6 +332,17 @@ export function useQueryClients() {
           unpaid_amount: hint.unpaid_amount,
         }
       })
+
+      if (import.meta.env.DEV) {
+        console.debug('clients query sources', {
+          tenantId,
+          membershipMembers: memberUserIds.length,
+          fallbackProfiles: fallbackActiveProfileIds.length,
+          quoteDiscovered: companyByUserId.size,
+          pendingInvited: pendingInvitedClients.length,
+          finalClients: enriched.length,
+        })
+      }
 
       return enriched
     },

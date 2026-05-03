@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Minus, Plus, Trash2, ShoppingCart, FileText, Percent } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { formatPrice } from '@/lib/utils'
 import { useCommissionRate } from '@/hooks/useCommissionRate'
 
@@ -19,6 +20,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerProps) {
+  const { t } = useTranslation()
   const { items, updateQuantity, removeItem, getTotal, getItemCount } = useCartStore()
   const { hasDiscount, commissionRate } = useCommissionRate()
 
@@ -55,15 +57,15 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            Shopping Cart
+            {t('cart.title')}
             {itemCount > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                {t('cart.itemCount', { count: itemCount })}
               </Badge>
             )}
           </SheetTitle>
           <SheetDescription>
-            Review your items and submit your order
+            {t('cart.subtitle')}
           </SheetDescription>
         </SheetHeader>
 
@@ -72,9 +74,9 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
             <div className="text-center space-y-4">
               <ShoppingCart className="w-16 h-16 mx-auto text-muted-foreground" />
               <div>
-                <h3 className="text-lg font-semibold mb-2">Your cart is empty</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('cart.emptyTitle')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Add products from the catalog to get started
+                  {t('cart.emptyDescription')}
                 </p>
               </div>
             </div>
@@ -111,14 +113,14 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
                     {/* Product Info */}
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-sm line-clamp-2 mb-1">
-                        {product.name || 'Unnamed Product'}
+                        {product.name || t('cart.unnamedProduct')}
                       </h4>
                       <p className="text-xs text-muted-foreground font-mono mb-2">
-                        SKU: {product.sku}
+                        {t('products.sku')}: {product.sku}
                       </p>
                       <div className="flex items-center gap-2 mb-2">
                         <div className="text-sm font-bold text-primary">
-                          {formatPrice(item.price)} each
+                          {formatPrice(item.price)} {t('cart.each')}
                         </div>
                         {hasItemDiscount(item) && (
                           <Badge 
@@ -165,7 +167,7 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
                       </div>
                       {item.quantity >= maxQuantity && maxQuantity > 0 && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Max stock: {maxQuantity}
+                          {t('cart.maxStock', { count: maxQuantity })}
                         </p>
                       )}
                     </div>
@@ -188,14 +190,16 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                   <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-sm text-emerald-700 dark:text-emerald-300">
-                    Your {Math.round(commissionRate * 100)}% discount is applied
+                    {t('cart.tradeDiscountApplied', {
+                      discount: Math.round(commissionRate * 100),
+                    })}
                   </span>
                 </div>
               )}
 
               {/* Grand Total */}
               <div className="flex items-center justify-between text-lg font-bold">
-                <span>Total</span>
+                <span>{t('cart.total')}</span>
                 <span className="text-2xl text-primary">{formatPrice(total)}</span>
               </div>
 
@@ -206,7 +210,7 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
                 onClick={onRequestQuote}
               >
                 <FileText className="w-5 h-5 mr-2" />
-                Submit Order
+                {t('cart.submitOrder')}
               </Button>
             </div>
           </>
@@ -215,4 +219,3 @@ export function CartDrawer({ open, onOpenChange, onRequestQuote }: CartDrawerPro
     </Sheet>
   )
 }
-

@@ -21,24 +21,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { OrderDetailsSheet } from '@/components/OrderDetailsSheet'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { AdminOrdersView } from './AdminOrdersView'
 import {
   Eye,
-  MoreVertical,
   Search,
   FileText,
-  Mail,
-  Copy,
   Loader2,
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
@@ -265,7 +255,7 @@ function getStatusBadge(status: OrderStatus, t: (key: string) => string) {
     },
     shipped: {
       label: t('orders.shipped'),
-      className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      className: 'bg-slate-100 text-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
     },
     completed: {
       label: t('orders.completedSent'),
@@ -502,18 +492,6 @@ function CompanyOrdersView() {
     return filtered
   }, [orders, searchQuery, statusFilter, shippingFilter, dateFilter])
 
-  // Status counts for filter badges (similar to returns/complaints page)
-  const statusCounts = useMemo(
-    () => ({
-      processing: orders.filter((o) => o.status === 'processing').length,
-      awaiting_payment: orders.filter((o) => o.status === 'awaiting_payment').length,
-      shipped: orders.filter((o) => o.status === 'shipped').length,
-      completed: orders.filter((o) => o.status === 'completed').length,
-      rejected: orders.filter((o) => o.status === 'rejected').length,
-    }),
-    [orders],
-  )
-
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedOrders(new Set(filteredOrders.map((o) => o.id)))
@@ -534,10 +512,10 @@ function CompanyOrdersView() {
 
   const handleBulkAction = async (action: string) => {
     if (action === 'proforma') {
-      if (!company || profile?.role !== 'company') {
+      if (!company || (profile?.role !== 'company' && profile?.role !== 'buyer')) {
         toast({
-          title: t('settings.error'),
-          description: 'PDF generation only available for company users',
+          title: t('general.error'),
+          description: t('orders.companyOnlyPdfError'),
           variant: 'destructive',
         })
         return
@@ -626,8 +604,8 @@ function CompanyOrdersView() {
 
         if (ordersToProcess.length === 0) {
           toast({
-            title: t('settings.error'),
-            description: 'No orders found to generate PDFs',
+            title: t('general.error'),
+            description: t('orders.noOrdersForPdf'),
             variant: 'destructive',
           })
           return
@@ -686,8 +664,8 @@ function CompanyOrdersView() {
         }
 
         toast({
-          title: t('settings.success'),
-          description: `Generated ${ordersToProcess.length} proforma invoice(s)`,
+          title: t('general.success'),
+          description: t('orders.bulkProformaGenerated', { count: ordersToProcess.length }),
         })
 
         // Clear selection after successful generation
@@ -695,31 +673,13 @@ function CompanyOrdersView() {
       } catch (error) {
         console.error('Error generating bulk PDFs:', error)
         toast({
-          title: t('settings.error'),
-          description: error instanceof Error ? error.message : 'Failed to generate PDFs',
+          title: t('general.error'),
+          description: error instanceof Error ? error.message : t('orders.bulkProformaFailed'),
           variant: 'destructive',
         })
       } finally {
         setIsGeneratingBulkPdfs(false)
       }
-    } else if (action === 'send_email') {
-      // TODO: Implement bulk email sending
-      setSelectedOrders(new Set())
-    }
-  }
-
-  const handleOrderAction = (_order: Order, action: string) => {
-    // TODO: Implement per-order actions (duplicate, send email, etc.)
-    switch (action) {
-      case 'duplicate':
-        // TODO: Duplicate order logic
-        break
-      case 'proforma':
-        // TODO: Generate proforma invoice
-        break
-      case 'send_email':
-        // TODO: Send email
-        break
     }
   }
 
@@ -793,72 +753,6 @@ function CompanyOrdersView() {
           </div>
         </div>
 
-        {/* Status Count Badges (clickable filters, similar to returns page) */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 shadow-sm hover:bg-blue-500/15 transition-colors cursor-pointer"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'processing' ? 'all' : 'processing')
-            }
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />
-            <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">
-              {t('orders.processing')}: {statusCounts.processing}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 shadow-sm hover:bg-orange-500/15 transition-colors cursor-pointer"
-            onClick={() =>
-              setStatusFilter(
-                statusFilter === 'awaiting_payment' ? 'all' : 'awaiting_payment',
-              )
-            }
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm" />
-            <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
-              {t('orders.awaitingPayment')}: {statusCounts.awaiting_payment}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 shadow-sm hover:bg-purple-500/15 transition-colors cursor-pointer"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'shipped' ? 'all' : 'shipped')
-            }
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-sm" />
-            <span className="text-xs font-semibold text-purple-700 dark:text-purple-400">
-              {t('orders.shipped')}: {statusCounts.shipped}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 shadow-sm hover:bg-green-500/15 transition-colors cursor-pointer"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')
-            }
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm" />
-            <span className="text-xs font-semibold text-green-700 dark:text-green-400">
-              {t('orders.completedSent')}: {statusCounts.completed}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-sm hover:bg-red-500/15 transition-colors cursor-pointer"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'rejected' ? 'all' : 'rejected')
-            }
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm" />
-            <span className="text-xs font-semibold text-red-700 dark:text-red-400">
-              {t('orders.rejected')}: {statusCounts.rejected}
-            </span>
-          </button>
-        </div>
-
       </div>
 
       {/* Bulk Action Bar */}
@@ -880,7 +774,7 @@ function CompanyOrdersView() {
               {isGeneratingBulkPdfs ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Генериране...
+                  {t('orders.generatingProforma')}
                 </>
               ) : (
                 <>
@@ -888,14 +782,6 @@ function CompanyOrdersView() {
                   {t('orders.generateProforma')}
                 </>
               )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulkAction('send_email')}
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              {t('orders.sendEmail')}
             </Button>
           </div>
         </div>
@@ -990,51 +876,18 @@ function CompanyOrdersView() {
                   </TableCell>
                   <TableCell>{getStatusBadge(order.status, t)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                          setSelectedOrder(order)
-                          setDetailsOpen(true)
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleOrderAction(order, 'duplicate')}
-                          >
-                            <Copy className="w-4 h-4 mr-2" />
-                            {t('orders.duplicateAsNewOrder')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleOrderAction(order, 'proforma')}
-                          >
-                            <FileText className="w-4 h-4 mr-2" />
-                            {t('orders.generateProformaInvoice')}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleOrderAction(order, 'send_email')}
-                          >
-                            <Mail className="w-4 h-4 mr-2" />
-                            {t('orders.sendByEmail')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-2 px-2 sm:px-3"
+                      onClick={() => {
+                        setSelectedOrder(order)
+                        setDetailsOpen(true)
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span className="hidden sm:inline">{t('orders.viewDetails')}</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

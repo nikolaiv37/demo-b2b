@@ -914,7 +914,7 @@ export function ClientsPage() {
                                 onClick={() => handleDeleteClick(client)}
                               >
                                 <Trash2 className="w-3.5 h-3.5 mr-1" />
-                                <span>{t('general.delete')}</span>
+                                <span>{t('distributors.remove')}</span>
                               </Button>
                             </>
                           )}
@@ -1054,7 +1054,7 @@ export function ClientsPage() {
               {deleteMutation.isPending && (
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
-              {t('general.delete')}
+              {t('distributors.remove')}
             </Button>
           </DialogFooter>
         </DialogContent>

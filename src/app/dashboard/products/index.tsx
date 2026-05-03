@@ -93,7 +93,6 @@ export function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all')
-  const [selectedAvailability, setSelectedAvailability] = useState<string>('all')
   const [stockFilter, setStockFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -167,11 +166,6 @@ export function ProductsPage() {
       query = query.eq('manufacturer', selectedManufacturer)
     }
 
-    // Availability filter
-    if (selectedAvailability !== 'all') {
-      query = query.eq('availability', selectedAvailability)
-    }
-
     // Stock filter
     if (stockFilter === 'in-stock') {
       query = query.gt('quantity', 0)
@@ -214,7 +208,6 @@ export function ProductsPage() {
       searchQuery,
       selectedCategory,
       selectedManufacturer,
-      selectedAvailability,
       stockFilter,
       currentPage,
       categoriesData, // Include categories in key since buildBaseQuery depends on it
@@ -249,7 +242,6 @@ export function ProductsPage() {
     searchQuery,
     selectedCategory,
     selectedManufacturer,
-    selectedAvailability,
     stockFilter,
     1,
     categoriesData,
@@ -267,7 +259,6 @@ export function ProductsPage() {
       searchQuery,
       selectedCategory,
       selectedManufacturer,
-      selectedAvailability,
       stockFilter,
       categoriesData, // Include categories data in query key since we use it for hierarchy
     ],
@@ -295,9 +286,6 @@ export function ProductsPage() {
       if (selectedManufacturer !== 'all') {
         countQuery = countQuery.eq('manufacturer', selectedManufacturer)
       }
-      if (selectedAvailability !== 'all') {
-        countQuery = countQuery.eq('availability', selectedAvailability)
-      }
       if (stockFilter === 'in-stock') {
         countQuery = countQuery.gt('quantity', 0)
       } else if (stockFilter === 'low-stock') {
@@ -314,14 +302,14 @@ export function ProductsPage() {
     enabled: !!tenantId,
   })
 
-  // Fetch filter options (manufacturers, availability) from products
+  // Fetch filter options from products
   const { data: filterOptions } = useQuery({
     queryKey: ['tenant', tenantId, 'products', 'filter-options'],
     queryFn: async () => {
-      if (!tenantId) return { manufacturers: [], availabilityOptions: [] }
+      if (!tenantId) return { manufacturers: [] }
       const { data, error } = await supabase
         .from('products')
-        .select('manufacturer, availability')
+        .select('manufacturer')
         .eq('tenant_id', tenantId)
         .limit(10000) // Get enough to extract unique values
 
@@ -330,17 +318,14 @@ export function ProductsPage() {
       const manufacturers = Array.from(
         new Set(data.map((p) => p.manufacturer).filter(Boolean))
       ).sort() as string[]
-      const availabilityOptions = Array.from(
-        new Set(data.map((p) => p.availability).filter(Boolean))
-      ).sort() as string[]
 
-      return { manufacturers, availabilityOptions }
+      return { manufacturers }
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!tenantId,
   })
 
-  const { manufacturers = [], availabilityOptions = [] } = filterOptions || {}
+  const { manufacturers = [] } = filterOptions || {}
 
   // Calculate paginated products for display
   const paginatedProducts = useMemo(() => {
@@ -371,7 +356,7 @@ export function ProductsPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedCategory, selectedManufacturer, selectedAvailability, stockFilter])
+  }, [searchQuery, selectedCategory, selectedManufacturer, stockFilter])
 
   const deleteMutation = useMutation({
     mutationFn: async (productId: string | number) => {
@@ -424,7 +409,6 @@ export function ProductsPage() {
     setSearchQuery('')
     setSelectedCategory('all')
     setSelectedManufacturer('all')
-    setSelectedAvailability('all')
     setStockFilter('all')
     setCurrentPage(1)
   }
@@ -433,7 +417,6 @@ export function ProductsPage() {
     searchQuery ||
     selectedCategory !== 'all' ||
     selectedManufacturer !== 'all' ||
-    selectedAvailability !== 'all' ||
     stockFilter !== 'all'
 
   return (
@@ -464,7 +447,7 @@ export function ProductsPage() {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Select
               value={selectedCategory}
               onValueChange={(value) => {
@@ -500,26 +483,6 @@ export function ProductsPage() {
                 {manufacturers.map((man) => (
                   <SelectItem key={man} value={man}>
                     {man}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedAvailability}
-              onValueChange={(value) => {
-                setSelectedAvailability(value)
-                setCurrentPage(1)
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t('products.availability')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('products.allAvailability')}</SelectItem>
-                {availabilityOptions.map((avail) => (
-                  <SelectItem key={avail} value={avail}>
-                    {avail}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -592,20 +555,13 @@ export function ProductsPage() {
                   </button>
                 </Badge>
               )}
-              {selectedAvailability !== 'all' && (
-                <Badge variant="secondary" className="gap-1">
-                  {selectedAvailability}
-                  <button
-                    onClick={() => setSelectedAvailability('all')}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
-              )}
               {stockFilter !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  Stock: {stockFilter.replace('-', ' ')}
+                  {t('products.allAvailability')}: {stockFilter === 'in-stock'
+                    ? t('products.inStock')
+                    : stockFilter === 'low-stock'
+                    ? t('products.lowStock')
+                    : t('products.outOfStock')}
                   <button
                     onClick={() => setStockFilter('all')}
                     className="ml-1 hover:text-destructive"

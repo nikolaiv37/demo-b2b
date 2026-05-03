@@ -5,6 +5,25 @@
  * Example: rate=0.15 means 15% discount → price * 0.85
  */
 
+function normalizeBasePrice(basePrice: number | string | null | undefined): number {
+  const parsed =
+    typeof basePrice === 'string' ? Number(basePrice) : basePrice
+
+  if (!Number.isFinite(parsed)) {
+    return 0
+  }
+
+  return Number(parsed)
+}
+
+export function normalizeCommissionRate(commissionRate: number | null | undefined): number {
+  if (!Number.isFinite(commissionRate)) {
+    return 0
+  }
+
+  return Math.max(0, Math.min(0.5, Number(commissionRate)))
+}
+
 /**
  * Apply commission rate to a base price.
  * @param basePrice - The original weboffer_price
@@ -12,23 +31,18 @@
  * @returns Adjusted price rounded to 2 decimal places
  */
 export function applyCommissionRate(
-  basePrice: number | null | undefined,
+  basePrice: number | string | null | undefined,
   commissionRate: number | null | undefined
 ): number {
-  if (!basePrice && basePrice !== 0) return 0
-  
-  // No commission rate or zero rate = base price
-  if (!commissionRate || commissionRate === 0) {
-    return Math.round(basePrice * 100) / 100
+  const normalizedBasePrice = normalizeBasePrice(basePrice)
+  const clampedRate = normalizeCommissionRate(commissionRate)
+
+  if (clampedRate === 0) {
+    return Math.round(normalizedBasePrice * 100) / 100
   }
-  
-  // Clamp rate between 0 and 0.50 (max 50% discount)
-  const clampedRate = Math.max(0, Math.min(0.50, commissionRate))
-  
-  // adjusted_price = basePrice * (1 - rate)
-  const adjustedPrice = basePrice * (1 - clampedRate)
-  
-  // Round to 2 decimal places
+
+  const adjustedPrice = normalizedBasePrice * (1 - clampedRate)
+
   return Math.round(adjustedPrice * 100) / 100
 }
 
@@ -40,11 +54,11 @@ export function shouldApplyCommission(
   role: string | null | undefined,
   commissionRate: number | null | undefined
 ): boolean {
-  // Only 'company' role users get commission-based discounts
-  if (role !== 'company') return false
+  // Buyer is the current client role. Keep legacy company support for older data.
+  if (role !== 'buyer' && role !== 'company') return false
   
   // Must have a positive commission rate
-  return !!commissionRate && commissionRate > 0
+  return normalizeCommissionRate(commissionRate) > 0
 }
 
 /**
@@ -57,4 +71,3 @@ export function formatCommissionRate(rate: number | null | undefined): string {
   const percentage = rate * 100
   return `${percentage.toFixed(percentage % 1 === 0 ? 0 : 1)}%`
 }
-

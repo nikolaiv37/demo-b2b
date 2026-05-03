@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useTenantPath } from '@/lib/tenant/TenantProvider'
+import { getOrderStatusTranslationKey } from '@/lib/orderStatus'
 import type { AppNotification, NotificationType } from '@/types'
 
 // Icon + color mapping per notification type
@@ -56,9 +57,15 @@ function NotificationItem({
 
   const config = typeConfig[notification.type] ?? { icon: Bell, color: 'text-gray-500' }
   const Icon = config.icon
+  const statusTranslationKey = getOrderStatusTranslationKey(
+    typeof notification.metadata?.status === 'string' ? notification.metadata.status : null,
+  )
 
   const message = t(`notifications.${notification.type}`, {
     ...notification.metadata,
+    status: statusTranslationKey
+      ? t(statusTranslationKey, notification.metadata?.status as string)
+      : notification.metadata?.status,
     defaultValue: notification.type,
   })
 
@@ -169,7 +176,7 @@ export function NotificationBell() {
         <ScrollArea className="max-h-[360px]">
           {isLoading ? (
             <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-              ...
+              {t('general.loading')}
             </div>
           ) : notifications.length === 0 ? (
             <div className="px-4 py-8 text-center">

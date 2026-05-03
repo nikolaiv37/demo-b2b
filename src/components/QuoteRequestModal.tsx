@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useCommissionRate } from '@/hooks/useCommissionRate'
@@ -19,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { FileText, Loader2, Warehouse, Truck, Package, Store, Percent } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
-import { ShippingMethod, SHIPPING_METHOD_CONFIG } from '@/types'
+import { ShippingMethod } from '@/types'
 import { cn } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import { sendNotification } from '@/lib/notifications'
@@ -36,6 +37,7 @@ export function OrderRequestModal({
   onClose,
   onSuccess,
 }: OrderRequestModalProps) {
+  const { t } = useTranslation()
   const { items, getTotal, clearCart } = useCartStore()
   const { user, profile, company } = useAuth()
   const { hasDiscount, commissionRate } = useCommissionRate()
@@ -49,7 +51,7 @@ export function OrderRequestModal({
   const quoteMutation = useMutation({
     mutationFn: async () => {
       if (!tenantId) {
-        throw new Error('Missing tenant context')
+        throw new Error(t('orders.submitModal.errors.missingTenant'))
       }
       const isDevMode = isLocalDevModeEnabled()
       const devUserId = isDevMode ? 'dev-user-123' : null
@@ -57,7 +59,7 @@ export function OrderRequestModal({
       // In dev mode, allow quote creation without auth
       const userId = user?.id || devUserId
       if (!userId) {
-        throw new Error('User not authenticated')
+        throw new Error(t('orders.submitModal.errors.userNotAuthenticated'))
       }
 
       const total = getTotal()
@@ -65,7 +67,7 @@ export function OrderRequestModal({
       // Prepare order items
       const orderItems = items.map((item) => ({
         product_id: item.product.id.toString(),
-        product_name: item.product.name || 'Unnamed Product',
+        product_name: item.product.name || t('cart.unnamedProduct'),
         sku: item.product.sku,
         quantity: item.quantity,
         unit_price: item.price,
@@ -79,7 +81,7 @@ export function OrderRequestModal({
         .insert({
           tenant_id: tenantId,
           user_id: userId,
-          company_name: company?.name || profile?.full_name || 'Unknown Company',
+          company_name: company?.name || profile?.full_name || t('overview.unknownCompany'),
           email: user?.email || profile?.email || 'support@centivon.com',
           phone: null, // Can be added later
           notes: notes.trim() || null,
@@ -96,7 +98,7 @@ export function OrderRequestModal({
         console.error('Error creating order:', error)
         // Provide helpful error message if column doesn't exist
         if (error.message?.includes('shipping_method') || error.message?.includes('column') || error.code === 'PGRST116') {
-          throw new Error('Database migration required: The shipping_method column does not exist. Please run the SQL migration: supabase/add-shipping-method-column.sql')
+          throw new Error(t('orders.submitModal.errors.shippingMethodMigration'))
         }
         throw error
       }
@@ -123,8 +125,10 @@ export function OrderRequestModal({
       })
       
       toast({
-        title: 'Order submitted successfully! 🎉',
-        description: `Your order #${data.order_number} has been submitted. We'll process it shortly.`,
+        title: t('orders.submitModal.successTitle'),
+        description: t('orders.submitModal.successDescription', {
+          orderNumber: data.order_number,
+        }),
       })
       clearCart()
       setNotes('')
@@ -134,16 +138,41 @@ export function OrderRequestModal({
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to submit order',
+        title: t('general.error'),
+        description:
+          error instanceof Error ? error.message : t('orders.submitModal.errors.submitFailed'),
         variant: 'destructive',
       })
     },
   })
 
   const total = getTotal()
-  const companyName = company?.name || profile?.full_name || 'Your Company'
+  const companyName = company?.name || profile?.full_name || t('orders.submitModal.companyFallback')
   const userEmail = user?.email || profile?.email || ''
+  const shippingOptions: ShippingMethod[] = [
+    'shop_delivery',
+    'warehouse_pickup',
+    'transport_company',
+    'dropshipping',
+  ]
+  const shippingLabelMap: Record<ShippingMethod, { short: string; long: string }> = {
+    shop_delivery: {
+      short: t('shipping.shopDeliveryShort'),
+      long: t('shipping.shopDelivery'),
+    },
+    warehouse_pickup: {
+      short: t('shipping.warehousePickupShort'),
+      long: t('shipping.warehousePickup'),
+    },
+    transport_company: {
+      short: t('shipping.transportCompanyShort'),
+      long: t('shipping.transportCompany'),
+    },
+    dropshipping: {
+      short: t('shipping.dropshippingShort'),
+      long: t('shipping.dropshipping'),
+    },
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -151,10 +180,10 @@ export function OrderRequestModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            Submit Order
+            {t('orders.submitModal.title')}
           </DialogTitle>
           <DialogDescription>
-            Review your order details and submit. We'll process it shortly.
+            {t('orders.submitModal.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -162,7 +191,7 @@ export function OrderRequestModal({
           {/* Company Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="company-name">Company Name</Label>
+              <Label htmlFor="company-name">{t('orders.submitModal.companyName')}</Label>
               <Input
                 id="company-name"
                 value={companyName}
@@ -171,7 +200,7 @@ export function OrderRequestModal({
               />
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('orders.submitModal.email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -184,10 +213,9 @@ export function OrderRequestModal({
 
           {/* Shipping Method Selection */}
           <div>
-            <Label className="mb-3 block">Shipping Method *</Label>
+            <Label className="mb-3 block">{t('orders.submitModal.shippingMethod')}</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(['shop_delivery', 'warehouse_pickup', 'transport_company', 'dropshipping'] as ShippingMethod[]).map((method) => {
-                const config = SHIPPING_METHOD_CONFIG[method]
+              {shippingOptions.map((method) => {
                 const isSelected = shippingMethod === method
                 const IconComponent = method === 'warehouse_pickup' ? Warehouse 
                   : method === 'transport_company' ? Truck 
@@ -220,10 +248,10 @@ export function OrderRequestModal({
                         'font-medium text-sm',
                         isSelected ? 'text-primary' : 'text-foreground'
                       )}>
-                        {config.shortLabel}
+                        {shippingLabelMap[method].short}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {config.label}
+                        {shippingLabelMap[method].long}
                       </p>
                     </div>
                     {isSelected && (
@@ -237,10 +265,10 @@ export function OrderRequestModal({
 
           {/* Notes */}
           <div>
-            <Label htmlFor="notes">Additional Notes (Optional)</Label>
+            <Label htmlFor="notes">{t('orders.submitModal.notesLabel')}</Label>
             <Textarea
               id="notes"
-              placeholder="Any special requirements, delivery dates, or questions..."
+              placeholder={t('orders.submitModal.notesPlaceholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
@@ -250,7 +278,7 @@ export function OrderRequestModal({
 
           {/* Cart Items Summary */}
           <div>
-            <Label className="mb-3 block">Order Items</Label>
+            <Label className="mb-3 block">{t('orders.submitModal.orderItems')}</Label>
             <div className="border rounded-lg divide-y">
               {items.map((item) => {
                 const product = item.product
@@ -267,10 +295,10 @@ export function OrderRequestModal({
                     )}
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-sm line-clamp-1">
-                        {product.name || 'Unnamed Product'}
+                        {product.name || t('cart.unnamedProduct')}
                       </h4>
                       <p className="text-xs text-muted-foreground font-mono">
-                        SKU: {product.sku}
+                        {t('products.sku')}: {product.sku}
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
@@ -293,10 +321,12 @@ export function OrderRequestModal({
               <Percent className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <div>
                 <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                  Your {Math.round(commissionRate * 100)}% discount is applied
+                  {t('orders.submitModal.tradeDiscountApplied', {
+                    discount: Math.round(commissionRate * 100),
+                  })}
                 </p>
                 <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">
-                  Commission discount applied to all items
+                  {t('orders.submitModal.tradeDiscountAppliedDescription')}
                 </p>
               </div>
             </div>
@@ -304,7 +334,7 @@ export function OrderRequestModal({
 
           {/* Total */}
           <div className="flex items-center justify-between text-lg font-bold pt-4 border-t">
-            <span>Total Amount</span>
+            <span>{t('orders.submitModal.totalAmount')}</span>
             <div className="text-right">
               <span className="text-2xl text-primary">{formatPrice(total)}</span>
               {hasDiscount && (
@@ -313,7 +343,9 @@ export function OrderRequestModal({
                   className="ml-2 gap-1 px-2 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
                 >
                   <Percent className="w-3 h-3" />
-                  {Math.round(commissionRate * 100)}% OFF
+                  {t('orders.submitModal.tradeDiscountBadge', {
+                    discount: Math.round(commissionRate * 100),
+                  })}
                 </Badge>
               )}
             </div>
@@ -327,7 +359,7 @@ export function OrderRequestModal({
               className="flex-1"
               disabled={quoteMutation.isPending}
             >
-              Cancel
+              {t('general.cancel')}
             </Button>
             <Button
               onClick={() => quoteMutation.mutate()}
@@ -337,12 +369,12 @@ export function OrderRequestModal({
               {quoteMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
+                  {t('orders.submitModal.submitting')}
                 </>
               ) : (
                 <>
                   <FileText className="w-4 h-4 mr-2" />
-                  Submit Order
+                  {t('orders.submitModal.submit')}
                 </>
               )}
             </Button>

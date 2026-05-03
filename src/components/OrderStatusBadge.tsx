@@ -56,7 +56,7 @@ export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
       case 'shipped':
         return {
           label: t('orderStatus.shipped'),
-          className: 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30',
+          className: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30',
         }
       case 'completed':
         return {

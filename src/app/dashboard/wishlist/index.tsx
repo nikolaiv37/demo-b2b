@@ -16,6 +16,8 @@ import { Heart, ShoppingCart, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTenant, useTenantPath } from '@/lib/tenant/TenantProvider'
 import { useAuth } from '@/hooks/useAuth'
+import { useCommissionRate } from '@/hooks/useCommissionRate'
+import { applyCommissionRate, shouldApplyCommission } from '@/lib/priceUtils'
 
 export function WishlistPage() {
   const { t } = useTranslation()
@@ -24,6 +26,8 @@ export function WishlistPage() {
   const tenantId = tenant?.id
   const { withBase } = useTenantPath()
   const { isAdmin } = useAuth()
+  const { profile } = useAuth()
+  const { commissionRate } = useCommissionRate()
   const { toast } = useToast()
   const { wishlistItems, removeFromWishlist, count: wishlistCount } = useWishlist()
   const { addItem } = useCartStore()
@@ -47,7 +51,19 @@ export function WishlistPage() {
         .eq('tenant_id', tenantId)
 
       if (error) throw error
-      return (data || []) as Product[]
+
+      const products = (data || []) as Product[]
+      if (!shouldApplyCommission(profile?.role, commissionRate)) {
+        return products.map((product) => ({
+          ...product,
+          adjusted_price: product.weboffer_price,
+        }))
+      }
+
+      return products.map((product) => ({
+        ...product,
+        adjusted_price: applyCommissionRate(product.weboffer_price, commissionRate),
+      }))
     },
     enabled: !!tenantId && wishlistSkus.length > 0,
   })

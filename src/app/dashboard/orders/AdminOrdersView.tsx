@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Eye, Search, Building2, X } from 'lucide-react'
 import { ShippingMethodBadge } from '@/components/ShippingMethodBadge'
-import { formatPrice, formatDateTime, cn } from '@/lib/utils'
+import { formatPrice, formatDateTime } from '@/lib/utils'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import { ShipmentPanel } from '@/components/shipping/ShipmentPanel'
 import { demoFeatures } from '@/config/features'
@@ -359,14 +359,14 @@ export function AdminOrdersView() {
       }
 
       toast({
-        title: 'Status updated',
-        description: 'The order status has been updated.',
+        title: t('orders.statusUpdatedTitle'),
+        description: t('orders.statusUpdatedDescription'),
       })
     },
     onError: (error: Error) => {
       toast({
-        title: 'Error updating status',
-        description: error.message || 'Failed to update order status.',
+        title: t('orders.statusUpdateErrorTitle'),
+        description: error.message || t('orders.statusUpdateErrorDescription'),
         variant: 'destructive',
       })
     },
@@ -417,17 +417,6 @@ export function AdminOrdersView() {
     })
     return Array.from(companies).sort((a, b) => a.localeCompare(b))
   }, [orders])
-
-  // Company order counts for summary badges
-  const companyOrderCounts = useMemo(() => {
-    if (!orders) return []
-    const counts = new Map<string, number>()
-    orders.forEach((order) => {
-      const name = order.company_name || t('overview.unknownCompany')
-      counts.set(name, (counts.get(name) || 0) + 1)
-    })
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
-  }, [orders, t])
 
   // Filter orders
   const filteredOrders = useMemo(() => {
@@ -523,57 +512,6 @@ export function AdminOrdersView() {
             {t('adminOrders.subtitle')}
           </p>
         </div>
-
-        {/* Company summary badges */}
-        {companyOrderCounts.length > 0 && (
-          <div className="space-y-3 rounded-xl bg-muted/40 border border-border/60 px-4 py-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                {t('overview.company')} · {t('overview.orders')}
-              </p>
-              <span className="text-[11px] text-muted-foreground">
-                {companyOrderCounts.length} companies
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {companyOrderCounts.map(([name, count]) => {
-                const isActive = companyFilter === name
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    className={cn(
-                      'flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-medium shadow-sm transition-all duration-150',
-                      isActive
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-[1.02]'
-                        : 'bg-slate-50/90 text-slate-700 border-slate-200/80 hover:bg-slate-100 dark:bg-slate-800/80 dark:text-slate-100 dark:border-slate-700/80 dark:hover:bg-slate-700'
-                    )}
-                    onClick={() => {
-                      const next = isActive ? 'all' : name
-                      setCompanyFilter(next)
-                      if (searchParams.has('company')) {
-                        searchParams.delete('company')
-                        setSearchParams(searchParams)
-                      }
-                    }}
-                  >
-                    <span className="truncate max-w-[180px]">{name}</span>
-                    <span
-                      className={cn(
-                        'inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-semibold',
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-50'
-                      )}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Top Bar: Search and Filters */}
         <div className="space-y-4">
