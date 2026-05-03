@@ -56,7 +56,7 @@ export interface TenantMembership {
   role: string
 }
 
-export type UserRole = 'admin' | 'company'
+export type UserRole = 'admin' | 'company' | 'buyer'
 
 export type InvitationStatus = 'active' | 'invited'
 

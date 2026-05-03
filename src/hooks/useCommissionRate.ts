@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
  * Hook to get the current user's commission rate.
  * 
  * Returns:
- * - commission rate (0.00 - 0.50) for company users with a rate set
+ * - commission rate (0.00 - 0.50) for company/buyer users with a rate set
  * - 0 for admins (they always see base prices)
  * - 0 for unauthenticated users
  * - 0 if rate is null/undefined
@@ -20,8 +20,8 @@ import { useAuthStore } from '@/stores/authStore'
 export function useCommissionRate() {
   const profile = useAuthStore((state) => state.profile)
   
-  // Only company users get discounts
-  const isCompanyUser = profile?.role === 'company'
+  // Older environments may still persist client users as 'buyer'.
+  const isCompanyUser = profile?.role === 'company' || profile?.role === 'buyer'
   
   // Get the commission rate (or 0 if not set)
   const commissionRate = isCompanyUser ? (profile?.commission_rate ?? 0) : 0
@@ -37,12 +37,12 @@ export function useCommissionRate() {
     commissionRate,
     
     /**
-     * Whether the user has an active discount (company user with rate > 0)
+     * Whether the user has an active discount (company/buyer user with rate > 0)
      */
     hasDiscount,
     
     /**
-     * Whether the user is a company user (regardless of discount)
+     * Whether the user is a client user (regardless of discount)
      */
     isCompanyUser,
     
@@ -52,4 +52,3 @@ export function useCommissionRate() {
     profile,
   }
 }
-

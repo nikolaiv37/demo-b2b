@@ -12,6 +12,32 @@ interface QuoteCompanyRow {
   total?: string | number | null
 }
 
+interface ClientProfileRow {
+  id: string
+  role?: string | null
+  email?: string | null
+  full_name?: string | null
+  phone?: string | null
+  company_id?: string | null
+  commission_rate?: number | null
+  invitation_status?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  tenant_id?: string | null
+}
+
+interface CompanyRow {
+  id: string
+  name?: string | null
+}
+
+interface InvitationRow {
+  profile_id?: string | null
+  email?: string | null
+  company_name?: string | null
+  created_at?: string | null
+}
+
 export function useQueryClients() {
   const { tenant } = useTenant()
   const tenantId = tenant?.id
@@ -91,52 +117,102 @@ export function useQueryClients() {
         }
       })
 
-      const candidateUserIds = Array.from(
-        new Set([...memberUserIds, ...companyByUserId.keys()])
-      )
-
-      const memberProfilesResult = candidateUserIds.length > 0
-        ? await supabase
-            .from('profiles')
-            .select('*')
-            .in('id', candidateUserIds)
-            .order('created_at', { ascending: false })
-        : { data: [], error: null }
-
-      if (memberProfilesResult.error) throw memberProfilesResult.error
-
-      const invitedProfilesResult = await supabase
+      const clientProfilesResult = await supabase
         .from('profiles')
-        .select('*')
+        .select(
+          'id, role, email, full_name, phone, company_id, commission_rate, invitation_status, created_at, updated_at, tenant_id',
+        )
         .eq('tenant_id', tenantId)
-        .eq('invitation_status', 'invited')
+        .in('role', ['buyer', 'company'])
         .order('created_at', { ascending: false })
 
-      if (invitedProfilesResult.error) throw invitedProfilesResult.error
+      if (clientProfilesResult.error) throw clientProfilesResult.error
 
-      const profiles = Array.from(
-        new Map(
-          [...(memberProfilesResult.data || []), ...(invitedProfilesResult.data || [])]
-            .map((profile) => [profile.id, profile as Client])
-        ).values()
+      const clientProfiles = (clientProfilesResult.data || []) as ClientProfileRow[]
+      const profileById = new Map(clientProfiles.map((profile) => [profile.id, profile]))
+
+      const companyIds = Array.from(
+        new Set(
+          clientProfiles
+            .map((profile) => profile.company_id)
+            .filter((companyId): companyId is string => !!companyId)
+        )
       )
-      const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
+
+      const companiesResult = companyIds.length > 0
+        ? await supabase
+            .from('companies')
+            .select('id, name')
+            .in('id', companyIds)
+        : { data: [], error: null }
+
+      if (companiesResult.error) throw companiesResult.error
+
+      const companyById = new Map(
+        ((companiesResult.data || []) as CompanyRow[]).map((company) => [company.id, company])
+      )
+
+      const clientInvitationsResult = await supabase
+        .from('tenant_invitations')
+        .select('profile_id, email, company_name, created_at')
+        .eq('tenant_id', tenantId)
+        .eq('target_role', 'company')
+        .eq('status', 'pending')
+
+      if (clientInvitationsResult.error) throw clientInvitationsResult.error
+
+      const invitationByProfileId = new Map(
+        ((clientInvitationsResult.data || []) as InvitationRow[])
+          .filter((invitation) => !!invitation.profile_id)
+          .map((invitation) => [invitation.profile_id as string, invitation])
+      )
+
+      const candidateUserIds = Array.from(
+        new Set([
+          ...memberUserIds,
+          ...clientProfiles
+            .filter((profile) => profile.invitation_status !== 'invited')
+            .map((profile) => profile.id),
+          ...companyByUserId.keys(),
+        ])
+      )
 
       const activeClients = candidateUserIds
         .filter((userId) => {
           const membershipRole = membershipRoleByUserId.get(userId)
-          return membershipRole ? membershipRole === 'member' : companyByUserId.has(userId)
+          if (membershipRole && membershipRole !== 'member') {
+            return false
+          }
+
+          if (membershipRole === 'member') {
+            return true
+          }
+
+          const profile = profileById.get(userId)
+          return !!profile || companyByUserId.has(userId)
         })
         .map((userId) => {
           const profile = profileById.get(userId)
           const quoteHint = companyByUserId.get(userId)
+          const company = profile?.company_id ? companyById.get(profile.company_id) : null
+          const inviteHint = invitationByProfileId.get(userId)
 
           return {
             id: userId,
             role: 'company',
-            full_name: profile?.full_name || quoteHint?.company_name || null,
-            company_name: profile?.company_name || quoteHint?.company_name || null,
-            email: profile?.email || quoteHint?.email || null,
+            full_name:
+              profile?.full_name ||
+              company?.name ||
+              inviteHint?.company_name ||
+              quoteHint?.company_name ||
+              null,
+            company_name:
+              company?.name ||
+              inviteHint?.company_name ||
+              quoteHint?.company_name ||
+              profile?.full_name ||
+              null,
+            email: profile?.email || inviteHint?.email || quoteHint?.email || null,
             phone: profile?.phone || null,
             company_id: profile?.company_id || null,
             commission_rate: profile?.commission_rate ?? null,
@@ -148,7 +224,8 @@ export function useQueryClients() {
           } as Client
         })
 
-      const pendingInvitedClients = profiles.filter((profile) => {
+      const pendingInvitedClients = clientProfiles
+        .filter((profile) => {
         const membershipRole = membershipRoleByUserId.get(profile.id)
 
         if (membershipRole) {
@@ -157,6 +234,31 @@ export function useQueryClients() {
 
         return profile.invitation_status === 'invited'
       })
+        .map((profile) => {
+          const company = profile.company_id ? companyById.get(profile.company_id) : null
+          const inviteHint = invitationByProfileId.get(profile.id)
+          const quoteHint = companyByUserId.get(profile.id)
+
+          return {
+            ...(profile as Client),
+            role: 'company',
+            full_name:
+              profile.full_name ||
+              company?.name ||
+              inviteHint?.company_name ||
+              quoteHint?.company_name ||
+              null,
+            company_name:
+              company?.name ||
+              inviteHint?.company_name ||
+              quoteHint?.company_name ||
+              profile.full_name ||
+              null,
+            email: profile.email || inviteHint?.email || quoteHint?.email || null,
+            orders_count: quoteHint?.orders_count || 0,
+            unpaid_amount: quoteHint?.unpaid_amount || 0,
+          } as Client
+        })
 
       const baseClients = Array.from(
         new Map(

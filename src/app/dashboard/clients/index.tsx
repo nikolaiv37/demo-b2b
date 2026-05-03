@@ -36,9 +36,11 @@ import {
 } from '@/hooks/useMutationClient'
 import {
   useMutationInviteClient,
+  useMutationCreateClientManual,
   useMutationResendInvite,
 } from '@/hooks/useMutationInviteClient'
 import { Client } from '@/types'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Users,
   Search,
@@ -57,9 +59,11 @@ import {
   Copy,
   Clock,
   RotateCcw,
+  KeyRound,
 } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 12
+type OnboardingMode = 'invite' | 'manual'
 
 export function ClientsPage() {
   const { t } = useTranslation()
@@ -80,10 +84,18 @@ export function ClientsPage() {
 
   // Invite modal state
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>('invite')
   const [inviteForm, setInviteForm] = useState({
     email: '',
     company_name: '',
     commission_rate: 0,
+  })
+  const [manualForm, setManualForm] = useState({
+    email: '',
+    company_name: '',
+    commission_rate: 0,
+    temporary_password: '',
+    confirm_temporary_password: '',
   })
 
   const [editForm, setEditForm] = useState({
@@ -95,6 +107,7 @@ export function ClientsPage() {
   const updateMutation = useMutationUpdateClient()
   const deleteMutation = useMutationDeleteClient()
   const inviteMutation = useMutationInviteClient()
+  const createManualMutation = useMutationCreateClientManual()
   const resendMutation = useMutationResendInvite()
 
   const filteredClients = useMemo(() => {
@@ -264,13 +277,90 @@ export function ClientsPage() {
         })
       }
 
-      setIsInviteModalOpen(false)
-      setInviteForm({ email: '', company_name: '', commission_rate: 0 })
+      handleInviteModalOpenChange(false)
 
     } catch (err) {
       toast({
         title: t('distributors.error'),
         description: err instanceof Error ? err.message : t('distributors.inviteError'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleManualSubmit = async () => {
+    if (!manualForm.email.trim()) {
+      toast({
+        title: t('distributors.error'),
+        description: t('distributors.inviteEmailRequired'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!manualForm.company_name.trim()) {
+      toast({
+        title: t('distributors.error'),
+        description: t('distributors.manualCompanyRequired'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!manualForm.temporary_password.trim()) {
+      toast({
+        title: t('distributors.error'),
+        description: t('distributors.manualPasswordRequired'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (manualForm.temporary_password.length < 6) {
+      toast({
+        title: t('distributors.error'),
+        description: t('clientSetup.passwordMinLength'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (manualForm.temporary_password !== manualForm.confirm_temporary_password) {
+      toast({
+        title: t('distributors.error'),
+        description: t('clientSetup.passwordMismatch'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (manualForm.commission_rate < 0 || manualForm.commission_rate > 50) {
+      toast({
+        title: t('distributors.error'),
+        description: t('distributors.commissionRateError'),
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      await createManualMutation.mutateAsync({
+        email: manualForm.email.trim(),
+        company_name: manualForm.company_name.trim(),
+        commission_rate: manualForm.commission_rate,
+        temporary_password: manualForm.temporary_password,
+      })
+
+      toast({
+        title: t('distributors.manualCreateSuccess'),
+        description: t('distributors.manualCreateSuccessDesc'),
+      })
+
+      handleInviteModalOpenChange(false)
+    } catch (err) {
+      toast({
+        title: t('distributors.error'),
+        description: err instanceof Error ? err.message : t('distributors.manualCreateError'),
         variant: 'destructive',
       })
     }
@@ -321,11 +411,27 @@ export function ClientsPage() {
   }
 
   const formatCommissionRate = (rate?: number | null) => {
-    if (rate === undefined || rate === null || rate === 0) {
-      return null
-    }
-    const percentage = rate * 100
+    const percentage = (rate ?? 0) * 100
     return `${percentage.toFixed(percentage % 1 === 0 ? 0 : 1)}%`
+  }
+
+  const resetOnboardingModal = () => {
+    setOnboardingMode('invite')
+    setInviteForm({ email: '', company_name: '', commission_rate: 0 })
+    setManualForm({
+      email: '',
+      company_name: '',
+      commission_rate: 0,
+      temporary_password: '',
+      confirm_temporary_password: '',
+    })
+  }
+
+  const handleInviteModalOpenChange = (open: boolean) => {
+    setIsInviteModalOpen(open)
+    if (!open) {
+      resetOnboardingModal()
+    }
   }
 
   const getCompanyName = (client: Client) => {
@@ -418,7 +524,7 @@ export function ClientsPage() {
           className="gap-2 px-5 shadow-sm"
         >
           <UserPlus className="w-4 h-4" />
-          {t('distributors.inviteClient')}
+          {t('distributors.addDistributor')}
         </Button>
       </div>
 
@@ -602,7 +708,7 @@ export function ClientsPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {paginatedClients.map((client) => {
                 const commissionDisplay = formatCommissionRate(client.commission_rate)
-                const hasCommission = commissionDisplay !== null
+                const hasCommission = (client.commission_rate ?? 0) > 0
                 const joinedAgo = getJoinedAgo(client.created_at)
                 const ordersCount = client.orders_count ?? 0
                 const unpaidAmount = client.unpaid_amount ?? 0
@@ -678,16 +784,17 @@ export function ClientsPage() {
                               </button>
                             </Tooltip>
                           </div>
-                          {hasCommission ? (
-                            <Badge 
-                              className="gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
-                            >
-                              <Percent className="w-3 h-3" />
-                              {commissionDisplay}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm font-medium text-muted-foreground/60 tabular-nums">—%</span>
-                          )}
+                          <Badge
+                            variant={hasCommission ? 'default' : 'secondary'}
+                            className={
+                              hasCommission
+                                ? 'gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                                : 'gap-1 px-2 py-0.5 text-xs font-semibold rounded-full'
+                            }
+                          >
+                            <Percent className="w-3 h-3" />
+                            {commissionDisplay}
+                          </Badge>
                         </div>
 
                         {/* Join Date Row */}
@@ -954,111 +1061,272 @@ export function ClientsPage() {
       </Dialog>
 
       {/* Invite Client Modal */}
-      <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={isInviteModalOpen} onOpenChange={handleInviteModalOpenChange}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Send className="w-5 h-5 text-sky-500" />
-              {t('distributors.inviteClient')}
+              {onboardingMode === 'invite' ? (
+                <Send className="w-5 h-5 text-sky-500" />
+              ) : (
+                <KeyRound className="w-5 h-5 text-sky-500" />
+              )}
+              {t('distributors.addDistributor')}
             </DialogTitle>
             <DialogDescription>
-              {t('distributors.inviteClientDesc')}
+              {t('distributors.onboardingModalDescription')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 py-4">
-            {/* Email field */}
-            <div className="space-y-2">
-              <Label htmlFor="invite_email" className="text-sm font-medium">
-                {t('distributors.inviteEmailLabel')} <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+
+          <Tabs
+            value={onboardingMode}
+            onValueChange={(value) => setOnboardingMode(value as OnboardingMode)}
+            className="py-2"
+          >
+            <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl bg-muted/60 p-1">
+              <TabsTrigger value="invite" className="rounded-lg py-2">
+                {t('distributors.sendInvite')}
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="rounded-lg py-2">
+                {t('distributors.manualMode')}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="invite" className="mt-4 space-y-5">
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                {t('distributors.inviteClientDesc')}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invite_email" className="text-sm font-medium">
+                  {t('distributors.inviteEmailLabel')} <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    id="invite_email"
+                    type="email"
+                    placeholder={t('distributors.inviteEmailPlaceholder')}
+                    value={inviteForm.email}
+                    onChange={(e) =>
+                      setInviteForm((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                    className="pl-10 h-11"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invite_company" className="text-sm font-medium">
+                  {t('distributors.inviteCompanyLabel')}
+                </Label>
                 <Input
-                  id="invite_email"
-                  type="email"
-                  placeholder={t('distributors.inviteEmailPlaceholder')}
-                  value={inviteForm.email}
+                  id="invite_company"
+                  type="text"
+                  placeholder={t('distributors.inviteCompanyPlaceholder')}
+                  value={inviteForm.company_name}
                   onChange={(e) =>
-                    setInviteForm((prev) => ({ ...prev, email: e.target.value }))
+                    setInviteForm((prev) => ({ ...prev, company_name: e.target.value }))
                   }
-                  className="pl-10 h-11"
+                  className="h-11"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('distributors.inviteCompanyHelp')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="invite_commission" className="text-sm font-medium">
+                    {t('distributors.commissionRateLabel')}
+                  </Label>
+                  <Tooltip content={t('distributors.commissionRateTooltip')} side="top">
+                    <button type="button" className="rounded-full hover:bg-muted p-0.5">
+                      <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  </Tooltip>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="invite_commission"
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.5"
+                    value={inviteForm.commission_rate}
+                    onChange={(e) =>
+                      setInviteForm((prev) => ({
+                        ...prev,
+                        commission_rate: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="pr-10 h-11"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                    %
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('distributors.commissionRateHelp')}
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="manual" className="mt-4 space-y-5">
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                {t('distributors.manualModeDescription')}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="manual_email" className="text-sm font-medium">
+                  {t('distributors.inviteEmailLabel')} <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    id="manual_email"
+                    type="email"
+                    placeholder={t('distributors.inviteEmailPlaceholder')}
+                    value={manualForm.email}
+                    onChange={(e) =>
+                      setManualForm((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                    className="pl-10 h-11"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="manual_company" className="text-sm font-medium">
+                  {t('distributors.inviteCompanyLabel')} <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="manual_company"
+                  type="text"
+                  placeholder={t('distributors.inviteCompanyPlaceholder')}
+                  value={manualForm.company_name}
+                  onChange={(e) =>
+                    setManualForm((prev) => ({ ...prev, company_name: e.target.value }))
+                  }
+                  className="h-11"
                 />
               </div>
-            </div>
 
-            {/* Company name field */}
-            <div className="space-y-2">
-              <Label htmlFor="invite_company" className="text-sm font-medium">
-                {t('distributors.inviteCompanyLabel')}
-              </Label>
-              <Input
-                id="invite_company"
-                type="text"
-                placeholder={t('distributors.inviteCompanyPlaceholder')}
-                value={inviteForm.company_name}
-                onChange={(e) =>
-                  setInviteForm((prev) => ({ ...prev, company_name: e.target.value }))
-                }
-                className="h-11"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('distributors.inviteCompanyHelp')}
-              </p>
-            </div>
-
-            {/* Commission rate field */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="invite_commission" className="text-sm font-medium">
-                  {t('distributors.commissionRateLabel')}
-                </Label>
-                <Tooltip content={t('distributors.commissionRateTooltip')} side="top">
-                  <button type="button" className="rounded-full hover:bg-muted p-0.5">
-                    <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </Tooltip>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="manual_commission" className="text-sm font-medium">
+                    {t('distributors.commissionRateLabel')}
+                  </Label>
+                  <Tooltip content={t('distributors.commissionRateTooltip')} side="top">
+                    <button type="button" className="rounded-full hover:bg-muted p-0.5">
+                      <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  </Tooltip>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="manual_commission"
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.5"
+                    value={manualForm.commission_rate}
+                    onChange={(e) =>
+                      setManualForm((prev) => ({
+                        ...prev,
+                        commission_rate: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="pr-10 h-11"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                    %
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('distributors.commissionRateHelp')}
+                </p>
               </div>
-              <div className="relative">
+
+              <div className="space-y-2">
+                <Label htmlFor="manual_password" className="text-sm font-medium">
+                  {t('distributors.manualPasswordLabel')} <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    id="manual_password"
+                    type="password"
+                    placeholder={t('distributors.manualPasswordPlaceholder')}
+                    value={manualForm.temporary_password}
+                    onChange={(e) =>
+                      setManualForm((prev) => ({
+                        ...prev,
+                        temporary_password: e.target.value,
+                      }))
+                    }
+                    className="pl-10 h-11"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="manual_confirm_password" className="text-sm font-medium">
+                  {t('distributors.manualConfirmPasswordLabel')} <span className="text-red-500">*</span>
+                </Label>
                 <Input
-                  id="invite_commission"
-                  type="number"
-                  min="0"
-                  max="50"
-                  step="0.5"
-                  value={inviteForm.commission_rate}
+                  id="manual_confirm_password"
+                  type="password"
+                  placeholder={t('distributors.manualConfirmPasswordPlaceholder')}
+                  value={manualForm.confirm_temporary_password}
                   onChange={(e) =>
-                    setInviteForm((prev) => ({
+                    setManualForm((prev) => ({
                       ...prev,
-                      commission_rate: parseFloat(e.target.value) || 0,
+                      confirm_temporary_password: e.target.value,
                     }))
                   }
-                  className="pr-10 h-11"
+                  className="h-11"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                  %
-                </span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {t('distributors.commissionRateHelp')}
-              </p>
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
+
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsInviteModalOpen(false)}>
+            <Button variant="outline" onClick={() => handleInviteModalOpenChange(false)}>
               {t('general.cancel')}
             </Button>
-            <Button
-              onClick={handleInviteSubmit}
-              disabled={inviteMutation.isPending || !inviteForm.email.trim()}
-              className="gap-2 bg-sky-600 hover:bg-sky-700"
-            >
-              {inviteMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              {t('distributors.sendInvite')}
-            </Button>
+            {onboardingMode === 'invite' ? (
+              <Button
+                onClick={handleInviteSubmit}
+                disabled={inviteMutation.isPending || !inviteForm.email.trim()}
+                className="gap-2 bg-sky-600 hover:bg-sky-700"
+              >
+                {inviteMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {t('distributors.sendInvite')}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleManualSubmit}
+                disabled={
+                  createManualMutation.isPending ||
+                  !manualForm.email.trim() ||
+                  !manualForm.company_name.trim() ||
+                  !manualForm.temporary_password.trim() ||
+                  !manualForm.confirm_temporary_password.trim()
+                }
+                className="gap-2 bg-sky-600 hover:bg-sky-700"
+              >
+                {createManualMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <KeyRound className="w-4 h-4" />
+                )}
+                {t('distributors.createClient')}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
