@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Product } from '@/types'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/components/ui/use-toast'
@@ -20,6 +20,7 @@ import { formatPrice as formatPriceUtil } from '@/lib/utils'
 
 interface AddToOrderModalProps {
   product: Product
+  initialQuantity?: number
   open: boolean
   onClose: () => void
 }
@@ -34,7 +35,7 @@ interface AddToOrderModalProps {
  * 
  * The cart acts as a draft order - items can be reviewed and submitted later.
  */
-export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps) {
+export function AddToOrderModal({ product, initialQuantity = 1, open, onClose }: AddToOrderModalProps) {
   const { t } = useTranslation()
   const { addItem } = useCartStore()
   const { toast } = useToast()
@@ -51,6 +52,13 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
   const hasCommissionDiscount = hasDiscount && product.adjusted_price !== undefined && product.adjusted_price < basePrice
   
   const total = unitPrice * quantity
+
+  useEffect(() => {
+    if (!open) return
+
+    const clampedQuantity = Math.max(1, Math.min(initialQuantity, maxQuantity || 1))
+    setQuantity(clampedQuantity)
+  }, [initialQuantity, maxQuantity, open])
 
   // Format price helper
   const formatPrice = (price: number): string => {
@@ -164,7 +172,7 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
 
           {/* Quantity Selection */}
           <div>
-            <Label htmlFor="quantity">Quantity</Label>
+            <Label htmlFor="quantity">{t('products.quantityLabel')}</Label>
             <div className="flex items-center gap-3 mt-2">
               <Button
                 variant="outline"
@@ -201,15 +209,15 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
             {!isOutOfStock && (
               <p className="text-xs text-muted-foreground mt-2">
                 {maxQuantity > 0
-                  ? `${maxQuantity} available in stock`
-                  : 'Out of stock'}
+                  ? t('products.stockCount', { count: maxQuantity })
+                  : t('products.outOfStock')}
               </p>
             )}
           </div>
 
           {/* Total */}
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-            <span className="font-semibold">Total</span>
+            <span className="font-semibold">{t('products.totalLabel')}</span>
             <span className="text-2xl font-bold text-primary">
               {formatPrice(total)}
             </span>
@@ -218,7 +226,7 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
           {/* Info Message */}
           <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-900 dark:text-blue-200">
-              This will be added to your draft order. You can review and submit it later from your cart.
+              {t('products.draftOrderInfo')}
             </p>
           </div>
 
@@ -230,7 +238,7 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
               className="flex-1"
               disabled={isAdding}
             >
-              Cancel
+              {t('products.cancel')}
             </Button>
             <Button
               onClick={handleAddToOrder}
@@ -255,4 +263,3 @@ export function AddToOrderModal({ product, open, onClose }: AddToOrderModalProps
     </Dialog>
   )
 }
-
