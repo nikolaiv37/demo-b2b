@@ -1,13 +1,11 @@
 import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase/client'
+import { logRealtimeStatus, supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import type { AppNotification } from '@/types'
 
 const NOTIFICATIONS_LIMIT = 20
-const isRealtimeDebug = import.meta.env.DEV
-
 export function useNotifications() {
   const { user } = useAuth()
   const { tenant } = useTenant()
@@ -46,8 +44,9 @@ export function useNotifications() {
   useEffect(() => {
     if (!userId || !tenantId) return
 
+    const channelName = `user-notifications:${tenantId}:${userId}`
     const channel = supabase
-      .channel(`user-notifications:${tenantId}:${userId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -62,26 +61,13 @@ export function useNotifications() {
             return
           }
 
-          if (isRealtimeDebug) {
-            console.debug('[realtime] notifications event received', {
-              eventType: payload.eventType,
-              table: payload.table,
-            })
-          }
-
           queryClient.invalidateQueries({
             queryKey: ['tenant', tenantId, 'notifications'],
           })
-
-          if (isRealtimeDebug) {
-            console.debug('[realtime] notifications query invalidated')
-          }
         }
       )
       .subscribe((status) => {
-        if (isRealtimeDebug) {
-          console.debug('[realtime] notifications subscription status', { status })
-        }
+        logRealtimeStatus(channelName, status)
       })
 
     return () => {

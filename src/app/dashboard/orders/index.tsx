@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase/client'
+import { logRealtimeStatus, supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -38,8 +38,6 @@ import type { ProformaInvoicePDFProps } from '@/components/ProformaInvoicePDF'
 import { Company } from '@/types'
 import { useToast } from '@/components/ui/use-toast'
 import { isLocalDevModeEnabled } from '@/config/features'
-const isRealtimeDebug = import.meta.env.DEV
-
 // Order status types - new simplified workflow
 type OrderStatus =
   | 'processing'
@@ -447,8 +445,9 @@ function CompanyOrdersView() {
     if (!tenantId || !userId) return
 
     const queryKey = ['tenant', tenantId, 'orders', userId, isDevMode || isDemoMode] as const
+    const channelName = `company-orders-changes:${tenantId}:${userId}`
     const channel = supabase
-      .channel(`company-orders-changes:${tenantId}:${userId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -468,24 +467,11 @@ function CompanyOrdersView() {
             return
           }
 
-          if (isRealtimeDebug) {
-            console.debug('[realtime] company orders event received', {
-              eventType: payload.eventType,
-              table: payload.table,
-            })
-          }
-
           queryClient.invalidateQueries({ queryKey })
-
-          if (isRealtimeDebug) {
-            console.debug('[realtime] company orders query invalidated')
-          }
         }
       )
       .subscribe((status) => {
-        if (isRealtimeDebug) {
-          console.debug('[realtime] company orders subscription status', { status })
-        }
+        logRealtimeStatus(channelName, status)
       })
 
     return () => {

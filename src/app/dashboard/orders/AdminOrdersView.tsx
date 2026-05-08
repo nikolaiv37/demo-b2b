@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase/client'
+import { logRealtimeStatus, supabase } from '@/lib/supabase/client'
 import { sendNotification } from '@/lib/notifications'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,8 +37,6 @@ import { useTenant } from '@/lib/tenant/TenantProvider'
 import { ShipmentPanel } from '@/components/shipping/ShipmentPanel'
 import { demoFeatures } from '@/config/features'
 // Proforma PDFs are generated only from company user accounts (see OrdersPage/OrderDetailsSheet)
-const isRealtimeDebug = import.meta.env.DEV
-
 interface OrderItem {
   product_id?: string
   product_name: string
@@ -309,8 +307,9 @@ export function AdminOrdersView() {
   useEffect(() => {
     if (!tenantId) return
 
+    const channelName = `admin-orders-changes:${tenantId}`
     const channel = supabase
-      .channel(`admin-orders-changes:${tenantId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -319,26 +318,13 @@ export function AdminOrdersView() {
           table: 'quotes',
           filter: `tenant_id=eq.${tenantId}`,
         },
-        (payload) => {
-          if (isRealtimeDebug) {
-            console.debug('[realtime] admin orders event received', {
-              eventType: payload.eventType,
-              table: payload.table,
-            })
-          }
-
+        () => {
           // Refetch orders when any change occurs
           queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
-
-          if (isRealtimeDebug) {
-            console.debug('[realtime] admin orders query invalidated')
-          }
         }
       )
       .subscribe((status) => {
-        if (isRealtimeDebug) {
-          console.debug('[realtime] admin orders subscription status', { status })
-        }
+        logRealtimeStatus(channelName, status)
       })
 
     return () => {
