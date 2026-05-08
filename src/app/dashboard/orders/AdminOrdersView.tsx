@@ -37,6 +37,7 @@ import { useTenant } from '@/lib/tenant/TenantProvider'
 import { ShipmentPanel } from '@/components/shipping/ShipmentPanel'
 import { demoFeatures } from '@/config/features'
 // Proforma PDFs are generated only from company user accounts (see OrdersPage/OrderDetailsSheet)
+const isRealtimeDebug = import.meta.env.DEV
 
 interface OrderItem {
   product_id?: string
@@ -306,21 +307,39 @@ export function AdminOrdersView() {
 
   // Set up real-time subscription for orders
   useEffect(() => {
+    if (!tenantId) return
+
     const channel = supabase
-      .channel('admin-orders-changes')
+      .channel(`admin-orders-changes:${tenantId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'quotes',
+          filter: `tenant_id=eq.${tenantId}`,
         },
-        () => {
+        (payload) => {
+          if (isRealtimeDebug) {
+            console.debug('[realtime] admin orders event received', {
+              eventType: payload.eventType,
+              table: payload.table,
+            })
+          }
+
           // Refetch orders when any change occurs
           queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
+
+          if (isRealtimeDebug) {
+            console.debug('[realtime] admin orders query invalidated')
+          }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (isRealtimeDebug) {
+          console.debug('[realtime] admin orders subscription status', { status })
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)

@@ -6,6 +6,7 @@ import { useTenant } from '@/lib/tenant/TenantProvider'
 import type { AppNotification } from '@/types'
 
 const NOTIFICATIONS_LIMIT = 20
+const isRealtimeDebug = import.meta.env.DEV
 
 export function useNotifications() {
   const { user } = useAuth()
@@ -53,15 +54,35 @@ export function useNotifications() {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${userId},tenant_id=eq.${tenantId}`,
+          filter: `user_id=eq.${userId}`,
         },
-        () => {
+        (payload) => {
+          const record = payload.new
+          if (!record || record.tenant_id !== tenantId) {
+            return
+          }
+
+          if (isRealtimeDebug) {
+            console.debug('[realtime] notifications event received', {
+              eventType: payload.eventType,
+              table: payload.table,
+            })
+          }
+
           queryClient.invalidateQueries({
             queryKey: ['tenant', tenantId, 'notifications'],
           })
+
+          if (isRealtimeDebug) {
+            console.debug('[realtime] notifications query invalidated')
+          }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (isRealtimeDebug) {
+          console.debug('[realtime] notifications subscription status', { status })
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)

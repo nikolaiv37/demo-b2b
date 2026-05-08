@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +38,7 @@ import type { ProformaInvoicePDFProps } from '@/components/ProformaInvoicePDF'
 import { Company } from '@/types'
 import { useToast } from '@/components/ui/use-toast'
 import { isLocalDevModeEnabled } from '@/config/features'
+const isRealtimeDebug = import.meta.env.DEV
 
 // Order status types - new simplified workflow
 type OrderStatus =
@@ -88,6 +89,11 @@ interface QuoteRow {
   status?: string | null
   created_at?: string
   updated_at?: string | null
+}
+
+interface RealtimeQuoteRecord {
+  tenant_id?: string | null
+  user_id?: string | null
 }
 
 // Dummy orders for demonstration (remove when you have real data)
@@ -327,6 +333,7 @@ function CompanyOrdersView() {
   const { user, company, profile } = useAuth()
   const { toast } = useToast()
   const { tenant } = useTenant()
+  const queryClient = useQueryClient()
   const tenantId = tenant?.id
   const { withBase } = useTenantPath()
 
@@ -435,6 +442,56 @@ function CompanyOrdersView() {
 
   // Combine real orders with dummy data for demonstration (remove DUMMY_ORDERS later)
   const orders = useMemo(() => quotesData ?? [], [quotesData])
+
+  useEffect(() => {
+    if (!tenantId || !userId) return
+
+    const queryKey = ['tenant', tenantId, 'orders', userId, isDevMode || isDemoMode] as const
+    const channel = supabase
+      .channel(`company-orders-changes:${tenantId}:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quotes',
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        (payload) => {
+          const record = (payload.new ?? payload.old) as RealtimeQuoteRecord | null
+          if (!record) {
+            return
+          }
+
+          const isVisibleToCurrentUser = isDevMode || isDemoMode || record.user_id === userId
+          if (!isVisibleToCurrentUser) {
+            return
+          }
+
+          if (isRealtimeDebug) {
+            console.debug('[realtime] company orders event received', {
+              eventType: payload.eventType,
+              table: payload.table,
+            })
+          }
+
+          queryClient.invalidateQueries({ queryKey })
+
+          if (isRealtimeDebug) {
+            console.debug('[realtime] company orders query invalidated')
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (isRealtimeDebug) {
+          console.debug('[realtime] company orders subscription status', { status })
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [isDemoMode, isDevMode, queryClient, tenantId, userId])
 
   // Auto-open order details if coming from order submission
   useEffect(() => {
