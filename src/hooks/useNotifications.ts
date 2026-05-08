@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { logRealtimeStatus, supabase } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenant } from '@/lib/tenant/TenantProvider'
 import type { AppNotification } from '@/types'
@@ -44,9 +44,8 @@ export function useNotifications() {
   useEffect(() => {
     if (!userId || !tenantId) return
 
-    const channelName = `user-notifications:${tenantId}:${userId}`
     const channel = supabase
-      .channel(channelName)
+      .channel(`user-notifications:${tenantId}:${userId}`)
       .on(
         'postgres_changes',
         {
@@ -66,9 +65,7 @@ export function useNotifications() {
           })
         }
       )
-      .subscribe((status) => {
-        logRealtimeStatus(channelName, status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)

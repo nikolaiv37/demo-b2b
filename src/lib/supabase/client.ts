@@ -14,23 +14,3 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 })
-
-type RealtimeStatus = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR'
-
-export function logRealtimeStatus(channelName: string, status: string): void {
-  const knownStatus = status as RealtimeStatus
-
-  if (knownStatus === 'SUBSCRIBED') {
-    console.info('[realtime] channel subscribed', { channel: channelName, status })
-    return
-  }
-
-  if (knownStatus === 'CHANNEL_ERROR') {
-    console.error('[realtime] channel error', { channel: channelName, status })
-    return
-  }
-
-  if (knownStatus === 'TIMED_OUT' || knownStatus === 'CLOSED') {
-    console.warn('[realtime] channel not active', { channel: channelName, status })
-  }
-}

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { logRealtimeStatus, supabase } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { sendNotification } from '@/lib/notifications'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -307,9 +307,8 @@ export function AdminOrdersView() {
   useEffect(() => {
     if (!tenantId) return
 
-    const channelName = `admin-orders-changes:${tenantId}`
     const channel = supabase
-      .channel(channelName)
+      .channel(`admin-orders-changes:${tenantId}`)
       .on(
         'postgres_changes',
         {
@@ -323,9 +322,7 @@ export function AdminOrdersView() {
           queryClient.invalidateQueries({ queryKey: ['tenant', tenantId, 'admin-orders'] })
         }
       )
-      .subscribe((status) => {
-        logRealtimeStatus(channelName, status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)

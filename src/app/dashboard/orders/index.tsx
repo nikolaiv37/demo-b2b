@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { logRealtimeStatus, supabase } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -445,9 +445,8 @@ function CompanyOrdersView() {
     if (!tenantId || !userId) return
 
     const queryKey = ['tenant', tenantId, 'orders', userId, isDevMode || isDemoMode] as const
-    const channelName = `company-orders-changes:${tenantId}:${userId}`
     const channel = supabase
-      .channel(channelName)
+      .channel(`company-orders-changes:${tenantId}:${userId}`)
       .on(
         'postgres_changes',
         {
@@ -470,9 +469,7 @@ function CompanyOrdersView() {
           queryClient.invalidateQueries({ queryKey })
         }
       )
-      .subscribe((status) => {
-        logRealtimeStatus(channelName, status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
