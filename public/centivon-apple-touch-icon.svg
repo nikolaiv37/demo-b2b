@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-labelledby="title desc">
+  <title id="title">Centivon apple touch icon</title>
+  <desc id="desc">Neutral C monogram for the Centivon B2B Portal.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="44" fill="url(#bg)" />
+  <path
+    d="M116 57c-7-7-15.9-10.5-26.8-10.5-21.7 0-38.2 17.1-38.2 43.5s16.5 43.5 38.2 43.5c10.9 0 19.8-3.5 26.8-10.5"
+    fill="none"
+    stroke="#f8fafc"
+    stroke-linecap="round"
+    stroke-width="18"
+  />
+</svg>

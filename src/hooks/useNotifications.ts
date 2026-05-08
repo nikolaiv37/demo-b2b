@@ -46,14 +46,14 @@ export function useNotifications() {
     if (!userId || !tenantId) return
 
     const channel = supabase
-      .channel('user-notifications')
+      .channel(`user-notifications:${tenantId}:${userId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${userId}`,
+          filter: `user_id=eq.${userId},tenant_id=eq.${tenantId}`,
         },
         () => {
           queryClient.invalidateQueries({
